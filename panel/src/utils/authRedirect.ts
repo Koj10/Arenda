@@ -5,7 +5,7 @@ function isDevPanel(): boolean {
   return window.location.port === DEV_PORTS.panel
 }
 
-function landingUrl(page: 'login.html' | 'register.html'): string {
+function landingUrl(page: 'login' | 'register'): string {
   const { protocol, hostname, port } = window.location
 
   // Local panel → landing :3000
@@ -18,11 +18,11 @@ function landingUrl(page: 'login.html' | 'register.html'): string {
 }
 
 export function getLandingLoginUrl(): string {
-  return landingUrl('login.html')
+  return landingUrl('login')
 }
 
 export function getLandingRegisterUrl(): string {
-  return landingUrl('register.html')
+  return landingUrl('register')
 }
 
 export function redirectToLandingLogin(): void {

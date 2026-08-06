@@ -1,0 +1,11 @@
+{
+  "redirects": [
+    { "source": "/index.html", "destination": "/" },
+    { "source": "/login.html", "destination": "/login" },
+    { "source": "/register.html", "destination": "/register" }
+  ],
+  "rewrites": [
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/register", "destination": "/register.html" }
+  ]
+}
