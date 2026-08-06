@@ -58,7 +58,7 @@ function billStatusClass(status: string) {
 
 <template>
   <TenantLayout>
-    <div v-if="lease" class="max-w-3xl">
+    <div v-if="lease" class="panel-page">
       <button
         type="button"
         class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-accent-teal mb-5"

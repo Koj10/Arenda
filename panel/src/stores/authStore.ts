@@ -7,6 +7,7 @@ import {
   resolveDemoAccount,
   saveTenantProfile,
 } from '@/types/auth'
+import { usePlanStore } from '@/stores/planStore'
 
 export type { AuthUser, UserRole }
 
@@ -47,6 +48,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
     localStorage.setItem('propcount-auth', JSON.stringify(user.value))
     clearPendingRoleChoice()
+    void usePlanStore().loadForUser({
+      email: user.value.email,
+      role: user.value.role,
+    })
   }
 
   function beginRoleChoice(email: string, name: string, mode: RoleChoiceMode = 'register') {
@@ -114,6 +119,17 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     clearPendingRoleChoice()
     localStorage.removeItem('propcount-auth')
+    usePlanStore().clear()
+    // lazy import to avoid cycle at module init
+    import('@/stores/notificationsStore').then(({ useNotificationsStore }) => {
+      useNotificationsStore().clear()
+    })
+  }
+
+  function updateProfile(patch: Partial<Pick<AuthUser, 'name' | 'email' | 'inn'>>) {
+    if (!user.value) return
+    user.value = { ...user.value, ...patch }
+    localStorage.setItem('propcount-auth', JSON.stringify(user.value))
   }
 
   function hydrate() {
@@ -145,6 +161,10 @@ export const useAuthStore = defineStore('auth', () => {
       role: parsed.role ?? 'landlord',
       inn: parsed.inn,
     }
+    void usePlanStore().loadForUser({
+      email: user.value.email,
+      role: user.value.role,
+    })
   }
 
   return {
@@ -164,6 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearPendingRoleChoice,
     clearPendingRegistration,
     logout,
+    updateProfile,
     hydrate,
   }
 })

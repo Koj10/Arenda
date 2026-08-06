@@ -49,37 +49,33 @@ function statusClass(status: string) {
 
 <template>
   <TenantLayout>
-    <div class="max-w-4xl">
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold text-white mb-1" style="font-family: Poppins, Inter, sans-serif">Счета</h1>
-        <p class="text-sm text-slate-400">Ежемесячные счета на аренду, ЖКХ и другие услуги</p>
-      </div>
-
+    <div class="panel-page">
       <div class="grid sm:grid-cols-2 gap-4 mb-6">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <div class="panel-stat-card">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">К оплате</p>
           <p class="text-xl font-mono text-rose-400">{{ billing.formatMoney(pendingTotal) }}</p>
         </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <div class="panel-stat-card">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Всего счетов</p>
           <p class="text-xl font-mono text-slate-200">{{ bills.length }}</p>
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-2 mb-4">
+      <div class="panel-tabs mb-4">
         <button
           v-for="opt in ([['all', 'Все'], ['pending', 'К оплате'], ['paid', 'Оплаченные'], ['overdue', 'Просроченные']] as const)"
           :key="opt[0]"
           type="button"
-          class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-          :class="statusFilter === opt[0] ? 'bg-teal-500/20 text-accent-teal' : 'bg-slate-800 text-slate-400 hover:text-slate-200'"
+          class="panel-tab !text-xs !px-3 !py-1.5"
+          :class="statusFilter === opt[0] && 'panel-tab-active'"
           @click="statusFilter = opt[0]"
         >
           {{ opt[1] }}
         </button>
       </div>
 
-      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 overflow-hidden">
+      <div class="panel-card">
+        <div class="panel-table-wrap">
         <table class="w-full text-sm">
           <thead>
             <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-800">
@@ -129,6 +125,7 @@ function statusClass(status: string) {
             </tr>
           </tbody>
         </table>
+        </div>
         <div v-if="bills.length === 0" class="py-12 text-center text-slate-500 text-sm">
           Счетов не найдено
         </div>

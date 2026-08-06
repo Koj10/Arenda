@@ -38,21 +38,18 @@ function statusClass(status: string) {
 
 <template>
   <TenantLayout>
-    <div class="max-w-4xl">
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold text-white mb-1" style="font-family: Poppins, Inter, sans-serif">Мои помещения</h1>
-        <p class="text-sm text-slate-400">
-          Данные загружены арендодателем
-          <span v-if="auth.tenantInn" class="font-mono text-slate-500">· ИНН {{ auth.tenantInn }}</span>
-        </p>
-      </div>
+    <div class="panel-page">
+      <p class="text-sm text-slate-400 mb-5">
+        Данные загружены арендодателем
+        <span v-if="auth.tenantInn" class="font-mono text-slate-500">· ИНН {{ auth.tenantInn }}</span>
+      </p>
 
       <div v-if="leases.length > 0" class="space-y-3">
         <button
           v-for="lease in leases"
           :key="lease.tenant.id"
           type="button"
-          class="w-full text-left rounded-2xl border border-slate-800 bg-slate-900/40 p-5 hover:border-teal-500/30 hover:bg-slate-800/40 transition-all group"
+          class="w-full text-left panel-card p-4 sm:p-5 hover:border-emerald-brand/30 transition-all group"
           @click="openLease(lease.tenant.id)"
         >
           <div class="flex items-start justify-between gap-4">

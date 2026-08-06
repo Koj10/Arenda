@@ -11,6 +11,7 @@ import {
 } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useExport } from '@/composables/useExport'
+import { usePlan } from '@/composables/usePlan'
 import type { ExportColumn, ReportColumn, SpaceReportColumn, ReportRow, SpaceReportRow } from '@/types/portfolio'
 
 type ReportScope =
@@ -20,6 +21,7 @@ type ReportScope =
 
 const store = usePortfolioStore()
 const { exportReport } = useExport()
+const { requireFeature } = usePlan()
 
 const scope = ref<ReportScope>({ kind: 'portfolio' })
 const expandedPropertyIds = ref<Set<number>>(new Set())
@@ -129,6 +131,7 @@ function sumColumn(key: string) {
 }
 
 function handleExport() {
+  if (!requireFeature('exportReports', 'Экспорт отчётов доступен на тарифе Profi и выше')) return
   if (selectedColumns.value.length === 0 || displayRows.value.length === 0) return
   exporting.value = true
   const suffix = scope.value.kind === 'portfolio'
@@ -176,7 +179,7 @@ function navBtnClass(active: boolean) {
       </button>
     </template>
 
-    <div class="max-w-7xl">
+    <div class="panel-page-wide">
       <div class="grid sm:grid-cols-3 gap-4 mb-6">
         <div class="panel-stat-card">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Строк в отчёте</p>

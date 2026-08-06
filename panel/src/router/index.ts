@@ -72,6 +72,20 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Финансы', pageSubtitle: 'Доходы, расходы и движение средств' },
     },
 
+    // Shared (landlord + tenant)
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/views/SettingsView.vue'),
+      meta: { requiresAuth: true, pageTitle: 'Настройки', pageSubtitle: 'Профиль, тариф и уведомления' },
+    },
+    {
+      path: '/help',
+      name: 'help',
+      component: () => import('@/views/HelpView.vue'),
+      meta: { requiresAuth: true, pageTitle: 'Помощь', pageSubtitle: 'FAQ и контакты поддержки' },
+    },
+
     // Tenant portal (read-only)
     {
       path: '/tenant/spaces',

@@ -74,9 +74,9 @@ function formatShort(n: number) {
 
 <template>
   <AppLayout>
-    <div class="max-w-7xl">
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div class="flex flex-wrap gap-2">
+    <div class="panel-page-wide">
+      <div class="panel-tabs-row">
+        <div class="panel-tabs">
           <button
             type="button"
             :class="['panel-tab', activeTab === 'overview' && 'panel-tab-active']"
@@ -99,10 +99,13 @@ function formatShort(n: number) {
             Счета
           </button>
         </div>
-        <button type="button" class="panel-btn-primary" @click="accounting.openExpenseModal()">
-          <Plus class="w-4 h-4" />
-          Добавить транзакцию
-        </button>
+        <div class="panel-toolbar-actions">
+          <button type="button" class="panel-btn-primary" @click="accounting.openExpenseModal()">
+            <Plus class="w-4 h-4" />
+            <span class="sm:hidden">Транзакция</span>
+            <span class="hidden sm:inline">Добавить транзакцию</span>
+          </button>
+        </div>
       </div>
 
       <template v-if="activeTab === 'overview'">
@@ -151,18 +154,19 @@ function formatShort(n: number) {
       </template>
 
       <template v-else-if="activeTab === 'transactions'">
-        <div class="flex flex-wrap gap-3 mb-4">
-          <div class="relative flex-1 min-w-[200px] max-w-md">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input v-model="search" type="text" placeholder="Поиск по названию..." class="panel-search" />
+        <div class="panel-toolbar mb-4">
+          <div class="panel-toolbar-search">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            <input v-model="search" type="search" placeholder="Поиск по названию..." class="panel-search" />
           </div>
-          <select v-model="categoryFilter" class="panel-input w-auto min-w-[160px]">
+          <select v-model="categoryFilter" class="panel-input w-full sm:w-auto sm:min-w-[160px]">
             <option value="all">Все категории</option>
             <option v-for="[key, label] in categories" :key="key" :value="key">{{ label }}</option>
           </select>
         </div>
 
         <div class="panel-card">
+          <div class="panel-table-wrap">
           <table class="w-full text-sm">
             <thead>
               <tr class="panel-table-head">
@@ -207,6 +211,7 @@ function formatShort(n: number) {
               </tr>
             </tbody>
           </table>
+          </div>
           <div v-if="filtered.length === 0" class="py-12 text-center text-slate-500 text-sm">
             Расходы не найдены
           </div>

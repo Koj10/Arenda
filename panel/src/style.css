@@ -39,12 +39,44 @@
     @apply text-sm text-slate-400;
   }
 
+  .panel-page {
+    @apply w-full mx-auto;
+    max-width: min(100%, 96rem); /* ~1536px, растёт на больших мониторах */
+  }
+
+  .panel-page-wide {
+    @apply w-full mx-auto;
+    max-width: min(100%, 112rem); /* ~1792px */
+  }
+
+  .panel-page-narrow {
+    @apply w-full mx-auto;
+    max-width: min(100%, 42rem); /* settings / help */
+  }
+
+  /* Контентная колонка с ровными полями на всех брейкпоинтах */
+  .panel-main-inner {
+    @apply w-full mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4 sm:py-6 lg:py-8;
+    max-width: 120rem; /* 1920px — потолок всей рабочей области */
+  }
+
+  /* Хедер: три равные зоны — поиск визуально по центру (YouTube) */
+  .panel-header-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  @media (max-width: 767px) {
+    .panel-header-bar {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+
   .panel-card {
     @apply rounded-xl border border-border bg-card overflow-hidden;
   }
 
   .panel-stat-card {
-    @apply rounded-xl border border-border bg-card p-5;
+    @apply rounded-xl border border-border bg-card p-4 sm:p-5 xl:p-6;
   }
 
   .panel-input {
@@ -52,7 +84,7 @@
   }
 
   .panel-btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-all;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-all whitespace-nowrap;
   }
 
   .panel-btn-primary:hover {
@@ -60,7 +92,7 @@
   }
 
   .panel-btn-secondary {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-slate-300 text-sm hover:bg-card-hover hover:border-emerald-brand/40 transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-border text-slate-300 text-sm hover:bg-card-hover hover:border-emerald-brand/40 transition-colors whitespace-nowrap;
   }
 
   .panel-table-head {
@@ -71,12 +103,62 @@
     @apply border-b border-border-subtle hover:bg-card-hover/60 transition-colors;
   }
 
+  /* Горизонтальный скролл таблиц на узких экранах */
+  .panel-table-wrap {
+    @apply w-full overflow-x-auto overscroll-x-contain -mx-0;
+  }
+
+  .panel-table-wrap > table {
+    @apply min-w-[36rem] w-full;
+  }
+
+  /* Тулбар: поиск + CTA */
+  .panel-toolbar {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6;
+  }
+
+  .panel-toolbar-search {
+    @apply relative w-full sm:flex-1 sm:min-w-0 sm:max-w-lg xl:max-w-xl;
+  }
+
+  .panel-toolbar-actions {
+    @apply flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto sm:shrink-0;
+  }
+
+  .panel-toolbar-actions > .panel-btn-primary,
+  .panel-toolbar-actions > .panel-btn-secondary {
+    @apply w-full sm:w-auto;
+  }
+
+  /* Вкладки с горизонтальным скроллом */
+  .panel-tabs {
+    @apply flex items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 -mx-1 px-1;
+    scrollbar-width: none;
+  }
+
+  .panel-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .panel-tab {
-    @apply px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-colors;
+    @apply inline-flex items-center justify-center gap-2 shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-400 border border-transparent hover:text-white hover:bg-card/60 transition-colors;
   }
 
   .panel-tab-active {
-    @apply bg-card text-white border border-border;
+    @apply bg-card text-white border-border shadow-sm;
+  }
+
+  .panel-tabs-row {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6;
+  }
+
+  /* Пункты сайдбара — одинаковая высота с/без active (border всегда) */
+  .panel-nav-item {
+    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border border-transparent text-slate-400 hover:text-white hover:bg-card transition-colors text-left;
+  }
+
+  .panel-nav-item-active {
+    @apply text-emerald-brand bg-emerald-brand/10 border-emerald-brand/20 hover:text-emerald-brand hover:bg-emerald-brand/10;
   }
 
   .panel-search {
@@ -92,6 +174,13 @@
   }
 
   .panel-btn-danger {
-    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors;
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors;
+  }
+
+  /* Выпадашки хедера на мобиле не обрезаются краем экрана */
+  .panel-popover {
+    @apply absolute z-50 mt-2 rounded-xl border border-border bg-card shadow-2xl overflow-hidden;
+    right: 0;
+    width: min(22rem, calc(100vw - 1.5rem));
   }
 }

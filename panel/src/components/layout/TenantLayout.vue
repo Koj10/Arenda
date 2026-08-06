@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PanelLayout from '@/components/layout/PanelLayout.vue'
 import TenantSidebar from '@/components/layout/TenantSidebar.vue'
+import UpgradeModal from '@/components/plan/UpgradeModal.vue'
 </script>
 
 <template>
@@ -10,4 +11,5 @@ import TenantSidebar from '@/components/layout/TenantSidebar.vue'
     </template>
     <slot />
   </PanelLayout>
+  <UpgradeModal />
 </template>

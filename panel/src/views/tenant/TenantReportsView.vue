@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { useExport } from '@/composables/useExport'
 import { useTenantReports, formatTenantCell } from '@/composables/useTenantReports'
+import { usePlan } from '@/composables/usePlan'
 import type { TenantReportKind, TenantReportScope } from '@/types/tenantReports'
 import {
   TENANT_LEASE_COLUMNS,
@@ -20,6 +21,7 @@ import {
 
 const auth = useAuthStore()
 const { exportReport } = useExport()
+const { tenantReportsUnlocked, requireTenantReports } = usePlan()
 
 const reportKind = ref<TenantReportKind>('bills')
 const scope = ref<TenantReportScope>({ kind: 'all' })
@@ -78,6 +80,7 @@ function sumColumn(key: string) {
 }
 
 function handleExport() {
+  if (!requireTenantReports()) return
   if (!selectedColumns.value.length || !displayRows.value.length) return
   exporting.value = true
   const exportRows = displayRows.value.map((row) => {
@@ -112,13 +115,30 @@ function navBtnClass(active: boolean) {
       </button>
     </template>
 
-    <div class="max-w-7xl">
+    <div class="panel-page-wide">
       <p v-if="auth.tenantInn" class="text-xs text-slate-500 mb-4 font-mono">ИНН {{ auth.tenantInn }}</p>
 
-      <div class="flex flex-wrap gap-2 mb-6">
+      <div
+        v-if="!tenantReportsUnlocked"
+        class="mb-6 rounded-xl border border-border bg-card p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between"
+      >
+        <div>
+          <p class="text-sm font-semibold text-white mb-1">Расширенные отчёты</p>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            История платежей и выгрузки — от 249 ₽/мес. На тарифе Profi владельца отчёты включены.
+          </p>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button type="button" class="panel-btn-primary text-xs" @click="requireTenantReports()">
+            Подключить
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-tabs mb-6">
         <button
           type="button"
-          :class="['panel-tab inline-flex items-center gap-2', reportKind === 'bills' && 'panel-tab-active']"
+          :class="['panel-tab', reportKind === 'bills' && 'panel-tab-active']"
           @click="toggleKind('bills')"
         >
           <Receipt class="w-4 h-4" />
@@ -126,7 +146,7 @@ function navBtnClass(active: boolean) {
         </button>
         <button
           type="button"
-          :class="['panel-tab inline-flex items-center gap-2', reportKind === 'leases' && 'panel-tab-active']"
+          :class="['panel-tab', reportKind === 'leases' && 'panel-tab-active']"
           @click="toggleKind('leases')"
         >
           <DoorOpen class="w-4 h-4" />

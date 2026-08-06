@@ -19,6 +19,38 @@ function initMobileMenu() {
   })
 }
 
+function scrollToId(id) {
+  const el = document.getElementById(id)
+  if (!el) return false
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  return true
+}
+
+/** Якоря без #pricing / #features в адресной строке */
+function initCleanAnchors() {
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    const href = link.getAttribute('href')
+    if (!href || href === '#') return
+
+    link.addEventListener('click', (e) => {
+      const id = href.slice(1)
+      if (!id || !document.getElementById(id)) return
+      e.preventDefault()
+      scrollToId(id)
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    })
+  })
+
+  // Зашли по /#pricing — прокрутить и убрать hash из URL
+  const hash = window.location.hash.replace(/^#/, '')
+  if (hash && document.getElementById(hash)) {
+    requestAnimationFrame(() => {
+      scrollToId(hash)
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    })
+  }
+}
+
 function initAOS() {
   if (typeof AOS !== 'undefined') {
     AOS.init({ duration: 700, once: true, offset: 60 })
@@ -32,6 +64,7 @@ function initFeather() {
 document.addEventListener('DOMContentLoaded', () => {
   initHeaderScroll()
   initMobileMenu()
+  initCleanAnchors()
   initAOS()
   initFeather()
 })
