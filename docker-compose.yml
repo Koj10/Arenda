@@ -1,8 +1,5 @@
 name: PropCount
 
-# На сервере: только pull образов из GHCR (сборка в GitHub Actions)
-#   docker compose pull && docker compose up -d
-
 services:
   web:
     image: ghcr.io/koj10/arenda:latest
@@ -10,42 +7,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # сертификаты Let's Encrypt (не в git)
       - certbot_www:/var/www/certbot
       - certbot_certs:/etc/letsencrypt
-    depends_on:
-      - api
-    restart: unless-stopped
-
-  api:
-    image: ghcr.io/koj10/arenda-api:latest
-    environment:
-      PORT: "3000"
-      DATABASE_URL: postgresql://propcount:propcount@db:5432/propcount
-      REDIS_URL: redis://redis:6379
-      SITE_URL: https://propcount.ru
-    depends_on:
-      - db
-      - redis
-    volumes:
-      - api_data:/data
-    restart: unless-stopped
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: propcount
-      POSTGRES_PASSWORD: propcount
-      POSTGRES_DB: propcount
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./deploy/db/init:/docker-entrypoint-initdb.d:ro
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redisdata:/data
     restart: unless-stopped
 
   certbot:
@@ -53,12 +16,8 @@ services:
     volumes:
       - certbot_www:/var/www/certbot
       - certbot_certs:/etc/letsencrypt
-    entrypoint: /bin/sh
     profiles: ["certs"]
 
 volumes:
-  pgdata:
-  redisdata:
-  api_data:
   certbot_www:
   certbot_certs:

@@ -1,19 +1,19 @@
 #!/bin/sh
 set -e
 
-CERT_DIR="/etc/letsencrypt/live/propcount.ru"
+CERT="/etc/letsencrypt/live/propcount.ru/fullchain.pem"
+HTTP_CONF="/etc/nginx/templates/propcount.http.conf"
+HTTPS_CONF="/etc/nginx/templates/propcount.conf"
+ACTIVE="/etc/nginx/conf.d/default.conf"
 
-# Пока нет Let's Encrypt — временный сертификат, чтобы nginx стартовал на 443
-if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
-  echo "[web] Creating temporary self-signed certificate..."
-  mkdir -p "$CERT_DIR"
-  openssl req -x509 -nodes -newkey rsa:2048 -days 2 \
-    -keyout "$CERT_DIR/privkey.pem" \
-    -out "$CERT_DIR/fullchain.pem" \
-    -subj "/CN=propcount.ru" \
-    2>/dev/null
-  # chain для совместимости с ssl_trusted_certificate
-  cp "$CERT_DIR/fullchain.pem" "$CERT_DIR/chain.pem"
+mkdir -p /var/www/certbot /etc/nginx/conf.d
+
+if [ -f "$CERT" ]; then
+  echo "[web] SSL cert found — HTTPS config"
+  cp "$HTTPS_CONF" "$ACTIVE"
+else
+  echo "[web] No SSL cert — HTTP only (site works, then run issue-certs)"
+  cp "$HTTP_CONF" "$ACTIVE"
 fi
 
 exec nginx -g "daemon off;"
