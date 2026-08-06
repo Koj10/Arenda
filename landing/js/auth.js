@@ -88,18 +88,23 @@ function simulateSubmit(btn, onSuccess) {
   }, 1200)
 }
 
-/** Панель на другом порту (5173) — localStorage не шарится, передаём через URL */
+/** Панель: локально :5173, в проде (propcount.ru / :3001) — /panel/ на том же origin */
 function redirectToPanel(email, name, options = {}) {
   const params = new URLSearchParams({ autologin: '1', email })
   if (name) params.set('name', name)
   if (options.chooseRole) params.set('chooseRole', '1')
   if (options.mode) params.set('mode', options.mode)
 
-  const panelPort = '5173'
-  const panelUrl =
-    window.location.port === '3000' || window.location.port === ''
-      ? `${window.location.protocol}//${window.location.hostname}:${panelPort}/?${params}`
-      : `../panel/?${params}`
+  const { protocol, hostname, port } = window.location
+  let panelUrl
+
+  if (port === '3000') {
+    // Local landing → Vite panel
+    panelUrl = `${protocol}//${hostname}:5173/?${params}`
+  } else {
+    // Production (nginx on :3001 / propcount.ru): same origin
+    panelUrl = `/panel/?${params}`
+  }
 
   window.location.href = panelUrl
 }

@@ -7,9 +7,26 @@ SaaS-прототип для арендодателей: лендинг + пан
 ```
 landing/   — статический лендинг, вход и регистрация (HTML + Tailwind CDN)
 panel/     — Vue 3 панель (дашборд после авторизации)
+deploy/    — nginx для Docker
 ```
 
-## Запуск
+## Продакшен
+
+| | |
+|--|--|
+| Домен | https://propcount.ru |
+| IP | http://77.91.100.153:3001 |
+| Порт на сервере | **3001** |
+| Лендинг | `/` |
+| Панель | `/panel/` |
+
+```bash
+docker compose up -d --build
+```
+
+Контейнер слушает `:80` внутри, наружу проброшен **3001:80**.
+
+## Локальная разработка
 
 ### Лендинг (порт 3000)
 
@@ -17,30 +34,29 @@ panel/     — Vue 3 панель (дашборд после авторизац�
 npm run dev:landing
 ```
 
-Откройте http://localhost:3000
+http://localhost:3000
 
 ### Панель (порт 5173)
 
 ```bash
-cd panel
-npm run dev
+cd panel && npm run dev
 ```
 
-Откройте http://localhost:5173
+http://localhost:5173
 
-## Навигация
+## Навигация (прод)
 
 | Страница | URL |
 |----------|-----|
-| Лендинг | `/landing/index.html` |
-| Вход (лендинг) | `/landing/login.html` |
-| Регистрация (лендинг) | `/landing/register.html` |
-| Панель — вход | `/login` |
-| Панель — дашборд | `/` (после входа) |
+| Лендинг | `/` |
+| Вход | `/login.html` |
+| Регистрация | `/register.html` |
+| Панель | `/panel/` |
 
-После успешного входа/регистрации на лендинге — редирект в `../panel/`.
+После входа/регистрации — редирект на `/panel/?autologin=…` и выбор роли.
 
 ## Стек
 
-- **Landing:** HTML, Tailwind CSS (CDN), Feather Icons, AOS.js, tsParticles
+- **Landing:** HTML, Tailwind CSS (CDN), Feather Icons, AOS.js
 - **Panel:** Vue 3, TypeScript, Vite, Tailwind v4, Pinia, Vue Router
+- **Deploy:** Docker + nginx

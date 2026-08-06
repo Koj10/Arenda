@@ -1,0 +1,9 @@
+services:
+  propcount:
+    build: .
+    image: propcount:latest
+    container_name: propcount
+    ports:
+      # Host 3001 → nginx :80 inside container
+      - "3001:80"
+    restart: unless-stopped

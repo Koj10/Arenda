@@ -1,0 +1,12 @@
+node_modules
+panel/node_modules
+panel/dist
+.git
+.cursor
+**/.DS_Store
+**/Thumbs.db
+*.log
+.env
+.env.*
+agent-transcripts
+terminals
