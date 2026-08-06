@@ -1,23 +1,9 @@
 name: PropCount
 
+# Прод на сервере: контейнер на :3001, снаружи HTTPS делает хостовый nginx.
 services:
-  web:
-    image: ghcr.io/koj10/arenda:latest
+  app:
+    image: ghcr.io/koj10/arenda:${TAG:-latest}
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - certbot_www:/var/www/certbot
-      - certbot_certs:/etc/letsencrypt
+      - "3001:80"
     restart: unless-stopped
-
-  certbot:
-    image: certbot/certbot:latest
-    volumes:
-      - certbot_www:/var/www/certbot
-      - certbot_certs:/etc/letsencrypt
-    profiles: ["certs"]
-
-volumes:
-  certbot_www:
-  certbot_certs:
