@@ -10,21 +10,26 @@ panel/     — Vue 3 панель (дашборд после авторизац�
 deploy/    — nginx для Docker
 ```
 
-## Продакшен
+## Продакшен (Docker + HTTPS)
 
 | | |
 |--|--|
-| Домен | https://propcount.ru |
-| IP | http://77.91.100.153:3001 |
-| Порт на сервере | **3001** |
+| Домен | **https://propcount.ru** |
+| IP | 77.91.100.153 |
+| Порты | **80**, **443** |
 | Лендинг | `/` |
 | Панель | `/panel/` |
+| API | `/api/` |
 
 ```bash
-docker compose up -d --build
+# 1) DNS: propcount.ru и www → 77.91.100.153
+# 2) Открыть firewall: 80, 443
+cp .env.example .env   # пароли БД
+chmod +x deploy/issue-certs.sh
+./deploy/issue-certs.sh
 ```
 
-Контейнер слушает `:80` внутри, наружу проброшен **3001:80**.
+Сервисы: `web` · `api` · `db` · `redis` · `certbot` (профиль certs).
 
 ## Локальная разработка
 

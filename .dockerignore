@@ -1,12 +1,14 @@
 node_modules
 panel/node_modules
 panel/dist
+api/node_modules
 .git
 .cursor
 **/.DS_Store
 **/Thumbs.db
 *.log
 .env
-.env.*
+.env.local
 agent-transcripts
 terminals
+data

@@ -1,4 +1,4 @@
-name: Сборка проекта
+name: Сборка и публикация
 
 on:
   push:
@@ -6,36 +6,32 @@ on:
       - '*'
   workflow_dispatch:
 
-
 jobs:
   check-tags:
     runs-on: ubuntu-latest
     outputs:
-        tag: ${{ steps.version.outputs.tag }}
-        release: ${{ steps.version.outputs.release }}
+      tag: ${{ steps.version.outputs.tag }}
+      release: ${{ steps.version.outputs.release }}
     steps:
-      - name: Скачивание репозитория
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Определение версии
         id: version
         run: |
-          tag=false
-          release=false
-          # Определяем, что было выбрано: branch или tag
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"
-            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
             SEGMENTS=$(echo "$TAG_NAME" | tr '.' '\n' | wc -l)
             if [ "$SEGMENTS" -le 3 ]; then
-              echo "release=true" >> $GITHUB_OUTPUT
+              echo "release=true" >> "$GITHUB_OUTPUT"
             else
-              echo "release=false" >> $GITHUB_OUTPUT
+              echo "release=false" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "tag=false" >> $GITHUB_OUTPUT
-            echo "release=false" >> $GITHUB_OUTPUT
+            echo "tag=false" >> "$GITHUB_OUTPUT"
+            echo "release=false" >> "$GITHUB_OUTPUT"
           fi
+
   build:
     needs: check-tags
     if: needs.check-tags.outputs.tag != 'false'
@@ -44,8 +40,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Скачивание репозитория
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Вход в GHCR
         uses: docker/login-action@v3
@@ -54,18 +49,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Нормализация имени образа в нижний регистр
+      - name: Имена образов
         id: image
-        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+        run: |
+          BASE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "web=$BASE" >> "$GITHUB_OUTPUT"
+          echo "api=${BASE}-api" >> "$GITHUB_OUTPUT"
 
-      - name: Сборка и публикация образа
+      - name: Сборка web (лендинг + панель + nginx)
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile
           push: true
           tags: |
-            ${{ steps.image.outputs.name }}:${{ needs.check-tags.outputs.tag }}
-            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.web }}:${{ needs.check-tags.outputs.tag }}
+            ${{ steps.image.outputs.web }}:latest
+
+      - name: Сборка api
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.api }}:${{ needs.check-tags.outputs.tag }}
+            ${{ steps.image.outputs.api }}:latest
 
   create-release:
     runs-on: ubuntu-latest

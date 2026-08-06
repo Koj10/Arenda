@@ -1,0 +1,9 @@
+.env
+.env.local
+node_modules
+panel/node_modules
+panel/dist
+api/node_modules
+data
+*.log
+.DS_Store
