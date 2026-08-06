@@ -74,6 +74,16 @@ const faqs = [
           <p class="text-xs text-slate-400">propcount.ru — контакты</p>
         </a>
         <a
+          :href="`${SITE.url}/privacy`"
+          target="_blank"
+          rel="noopener"
+          class="panel-card p-5 hover:border-emerald-brand/40 transition-colors block"
+        >
+          <BookOpen class="w-5 h-5 text-emerald-brand mb-3" />
+          <p class="text-sm font-semibold text-white mb-1">Правовые документы</p>
+          <p class="text-xs text-slate-400">Политика конфиденциальности и условия</p>
+        </a>
+        <a
           :href="`${SITE.url}/#pricing`"
           target="_blank"
           rel="noopener"

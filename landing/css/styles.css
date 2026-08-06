@@ -908,6 +908,44 @@ svg.field-icon,
   color: var(--text-muted);
 }
 
+/* Legal pages */
+.legal-doc h2 {
+  font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.75rem;
+}
+
+.legal-doc p + p {
+  margin-top: 0.75rem;
+}
+
+.legal-doc ul {
+  margin-top: 0.75rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.legal-doc li {
+  margin-top: 0.35rem;
+}
+
+.legal-doc a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legal-doc a:hover {
+  color: var(--accent-dark);
+}
+
+.legal-doc strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
 .page-enter {
   animation: pageEnter 0.6s ease forwards;
 }

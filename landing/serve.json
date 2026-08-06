@@ -2,10 +2,14 @@
   "redirects": [
     { "source": "/index.html", "destination": "/" },
     { "source": "/login.html", "destination": "/login" },
-    { "source": "/register.html", "destination": "/register" }
+    { "source": "/register.html", "destination": "/register" },
+    { "source": "/privacy.html", "destination": "/privacy" },
+    { "source": "/terms.html", "destination": "/terms" }
   ],
   "rewrites": [
     { "source": "/login", "destination": "/login.html" },
-    { "source": "/register", "destination": "/register.html" }
+    { "source": "/register", "destination": "/register.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" }
   ]
 }
