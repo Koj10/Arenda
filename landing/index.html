@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PropCount — SaaS для арендодателей. Учёт доходов, документы, счета и аналитика в одном окне." />
+  <title>PropCount — Управление недвижимостью</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            landing: { DEFAULT: '#101214', card: '#1a1d21', border: '#2a2f36' },
+            accent: { DEFAULT: '#2dd4bf', dark: '#14b8a6' },
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+          },
+          maxWidth: { content: '72rem' },
+        },
+      },
+    }
+  </script>
+  <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet" />
+  <link href="css/styles.css" rel="stylesheet" />
+</head>
+<body class="landing-page page-enter antialiased">
+
+  <header class="landing-header">
+    <div class="max-w-content mx-auto flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-2.5 font-display font-bold text-lg text-white">
+        <img src="assets/logo.png" alt="" width="36" height="36" class="shrink-0" />
+        PropCount
+      </a>
+      <nav class="hidden lg:flex items-center gap-8">
+        <a href="#features" class="landing-nav-link">Возможности</a>
+        <a href="#documents" class="landing-nav-link">Документы</a>
+        <a href="#pricing" class="landing-nav-link">Тарифы</a>
+        <a href="#contact" class="landing-nav-link">Контакты</a>
+      </nav>
+      <div class="hidden md:flex items-center gap-3">
+        <a href="login.html" class="landing-nav-link px-2">Войти</a>
+        <a href="register.html" class="btn-teal px-5 py-2.5 rounded-lg text-sm">Начать</a>
+      </div>
+      <button data-menu-toggle type="button" class="md:hidden p-2 rounded-lg text-white/80 hover:bg-white/10" aria-expanded="false" aria-label="Меню">
+        <i data-feather="menu"></i>
+      </button>
+    </div>
+    <div data-mobile-menu class="mobile-menu md:hidden max-w-content mx-auto">
+      <div class="mobile-menu-panel space-y-2">
+        <a href="#features" class="block py-2 text-sm font-medium text-white/80">Возможности</a>
+        <a href="#documents" class="block py-2 text-sm font-medium text-white/80">Документы</a>
+        <a href="#pricing" class="block py-2 text-sm font-medium text-white/80">Тарифы</a>
+        <a href="#contact" class="block py-2 text-sm font-medium text-white/80">Контакты</a>
+        <hr class="border-landing-border my-2" />
+        <a href="login.html" class="block py-2 text-sm font-medium text-white/80">Войти</a>
+        <a href="register.html" class="btn-teal block text-center py-2.5 rounded-lg text-sm">Начать</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero-section">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="max-w-content mx-auto w-full">
+      <div class="hero-content" data-aos="fade-up">
+        <p class="text-accent text-sm font-semibold uppercase tracking-widest mb-4">SaaS для арендодателей</p>
+        <h1 class="hero-title font-display text-white mb-6">Управляйте своей недвижимостью профессионально</h1>
+        <p class="text-lg text-white/70 leading-relaxed mb-8 max-w-xl">Всё для арендодателей: учёт доходов, документы, счета и аналитика портфеля в одной системе.</p>
+        <a href="register.html" class="btn-teal px-8 py-4 rounded-lg text-sm uppercase tracking-wide">Попробовать бесплатно</a>
+        <p class="mt-5 text-sm text-white/45">14 дней бесплатно · Без карты · Настройка за 5 минут</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="section-dark">
+    <div class="max-w-content mx-auto">
+      <div class="text-center mb-14" data-aos="fade-up">
+        <h2 class="section-title font-display text-white">Почему PropCount?</h2>
+        <p class="section-sub mx-auto">Инструменты, которые экономят часы рутины и дают прозрачную картину бизнеса</p>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <article class="feature-grid-item text-center" data-aos="fade-up">
+          <div class="feature-icon-box mx-auto"><i data-feather="bar-chart-2" class="w-6 h-6"></i></div>
+          <h3>Аналитика</h3>
+          <p>Доходы, расходы и чистая прибыль — в реальном времени с наглядными графиками.</p>
+        </article>
+        <article class="feature-grid-item text-center" data-aos="fade-up" data-aos-delay="100">
+          <div class="feature-icon-box mx-auto"><i data-feather="home" class="w-6 h-6"></i></div>
+          <h3>Объекты</h3>
+          <p>Реестр недвижимости, помещения, занятость и ставки аренды в одном месте.</p>
+        </article>
+        <article class="feature-grid-item text-center" data-aos="fade-up" data-aos-delay="200">
+          <div class="feature-icon-box mx-auto"><i data-feather="dollar-sign" class="w-6 h-6"></i></div>
+          <h3>Финансы</h3>
+          <p>Cash flow, просрочки, счета и автоматический расчёт чистой прибыли.</p>
+        </article>
+        <article class="feature-grid-item text-center" data-aos="fade-up" data-aos-delay="300">
+          <div class="feature-icon-box mx-auto"><i data-feather="file-text" class="w-6 h-6"></i></div>
+          <h3>Документы</h3>
+          <p>Договоры, акты и счета — хранение, версии и быстрый доступ для команды.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-dark pt-0">
+    <div class="max-w-content mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div data-aos="fade-right">
+        <h2 class="section-title font-display text-white">Глубокая финансовая аналитика</h2>
+        <p class="section-sub mb-6">Автоматический расчёт чистой прибыли, сравнение периодов и структура расходов — как в профессиональном дашборде.</p>
+        <ul class="space-y-3 text-sm text-white/60">
+          <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span>Cash Flow Analysis по месяцам</li>
+          <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span>Expense Breakdown по категориям</li>
+          <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span>Revenue Comparison год к году</li>
+        </ul>
+      </div>
+      <div class="mockup-card" data-aos="fade-left">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs text-white/50 uppercase tracking-wide">Financial Overview</span>
+          <span class="stat-pill stat-pill-green">+18.2%</span>
+        </div>
+        <svg viewBox="0 0 400 180" class="w-full h-auto" aria-hidden="true">
+          <defs>
+            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <line x1="30" y1="150" x2="380" y2="150" stroke="#2a2f36" stroke-width="1"/>
+          <line x1="30" y1="110" x2="380" y2="110" stroke="#2a2f36" stroke-width="1"/>
+          <line x1="30" y1="70" x2="380" y2="70" stroke="#2a2f36" stroke-width="1"/>
+          <path class="chart-area" d="M30 130 L80 115 L130 100 L180 95 L230 80 L280 70 L330 65 L380 60 L380 150 L30 150 Z"/>
+          <path class="chart-line" d="M30 130 L80 115 L130 100 L180 95 L230 80 L280 70 L330 65 L380 60"/>
+          <path fill="none" stroke="#f87171" stroke-width="2" d="M30 140 L130 135 L230 128 L380 120"/>
+        </svg>
+        <div class="grid grid-cols-3 gap-3 mt-4">
+          <div class="rounded-lg bg-[#0a0c0e] p-3 border border-landing-border"><p class="text-[10px] text-white/40 uppercase">Доход</p><p class="text-sm font-bold text-accent font-mono">₽590K</p></div>
+          <div class="rounded-lg bg-[#0a0c0e] p-3 border border-landing-border"><p class="text-[10px] text-white/40 uppercase">Расход</p><p class="text-sm font-bold text-red-400 font-mono">₽205K</p></div>
+          <div class="rounded-lg bg-[#0a0c0e] p-3 border border-landing-border"><p class="text-[10px] text-white/40 uppercase">Прибыль</p><p class="text-sm font-bold text-white font-mono">₽385K</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-dark pt-0 pb-20">
+    <div class="max-w-content mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div class="mockup-card order-2 lg:order-1" data-aos="fade-right">
+        <p class="text-xs text-white/50 uppercase tracking-wide mb-4">Automation Invoices</p>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#0a0c0e] border border-landing-border">
+            <div class="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center text-accent shrink-0"><i data-feather="send" class="w-4 h-4"></i></div>
+            <div class="flex-1 min-w-0"><p class="text-sm text-white truncate">Счёт №1042 · Тверская 12</p><p class="text-xs text-white/40">Отправлен арендатору</p></div>
+            <span class="stat-pill stat-pill-green">Оплачен</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#0a0c0e] border border-landing-border">
+            <div class="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center text-accent shrink-0"><i data-feather="clock" class="w-4 h-4"></i></div>
+            <div class="flex-1 min-w-0"><p class="text-sm text-white truncate">Счёт №1043 · Арбат 24</p><p class="text-xs text-white/40">Ожидает оплаты</p></div>
+            <span class="stat-pill stat-pill-yellow">Pending</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-[#0a0c0e] border border-landing-border">
+            <div class="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center text-accent shrink-0"><i data-feather="alert-circle" class="w-4 h-4"></i></div>
+            <div class="flex-1 min-w-0"><p class="text-sm text-white truncate">Счёт №1038 · Садовническая</p><p class="text-xs text-white/40">Просрочен 5 дней</p></div>
+            <span class="stat-pill stat-pill-red">Overdue</span>
+          </div>
+        </div>
+      </div>
+      <div class="order-1 lg:order-2" data-aos="fade-left">
+        <h2 class="section-title font-display text-white">Автоматизация счетов</h2>
+        <p class="section-sub mb-6">Контроль статуса оплат: отправка, напоминания и отслеживание просрочек без ручной работы.</p>
+        <a href="register.html" class="btn-teal-outline px-6 py-3 rounded-lg text-sm">Подключить автоматизацию</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="documents" class="section-dark pt-0">
+    <div class="max-w-content mx-auto">
+      <div class="text-center mb-14" data-aos="fade-up">
+        <h2 class="section-title font-display text-white">Документы и договоры</h2>
+        <p class="section-sub mx-auto">Все файлы по объектам и арендаторам — в одном защищённом хранилище</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="mockup-card" data-aos="fade-up">
+          <p class="text-xs text-white/50 uppercase tracking-wide mb-4">Последние платежи</p>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between py-2 border-b border-landing-border">
+              <div>
+                <p class="text-sm font-medium text-white">ООО «ТехноСофт»</p>
+                <p class="text-xs text-white/40">Июль 2026 · Тверская 12</p>
+              </div>
+              <span class="stat-pill stat-pill-green text-xs">Оплачен</span>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b border-landing-border">
+              <div>
+                <p class="text-sm font-medium text-white">ИП Сидоров</p>
+                <p class="text-xs text-white/40">Июль 2026 · Арбат 24</p>
+              </div>
+              <span class="stat-pill stat-pill-yellow text-xs">Ожидает</span>
+            </div>
+            <div class="flex items-center justify-between py-2">
+              <div>
+                <p class="text-sm font-medium text-white">ООО «Логистик»</p>
+                <p class="text-xs text-white/40">Июнь 2026 · Садовническая</p>
+              </div>
+              <span class="stat-pill stat-pill-red text-xs">Просрочен</span>
+            </div>
+          </div>
+        </div>
+        <div class="mockup-card" data-aos="fade-up" data-aos-delay="100">
+          <p class="text-xs text-white/50 uppercase tracking-wide mb-4">Договоры (PDF)</p>
+          <div class="space-y-3">
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-[#0a0c0e] border border-landing-border">
+              <div class="w-10 h-10 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center text-xs font-bold shrink-0">PDF</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-white truncate">Договор аренды · 101</p>
+                <p class="text-xs text-white/40">2.4 MB</p>
+              </div>
+              <i data-feather="download" class="w-4 h-4 text-white/40"></i>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-[#0a0c0e] border border-landing-border">
+              <div class="w-10 h-10 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center text-xs font-bold shrink-0">PDF</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-white truncate">Акт приёма-передачи</p>
+                <p class="text-xs text-white/40">890 KB</p>
+              </div>
+              <i data-feather="download" class="w-4 h-4 text-white/40"></i>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-lg bg-[#0a0c0e] border border-landing-border">
+              <div class="w-10 h-10 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center text-xs font-bold shrink-0">PDF</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-white truncate">Страховой полис WH-1</p>
+                <p class="text-xs text-white/40">1.1 MB</p>
+              </div>
+              <i data-feather="download" class="w-4 h-4 text-white/40"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="section-dark">
+    <div class="max-w-content mx-auto">
+      <h2 class="section-title font-display text-white text-center mb-14" data-aos="fade-up">Тарифные планы</h2>
+      <div class="pricing-grid" data-aos="fade-up">
+        <article class="pricing-card">
+          <span class="pricing-badge pricing-badge--empty" aria-hidden="true">&nbsp;</span>
+          <h3 class="pricing-name">Start</h3>
+          <p class="pricing-desc">Для частных арендодателей с 1–5 объектами</p>
+          <p class="pricing-price">₽0<span>/мес</span></p>
+          <ul class="pricing-features">
+            <li>До 5 объектов</li>
+            <li>Базовая аналитика</li>
+            <li>Хранение документов</li>
+            <li>Email-поддержка</li>
+          </ul>
+          <a href="register.html" class="btn-teal pricing-cta">Начать бесплатно</a>
+        </article>
+        <article class="pricing-card featured">
+          <span class="pricing-badge">Популярный</span>
+          <h3 class="pricing-name">Profi</h3>
+          <p class="pricing-desc">Для управляющих компаний и растущих портфелей</p>
+          <p class="pricing-price">₽4 990<span>/мес</span></p>
+          <ul class="pricing-features">
+            <li>До 50 объектов</li>
+            <li>Полная аналитика и отчёты</li>
+            <li>Автоматизация счетов</li>
+            <li>Кабинет арендатора</li>
+            <li>Приоритетная поддержка</li>
+          </ul>
+          <a href="register.html" class="btn-teal pricing-cta">Выбрать Profi</a>
+        </article>
+        <article class="pricing-card">
+          <span class="pricing-badge pricing-badge--empty" aria-hidden="true">&nbsp;</span>
+          <h3 class="pricing-name">Elite</h3>
+          <p class="pricing-desc">Для крупных портфелей и девелоперов</p>
+          <p class="pricing-price">₽14 990<span>/мес</span></p>
+          <ul class="pricing-features">
+            <li>Безлимит объектов</li>
+            <li>API и интеграции</li>
+            <li>Персональный менеджер</li>
+            <li>SLA 99.9%</li>
+            <li>Обучение команды</li>
+          </ul>
+          <a href="register.html" class="btn-teal-outline pricing-cta">Связаться с нами</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-dark pt-0 pb-20">
+    <div class="max-w-content mx-auto grid lg:grid-cols-2 gap-12 items-center">
+      <div data-aos="fade-right">
+        <h2 class="section-title font-display text-white mb-8">Надёжность для серьёзного портфеля</h2>
+        <div class="trust-item"><div class="trust-icon"><i data-feather="shield" class="w-5 h-5"></i></div><div><p class="font-semibold text-white text-sm">Надёжность</p><p class="text-sm text-white/50 mt-0.5">Данные шифруются, резервное копирование каждые 6 часов.</p></div></div>
+        <div class="trust-item"><div class="trust-icon"><i data-feather="trending-up" class="w-5 h-5"></i></div><div><p class="font-semibold text-white text-sm">Масштабируемость</p><p class="text-sm text-white/50 mt-0.5">От одной квартиры до сотен объектов — без смены платформы.</p></div></div>
+        <div class="trust-item"><div class="trust-icon"><i data-feather="lock" class="w-5 h-5"></i></div><div><p class="font-semibold text-white text-sm">Конфиденциальность</p><p class="text-sm text-white/50 mt-0.5">Соответствие 152-ФЗ. Доступ по ролям для команды и арендаторов.</p></div></div>
+      </div>
+      <div data-aos="fade-left">
+        <div class="laptop-frame">
+          <div class="laptop-screen p-3">
+            <div class="flex items-center gap-1.5 mb-2">
+              <span class="w-2 h-2 rounded-full bg-red-500/80"></span>
+              <span class="w-2 h-2 rounded-full bg-yellow-500/80"></span>
+              <span class="w-2 h-2 rounded-full bg-green-500/80"></span>
+            </div>
+            <svg viewBox="0 0 360 200" class="w-full h-auto" aria-hidden="true">
+              <rect x="0" y="0" width="360" height="28" rx="4" fill="#1a1d21"/>
+              <text x="12" y="18" fill="#64748b" font-size="9" font-family="Inter">PropCount · Analytics</text>
+              <rect x="8" y="36" width="100" height="48" rx="6" fill="#1a1d21"/>
+              <rect x="116" y="36" width="100" height="48" rx="6" fill="#1a1d21"/>
+              <rect x="224" y="36" width="128" height="48" rx="6" fill="#1a1d21"/>
+              <text x="16" y="58" fill="#2dd4bf" font-size="14" font-weight="700" font-family="Inter">₽2.4M</text>
+              <text x="124" y="58" fill="#fff" font-size="14" font-weight="700" font-family="Inter">87%</text>
+              <text x="232" y="58" fill="#fff" font-size="14" font-weight="700" font-family="Inter">24</text>
+              <path fill="url(#chartGrad)" d="M8 180 L120 150 L240 120 L352 100 L352 190 L8 190 Z" opacity="0.4"/>
+              <path fill="none" stroke="#2dd4bf" stroke-width="2" d="M8 180 L120 150 L240 120 L352 100"/>
+            </svg>
+          </div>
+        </div>
+        <div class="laptop-base"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer id="contact" class="landing-footer">
+    <div class="max-w-content mx-auto">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-10">
+        <div class="lg:col-span-2">
+          <a href="index.html" class="flex items-center gap-2 font-display font-bold text-lg text-white mb-4">
+            <img src="assets/logo.png" alt="" width="32" height="32" /> PropCount
+          </a>
+          <p class="text-sm text-white/50 mb-4 max-w-xs">SaaS-платформа для профессионального управления арендной недвижимостью.</p>
+          <p class="text-sm text-white/50"><a href="mailto:hello@propcount.ru" class="hover:text-accent">hello@propcount.ru</a></p>
+          <p class="text-sm text-white/50"><a href="tel:+74951234567" class="hover:text-accent">+7 (495) 123-45-67</a></p>
+          <div class="flex gap-2 mt-5">
+            <a href="#" class="footer-social" aria-label="Telegram"><i data-feather="send" class="w-4 h-4"></i></a>
+            <a href="#" class="footer-social" aria-label="VK"><i data-feather="message-circle" class="w-4 h-4"></i></a>
+            <a href="mailto:hello@propcount.ru" class="footer-social" aria-label="Email"><i data-feather="mail" class="w-4 h-4"></i></a>
+          </div>
+        </div>
+        <div><p class="footer-col-title">О нас</p><a href="#features" class="footer-link">О продукте</a><a href="#pricing" class="footer-link">Тарифы</a><a href="#contact" class="footer-link">Контакты</a></div>
+        <div><p class="footer-col-title">Возможности</p><a href="#features" class="footer-link">Аналитика</a><a href="#documents" class="footer-link">Документы</a><a href="#pricing" class="footer-link">Тарифы</a></div>
+        <div><p class="footer-col-title">Правовая информация</p><a href="#" class="footer-link">Политика конфиденциальности</a><a href="#" class="footer-link">Условия использования</a><a href="login.html" class="footer-link">Вход в систему</a></div>
+      </div>
+      <div class="pt-6 border-t border-landing-border flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-white/40">
+        <p>© 2026 PropCount. Все права защищены.</p>
+        <a href="register.html" class="btn-teal px-6 py-2.5 rounded-lg text-xs">Попробовать бесплатно</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Match landing palette */
+  --color-navy: #101214;
+  --color-graphite: #141618;
+  --color-panel: #0a0c0e;
+  --color-card: #1a1d21;
+  --color-card-hover: #22262c;
+  --color-border: #2a2f36;
+  --color-border-subtle: #22262c;
+  --color-surface: #1a1d21;
+  --color-slate-warm: #101214;
+  --color-bronze: #2dd4bf;
+  --color-bronze-dark: #14b8a6;
+  --color-emerald-brand: #2dd4bf;
+  --color-accent-green: #2dd4bf;
+  --color-accent-amber: #2dd4bf;
+  --color-accent-teal: #2dd4bf;
+  --color-slate-deep: #101214;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    @apply antialiased bg-navy text-white;
+  }
+}
+
+@layer components {
+  .panel-page-title {
+    @apply text-2xl font-bold text-white mb-1;
+    font-family: var(--font-display);
+  }
+
+  .panel-page-sub {
+    @apply text-sm text-slate-400;
+  }
+
+  .panel-card {
+    @apply rounded-xl border border-border bg-card overflow-hidden;
+  }
+
+  .panel-stat-card {
+    @apply rounded-xl border border-border bg-card p-5;
+  }
+
+  .panel-input {
+    @apply w-full px-3 py-2.5 rounded-xl bg-panel border border-border text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-brand/50 focus:ring-1 focus:ring-emerald-brand/25;
+  }
+
+  .panel-btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-all;
+  }
+
+  .panel-btn-primary:hover {
+    box-shadow: 0 8px 24px rgba(45, 212, 191, 0.25);
+  }
+
+  .panel-btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-slate-300 text-sm hover:bg-card-hover hover:border-emerald-brand/40 transition-colors;
+  }
+
+  .panel-table-head {
+    @apply text-left text-xs uppercase tracking-wide text-slate-500 border-b border-border bg-panel/50;
+  }
+
+  .panel-table-row {
+    @apply border-b border-border-subtle hover:bg-card-hover/60 transition-colors;
+  }
+
+  .panel-tab {
+    @apply px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-colors;
+  }
+
+  .panel-tab-active {
+    @apply bg-card text-white border border-border;
+  }
+
+  .panel-search {
+    @apply w-full pl-10 pr-4 py-2.5 rounded-xl bg-panel border border-border text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-brand/40 focus:ring-1 focus:ring-emerald-brand/20;
+  }
+
+  .panel-label {
+    @apply block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5;
+  }
+
+  .panel-section {
+    @apply rounded-xl border border-border bg-panel/40 overflow-hidden;
+  }
+
+  .panel-btn-danger {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors;
+  }
+}

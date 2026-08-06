@@ -1,0 +1,12 @@
+{
+  "name": "propcount",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:landing": "npx serve landing -p 3000",
+    "dev:panel": "npm run dev --prefix panel",
+    "dev": "npm run dev:panel",
+    "build:panel": "npm run build --prefix panel",
+    "build:landing": "echo Landing is static — no build needed"
+  }
+}

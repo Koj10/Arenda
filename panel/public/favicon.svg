@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+  <defs>
+    <linearGradient id="pcMain" x1="10" y1="6" x2="70" y2="74" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7ef0df"/>
+      <stop offset="35%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#0e7490"/>
+    </linearGradient>
+    <linearGradient id="pcEdge" x1="20" y1="0" x2="60" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ccfbf1"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="pcDeep" x1="30" y1="20" x2="55" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#115e59"/>
+    </linearGradient>
+  </defs>
+  <g stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M40 8 L66 23 L66 53 L40 68 L22 57" stroke="url(#pcMain)" stroke-width="11"/>
+    <path d="M22 29 L22 23 L40 8" stroke="url(#pcEdge)" stroke-width="11"/>
+    <path d="M40 27 L54 35 L54 49 L40 57 L30 51 L30 33 Z" stroke="url(#pcDeep)" stroke-width="11"/>
+    <path d="M30 33 L30 70" stroke="url(#pcMain)" stroke-width="11"/>
+    <path d="M40 8 L66 23" stroke="#a7f3e8" stroke-width="3.5" opacity="0.85"/>
+    <path d="M66 23 L66 53" stroke="#0f766e" stroke-width="3.5" opacity="0.7"/>
+    <path d="M30 33 L30 57" stroke="#5eead4" stroke-width="3" opacity="0.55"/>
+    <path d="M54 35 L54 49" stroke="#115e59" stroke-width="3" opacity="0.65"/>
+  </g>
+</svg>

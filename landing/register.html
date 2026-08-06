@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Регистрация — PropCount</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="css/styles.css" rel="stylesheet" />
+</head>
+<body class="auth-body">
+
+  <main class="auth-shell auth-shell--wide">
+    <a href="index.html" class="auth-logo">
+      <img src="assets/logo.png" alt="" width="36" height="36" />
+      <span>PropCount</span>
+    </a>
+
+    <div class="auth-card">
+      <h1 class="auth-title">Создайте аккаунт</h1>
+      <p class="auth-subtitle">Начните управлять недвижимостью за 5 минут</p>
+
+      <form id="register-form" novalidate class="auth-form">
+        <div class="field-group">
+          <div class="field-control">
+            <i data-feather="user" class="field-icon"></i>
+            <input id="name" type="text" class="field-input" placeholder="Полное имя" autocomplete="name" required />
+          </div>
+          <p class="field-error"></p>
+        </div>
+
+        <div class="field-group">
+          <div class="field-control">
+            <i data-feather="mail" class="field-icon"></i>
+            <input id="email" type="email" class="field-input" placeholder="Email" autocomplete="email" required />
+          </div>
+          <p class="field-error"></p>
+        </div>
+
+        <div class="field-group">
+          <div class="field-control">
+            <i data-feather="lock" class="field-icon"></i>
+            <input id="password" type="password" class="field-input" placeholder="Пароль" autocomplete="new-password" required />
+            <button type="button" data-toggle-password class="field-toggle" aria-label="Показать пароль">
+              <i data-feather="eye"></i>
+            </button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill"></div></div>
+          <p class="strength-label"></p>
+          <p class="field-error"></p>
+        </div>
+
+        <div class="field-group">
+          <div class="field-control">
+            <i data-feather="lock" class="field-icon"></i>
+            <input id="password-confirm" type="password" class="field-input" placeholder="Подтверждение пароля" autocomplete="new-password" required />
+          </div>
+          <p class="field-error"></p>
+        </div>
+
+        <label class="auth-terms">
+          <input id="terms" type="checkbox" required />
+          <span>
+            Я согласен с <a href="#" class="auth-link">условиями использования</a> и
+            <a href="#" class="auth-link">политикой конфиденциальности</a>
+          </span>
+        </label>
+
+        <button type="submit" class="btn-primary">Создать аккаунт</button>
+      </form>
+
+      <div class="auth-divider"><span>Или продолжайте с</span></div>
+
+      <div class="auth-oauth">
+        <button type="button" class="auth-oauth-btn">Google</button>
+        <button type="button" class="auth-oauth-btn">Apple</button>
+      </div>
+
+      <p class="auth-footer-text">
+        Уже есть аккаунт?
+        <a href="login.html" class="auth-link auth-link--bold">Войти</a>
+      </p>
+    </div>
+
+    <p class="auth-back"><a href="index.html">← На главную</a></p>
+  </main>
+
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
