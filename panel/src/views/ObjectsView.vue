@@ -6,6 +6,8 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 
 import AddPropertyModal from '@/components/objects/AddPropertyModal.vue'
 
+import AddSpaceModal from '@/components/objects/AddSpaceModal.vue'
+
 import PropertyDetailModal from '@/components/objects/PropertyDetailModal.vue'
 
 import SpaceDetailModal from '@/components/objects/SpaceDetailModal.vue'
@@ -173,6 +175,8 @@ function occupancyClass(rate: number) {
 
 
     <AddPropertyModal />
+
+    <AddSpaceModal />
 
     <PropertyDetailModal />
 

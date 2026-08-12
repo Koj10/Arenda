@@ -2,12 +2,13 @@
 import { computed, ref } from 'vue'
 import { Download, FileText, Paperclip, Trash2, Upload } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
-import type { DocumentEntityType, PendingDocument, AttachedDocument } from '@/types/portfolio'
+import type { DocumentEntityType, DocumentCategory, PendingDocument, AttachedDocument } from '@/types/portfolio'
 import { ACCEPTED_FILE_TYPES, fileToPendingDocument, formatFileSize } from '@/composables/useDocuments'
 
 const props = withDefaults(defineProps<{
   entityType: DocumentEntityType
   entityId?: number | null
+  category: DocumentCategory
   modelValue?: PendingDocument[]
   label?: string
   compact?: boolean
@@ -32,7 +33,7 @@ const isPersisted = computed(() => props.entityId != null && props.entityId > 0)
 
 const persistedDocs = computed(() =>
   isPersisted.value
-    ? store.getDocuments(props.entityType, props.entityId!)
+    ? store.getDocuments(props.entityType, props.entityId!, props.category)
     : [],
 )
 
@@ -64,6 +65,7 @@ async function onFilesSelected(event: Event) {
         store.addDocument({
           entityType: props.entityType,
           entityId: props.entityId!,
+          category: props.category,
           ...pending,
         })
       } else {
@@ -126,7 +128,7 @@ function openDoc(doc: { name: string; dataUrl: string }) {
       v-if="allDocs.length === 0"
       class="rounded-xl border border-dashed border-border bg-panel/20 px-4 py-5 text-center text-xs text-slate-500"
     >
-      PDF, DOC, JPG, PNG — договоры и другие документы
+      PDF, DOC, JPG, PNG
     </div>
 
     <ul v-else class="space-y-1.5">

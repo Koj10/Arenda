@@ -4,7 +4,7 @@ import { Building2, MapPin, User } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
-import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
+import { PROPERTY_TYPE_LABELS, TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
 
 const store = usePortfolioStore()
 
@@ -102,7 +102,7 @@ function openProperty() {
         </div>
       </div>
 
-      <FileAttachments entity-type="tenant" :entity-id="tenant.id" label="Договор и документы" />
+      <FileAttachments entity-type="tenant" :entity-id="tenant.id" category="lease" :label="TENANT_DOCUMENT_LABEL" />
     </template>
 
     <template #footer>

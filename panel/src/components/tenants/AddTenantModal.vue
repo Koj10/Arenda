@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import type { TenantFormData } from '@/types/portfolio'
+import { TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 
@@ -170,7 +171,7 @@ function onClose() {
         <p v-if="errors.contract" class="text-xs text-red-400 mt-1">{{ errors.contract }}</p>
       </div>
 
-      <FileAttachments v-model="form.documents" entity-type="tenant" label="Договор и документы" compact />
+      <FileAttachments v-model="form.documents" entity-type="tenant" category="lease" :label="TENANT_DOCUMENT_LABEL" compact />
     </div>
 
     <template #footer>

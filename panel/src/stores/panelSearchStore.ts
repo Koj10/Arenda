@@ -24,10 +24,10 @@ export interface PanelSearchHit {
 }
 
 const PAGES_LANDLORD: { title: string; subtitle: string; to: string; keys: string }[] = [
-  { title: 'Аналитика', subtitle: 'Отчёты', to: '/landlord/reports', keys: 'аналитика отчёты reports' },
+  { title: 'Аналитика', subtitle: 'Доходы и расходы', to: '/landlord/accounting', keys: 'аналитика транзакции счета accounting' },
   { title: 'Объекты', subtitle: 'Недвижимость', to: '/landlord/objects', keys: 'объекты недвижимость objects' },
   { title: 'Арендаторы', subtitle: 'Контракты', to: '/landlord/tenants', keys: 'арендаторы tenants' },
-  { title: 'Финансы', subtitle: 'Доходы и расходы', to: '/landlord/accounting', keys: 'финансы транзакции счета accounting' },
+  { title: 'Финансы', subtitle: 'Отчёты', to: '/landlord/reports', keys: 'финансы отчёты reports' },
   { title: 'Настройки', subtitle: 'Профиль и тариф', to: '/settings', keys: 'настройки профиль тариф' },
   { title: 'Помощь', subtitle: 'FAQ', to: '/help', keys: 'помощь faq поддержка' },
 ]

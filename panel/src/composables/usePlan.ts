@@ -37,6 +37,12 @@ export function usePlan() {
     return false
   }
 
+  function requireCanAddSpace(reason = 'Лимит помещений на текущем тарифе исчерпан'): boolean {
+    if (store.canAddSpace()) return true
+    store.openUpgrade({ reason })
+    return false
+  }
+
   function requireCanAddTenant(reason = 'Лимит арендаторов на текущем тарифе исчерпан'): boolean {
     if (store.canAddTenant()) return true
     store.openUpgrade({ reason })
@@ -63,6 +69,7 @@ export function usePlan() {
     upgradeOpen,
     can: store.can,
     canAddObject: store.canAddObject,
+    canAddSpace: store.canAddSpace,
     canAddTenant: store.canAddTenant,
     canAddUser: store.canAddUser,
     isAtLimit: store.isAtLimit,
@@ -71,6 +78,7 @@ export function usePlan() {
     startCheckout: store.startCheckout,
     requireFeature,
     requireCanAddObject,
+    requireCanAddSpace,
     requireCanAddTenant,
     requireTenantReports,
     /** только stub/dev */

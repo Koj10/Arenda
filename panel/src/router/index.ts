@@ -45,19 +45,26 @@ const router = createRouter({
     { path: '/tenants', redirect: '/landlord/tenants' },
     { path: '/reports', redirect: '/landlord/reports' },
     { path: '/accounting', redirect: '/landlord/accounting' },
+    { path: '/cadastral', redirect: '/landlord/cadastral' },
 
     // Landlord panel
     {
       path: '/landlord/reports',
       name: 'landlord-reports',
       component: () => import('@/views/ReportsView.vue'),
-      meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Аналитика', pageSubtitle: 'Отчёты по портфелю и объектам' },
+      meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Финансы', pageSubtitle: 'Отчёты по портфелю и объектам' },
     },
     {
       path: '/landlord/objects',
       name: 'landlord-objects',
       component: () => import('@/views/ObjectsView.vue'),
       meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Объекты', pageSubtitle: 'Реестр недвижимости и помещений' },
+    },
+    {
+      path: '/landlord/cadastral',
+      name: 'landlord-cadastral',
+      component: () => import('@/views/CadastralView.vue'),
+      meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Кадастр', pageSubtitle: 'Кадастровые номера, площади и стоимость' },
     },
     {
       path: '/landlord/tenants',
@@ -69,7 +76,7 @@ const router = createRouter({
       path: '/landlord/accounting',
       name: 'landlord-accounting',
       component: () => import('@/views/AccountingView.vue'),
-      meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Финансы', pageSubtitle: 'Доходы, расходы и движение средств' },
+      meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Аналитика', pageSubtitle: 'Доходы, расходы и движение средств' },
     },
 
     // Shared (landlord + tenant)

@@ -1,16 +1,41 @@
 export type PropertyType = 'office' | 'retail' | 'warehouse'
 export type TenantStatus = 'active' | 'expiring' | 'overdue'
-export type DocumentEntityType = 'property' | 'space' | 'tenant'
+export type DocumentEntityType = 'property' | 'tenant'
+export type PropertyDocumentCategory = 'title' | 'service'
+export type TenantDocumentCategory = 'lease'
+export type DocumentCategory = PropertyDocumentCategory | TenantDocumentCategory
+
+export const PROPERTY_DOCUMENT_LABELS: Record<PropertyDocumentCategory, string> = {
+  title: 'Правоустанавливающие документы',
+  service: 'Сервисные и коммунальные документы',
+}
+
+export const TENANT_DOCUMENT_LABEL = 'Договор с арендатором'
 
 export interface Property {
   id: number
   address: string
   type: PropertyType
+  /** Общая площадь здания, м² */
+  totalArea: number
   spacesOccupied: number
   spacesTotal: number
   occupancy: number
   income: number
   expense: number
+}
+
+/** Кадастровый участок / номер внутри объекта */
+export interface CadastralParcel {
+  id: number
+  propertyId: number
+  cadastralNumber: string
+  /** Площадь по кадастру, м² — считается автоматически по привязанным помещениям */
+  area: number
+  /** Кадастровая стоимость */
+  cadastralValue: number
+  /** Цена покупки (необязательно) */
+  purchasePrice?: number
 }
 
 export type SpaceStatus = 'active' | 'inactive' | 'vacant'
@@ -19,11 +44,12 @@ export type RenovationType = 'cosmetic' | 'design' | 'none'
 export interface Space {
   id: number
   propertyId: number
+  /** Привязка к кадастровому номеру */
+  cadastralParcelId?: number
   name: string
   area: number
   monthlyRate: number
   accountNumber?: string
-  cadastralNumber?: string
   ceilingHeight?: number
   renovation?: RenovationType
   spaceType?: string
@@ -46,6 +72,7 @@ export interface AttachedDocument {
   id: number
   entityType: DocumentEntityType
   entityId: number
+  category: DocumentCategory
   name: string
   mimeType: string
   size: number
@@ -145,8 +172,58 @@ export interface SpaceFormItem {
 export interface PropertyFormData {
   address: string
   type: PropertyType
-  spaces: SpaceFormItem[]
-  documents: PendingDocument[]
+  cadastralNumber: string
+  cadastralValue: number
+  purchasePrice?: number
+  totalArea: number
+  titleDocuments: PendingDocument[]
+  serviceDocuments: PendingDocument[]
+}
+
+export function createEmptyPropertyFormData(): PropertyFormData {
+  return {
+    address: '',
+    type: 'office',
+    cadastralNumber: '',
+    cadastralValue: 0,
+    purchasePrice: undefined,
+    totalArea: 0,
+    titleDocuments: [],
+    serviceDocuments: [],
+  }
+}
+
+export interface CadastralParcelFormData {
+  cadastralNumber: string
+  cadastralValue: number
+  purchasePrice?: number
+}
+
+export function createEmptyCadastralParcelFormData(): CadastralParcelFormData {
+  return {
+    cadastralNumber: '',
+    cadastralValue: 0,
+    purchasePrice: undefined,
+  }
+}
+
+/** Разделение одного кадастрового номера на два */
+export interface SplitCadastralFormData {
+  firstCadastralValue: number
+  firstPurchasePrice?: number
+  newCadastralNumber: string
+  secondCadastralValue: number
+  secondPurchasePrice?: number
+}
+
+export function createSplitCadastralFormData(source: CadastralParcel): SplitCadastralFormData {
+  return {
+    firstCadastralValue: Math.round(source.cadastralValue / 2),
+    firstPurchasePrice: source.purchasePrice ? Math.round(source.purchasePrice / 2) : undefined,
+    newCadastralNumber: '',
+    secondCadastralValue: Math.round(source.cadastralValue / 2),
+    secondPurchasePrice: source.purchasePrice ? source.purchasePrice - Math.round(source.purchasePrice / 2) : undefined,
+  }
 }
 
 export interface TenantFormData {
@@ -164,7 +241,6 @@ export interface SpaceUpdateData {
   area: number
   monthlyRate: number
   accountNumber: string
-  cadastralNumber: string
   ceilingHeight: number | null
   renovation: RenovationType | ''
   spaceType: string
@@ -179,6 +255,38 @@ export interface TenantUpdateData {
   contract: string
 }
 
+export interface SpaceFormData {
+  name: string
+  area: number
+  monthlyRate: number
+  accountNumber: string
+  ceilingHeight: number | null
+  renovation: 'none' | 'cosmetic' | 'design'
+  spaceType: string
+  status: 'vacant' | 'active' | 'inactive'
+  floor: string
+}
+
 export function createEmptySpace(): SpaceFormItem {
   return { name: '', area: 0, monthlyRate: 0 }
+}
+
+export function createEmptySpaceFormData(): SpaceFormData {
+  return {
+    name: '',
+    area: 0,
+    monthlyRate: 0,
+    accountNumber: '',
+    ceilingHeight: null,
+    renovation: 'none',
+    spaceType: '',
+    status: 'vacant',
+    floor: '',
+  }
+}
+
+/** Доля площади помещения от общей площади объекта */
+export function formatAreaShare(spaceArea: number, propertyTotalArea: number): string {
+  if (propertyTotalArea <= 0) return `${spaceArea} м²`
+  return `${new Intl.NumberFormat('ru-RU').format(spaceArea)} из ${new Intl.NumberFormat('ru-RU').format(propertyTotalArea)} м²`
 }

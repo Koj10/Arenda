@@ -72,6 +72,10 @@ export const usePlanStore = defineStore('plan', () => {
     return !isAtLimit('maxObjects')
   }
 
+  function canAddSpace(): boolean {
+    return !isAtLimit('maxSpaces')
+  }
+
   function canAddTenant(): boolean {
     return !isAtLimit('maxTenants')
   }
@@ -190,6 +194,7 @@ export const usePlanStore = defineStore('plan', () => {
     usageOf,
     isAtLimit,
     canAddObject,
+    canAddSpace,
     canAddTenant,
     canAddUser,
     setUsage,

@@ -6,6 +6,7 @@ import type {
   Tenant,
   PropertyFormData,
   TenantFormData,
+  SpaceFormData,
   ReportRow,
   SpaceReportRow,
   TenantStatus,
@@ -15,35 +16,48 @@ import type {
   AttachedDocument,
   DocumentEntityType,
   PendingDocument,
+  DocumentCategory,
+  CadastralParcel,
+  CadastralParcelFormData,
+  SplitCadastralFormData,
   SpaceUpdateData,
   TenantUpdateData,
 } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
 
 const initialProperties: Property[] = [
-  { id: 1, address: 'г. Москва, ул. Тверская, д. 12', type: 'office', spacesOccupied: 3, spacesTotal: 4, occupancy: 75, income: 1890000, expense: 320000 },
-  { id: 2, address: 'г. Москва, Ленинградский пр-т, д. 39', type: 'office', spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 3448000, expense: 580000 },
-  { id: 3, address: 'г. Москва, ул. Арбат, д. 24', type: 'retail', spacesOccupied: 1, spacesTotal: 2, occupancy: 50, income: 1650000, expense: 210000 },
-  { id: 4, address: 'г. Москва, ул. Садовническая, д. 82', type: 'warehouse', spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 10950000, expense: 890000 },
-  { id: 5, address: 'г. Москва, Пресненская наб., д. 10', type: 'office', spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 5088000, expense: 720000 },
+  { id: 1, address: 'г. Москва, ул. Тверская, д. 12', type: 'office', totalArea: 362, spacesOccupied: 3, spacesTotal: 4, occupancy: 75, income: 1890000, expense: 320000 },
+  { id: 2, address: 'г. Москва, Ленинградский пр-т, д. 39', type: 'office', totalArea: 830, spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 3448000, expense: 580000 },
+  { id: 3, address: 'г. Москва, ул. Арбат, д. 24', type: 'retail', totalArea: 260, spacesOccupied: 1, spacesTotal: 2, occupancy: 50, income: 1650000, expense: 210000 },
+  { id: 4, address: 'г. Москва, ул. Садовническая, д. 82', type: 'warehouse', totalArea: 5800, spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 10950000, expense: 890000 },
+  { id: 5, address: 'г. Москва, Пресненская наб., д. 10', type: 'office', totalArea: 1090, spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 5088000, expense: 720000 },
+]
+
+const initialCadastralParcels: CadastralParcel[] = [
+  { id: 1001, propertyId: 1, cadastralNumber: '77:01:0004012:1670', area: 147, cadastralValue: 20000000, purchasePrice: 19000000 },
+  { id: 1002, propertyId: 1, cadastralNumber: '77:01:0004012:1680', area: 215, cadastralValue: 30000000, purchasePrice: 29000000 },
+  { id: 2001, propertyId: 2, cadastralNumber: '77:02:0004012:1670', area: 830, cadastralValue: 80000000, purchasePrice: 75000000 },
+  { id: 3001, propertyId: 3, cadastralNumber: '77:03:0004012:1670', area: 260, cadastralValue: 45000000, purchasePrice: 42000000 },
+  { id: 4001, propertyId: 4, cadastralNumber: '77:04:0004012:1670', area: 5800, cadastralValue: 60000000 },
+  { id: 5001, propertyId: 5, cadastralNumber: '77:05:0004012:1670', area: 1090, cadastralValue: 90000000, purchasePrice: 85000000 },
 ]
 
 const initialSpaces: Space[] = [
-  { id: 101, propertyId: 1, name: '101', area: 85, monthlyRate: 420000, accountNumber: '6453435434343', cadastralNumber: '77:01:0004012:1670', ceilingHeight: 3.25, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'active', floor: '1' },
-  { id: 102, propertyId: 1, name: '102', area: 62, monthlyRate: 280000, ceilingHeight: 3.1, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'active', floor: '1' },
-  { id: 103, propertyId: 1, name: '202', area: 120, monthlyRate: 540000, ceilingHeight: 3.4, renovation: 'design', spaceType: 'Офисное помещение', status: 'active', floor: '2' },
-  { id: 104, propertyId: 1, name: '203', area: 95, monthlyRate: 450000, ceilingHeight: 3.2, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'vacant', floor: '2' },
-  { id: 201, propertyId: 2, name: 'A-01', area: 340, monthlyRate: 1890000 },
-  { id: 202, propertyId: 2, name: 'A-02', area: 280, monthlyRate: 1600000 },
-  { id: 203, propertyId: 2, name: 'A-03', area: 210, monthlyRate: 1200000 },
-  { id: 301, propertyId: 3, name: 'R-1', area: 150, monthlyRate: 1650000 },
-  { id: 302, propertyId: 3, name: 'R-2', area: 110, monthlyRate: 900000 },
-  { id: 401, propertyId: 4, name: 'WH-1', area: 2400, monthlyRate: 6000000 },
-  { id: 402, propertyId: 4, name: 'WH-2', area: 1800, monthlyRate: 4500000 },
-  { id: 403, propertyId: 4, name: 'WH-3', area: 1600, monthlyRate: 4000000 },
-  { id: 501, propertyId: 5, name: 'B-01', area: 420, monthlyRate: 2800000 },
-  { id: 502, propertyId: 5, name: 'B-02', area: 380, monthlyRate: 2400000 },
-  { id: 503, propertyId: 5, name: 'B-03', area: 290, monthlyRate: 1900000 },
+  { id: 101, propertyId: 1, cadastralParcelId: 1001, name: '101', area: 85, monthlyRate: 420000, accountNumber: '6453435434343', ceilingHeight: 3.25, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'active', floor: '1' },
+  { id: 102, propertyId: 1, cadastralParcelId: 1001, name: '102', area: 62, monthlyRate: 280000, ceilingHeight: 3.1, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'active', floor: '1' },
+  { id: 103, propertyId: 1, cadastralParcelId: 1002, name: '202', area: 120, monthlyRate: 540000, ceilingHeight: 3.4, renovation: 'design', spaceType: 'Офисное помещение', status: 'active', floor: '2' },
+  { id: 104, propertyId: 1, cadastralParcelId: 1002, name: '203', area: 95, monthlyRate: 450000, ceilingHeight: 3.2, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'vacant', floor: '2' },
+  { id: 201, propertyId: 2, cadastralParcelId: 2001, name: 'A-01', area: 340, monthlyRate: 1890000 },
+  { id: 202, propertyId: 2, cadastralParcelId: 2001, name: 'A-02', area: 280, monthlyRate: 1600000 },
+  { id: 203, propertyId: 2, cadastralParcelId: 2001, name: 'A-03', area: 210, monthlyRate: 1200000 },
+  { id: 301, propertyId: 3, cadastralParcelId: 3001, name: 'R-1', area: 150, monthlyRate: 1650000 },
+  { id: 302, propertyId: 3, cadastralParcelId: 3001, name: 'R-2', area: 110, monthlyRate: 900000 },
+  { id: 401, propertyId: 4, cadastralParcelId: 4001, name: 'WH-1', area: 2400, monthlyRate: 6000000 },
+  { id: 402, propertyId: 4, cadastralParcelId: 4001, name: 'WH-2', area: 1800, monthlyRate: 4500000 },
+  { id: 403, propertyId: 4, cadastralParcelId: 4001, name: 'WH-3', area: 1600, monthlyRate: 4000000 },
+  { id: 501, propertyId: 5, cadastralParcelId: 5001, name: 'B-01', area: 420, monthlyRate: 2800000 },
+  { id: 502, propertyId: 5, cadastralParcelId: 5001, name: 'B-02', area: 380, monthlyRate: 2400000 },
+  { id: 503, propertyId: 5, cadastralParcelId: 5001, name: 'B-03', area: 290, monthlyRate: 1900000 },
 ]
 
 const initialTenants: Tenant[] = [
@@ -67,10 +81,16 @@ function recalcPropertyStats(property: Property, propertyTenants: Tenant[]) {
   property.income = propertyTenants.reduce((sum, t) => sum + t.rent, 0)
 }
 
-function attachPendingDocuments(docs: PendingDocument[], entityType: DocumentEntityType, entityId: number) {
+function attachPendingDocuments(
+  docs: PendingDocument[],
+  entityType: DocumentEntityType,
+  entityId: number,
+  category: DocumentCategory,
+) {
   const store_docs: Omit<AttachedDocument, 'id' | 'uploadedAt'>[] = docs.map((d) => ({
     entityType,
     entityId,
+    category,
     name: d.name,
     mimeType: d.mimeType,
     size: d.size,
@@ -81,11 +101,20 @@ function attachPendingDocuments(docs: PendingDocument[], entityType: DocumentEnt
 
 export const usePortfolioStore = defineStore('portfolio', () => {
   const properties = ref<Property[]>([...initialProperties])
+  const cadastralParcels = ref<CadastralParcel[]>([...initialCadastralParcels])
   const spaces = ref<Space[]>([...initialSpaces])
   const tenants = ref<Tenant[]>([...initialTenants])
   const documents = ref<AttachedDocument[]>([])
 
+  const cadastralModalOpen = ref(false)
+  const cadastralModalPropertyId = ref<number | null>(null)
+  const cadastralEditId = ref<number | null>(null)
+  const splitCadastralModalOpen = ref(false)
+  const splitCadastralParcelId = ref<number | null>(null)
+
   const propertyModalOpen = ref(false)
+  const spaceModalOpen = ref(false)
+  const spaceModalPropertyId = ref<number | null>(null)
   const tenantModalOpen = ref(false)
   const tenantModalPrefill = ref<TenantModalPrefill | null>(null)
   const propertyDetailOpen = ref(false)
@@ -155,8 +184,101 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     return spaces.value.filter((s) => s.propertyId === propertyId)
   }
 
+  function getCadastralParcelsForProperty(propertyId: number) {
+    return cadastralParcels.value.filter((p) => p.propertyId === propertyId)
+  }
+
+  function getCadastralParcelById(id: number) {
+    return cadastralParcels.value.find((p) => p.id === id) ?? null
+  }
+
+  function getTotalCadastralAreaForProperty(propertyId: number, excludeParcelId?: number) {
+    return getCadastralParcelsForProperty(propertyId)
+      .filter((p) => p.id !== excludeParcelId)
+      .reduce((sum, p) => sum + p.area, 0)
+  }
+
+  function getAvailableCadastralAreaForProperty(propertyId: number, excludeParcelId?: number) {
+    const property = getPropertyById(propertyId)
+    if (!property) return 0
+    return Math.max(0, property.totalArea - getTotalCadastralAreaForProperty(propertyId, excludeParcelId))
+  }
+
+  function getSpacesAreaForParcel(parcelId: number, excludeSpaceId?: number) {
+    return spaces.value
+      .filter((s) => s.cadastralParcelId === parcelId && s.id !== excludeSpaceId)
+      .reduce((sum, s) => sum + s.area, 0)
+  }
+
+  function syncParcelAreaFromSpaces(parcelId: number) {
+    const parcel = getCadastralParcelById(parcelId)
+    if (!parcel) return
+    parcel.area = getSpacesAreaForParcel(parcelId)
+  }
+
+  function getAvailableAreaForParcel(parcelId: number, excludeSpaceId?: number) {
+    const parcel = getCadastralParcelById(parcelId)
+    if (!parcel) return 0
+    return Math.max(0, parcel.area - getSpacesAreaForParcel(parcelId, excludeSpaceId))
+  }
+
+  function getSpacesForParcel(parcelId: number) {
+    return spaces.value.filter((s) => s.cadastralParcelId === parcelId)
+  }
+
+  function getUnassignedSpacesForProperty(propertyId: number) {
+    return getSpacesForProperty(propertyId).filter((s) => !s.cadastralParcelId)
+  }
+
+  function canAssignSpaceToParcel(spaceId: number, parcelId: number) {
+    const space = getSpaceById(spaceId)
+    const parcel = getCadastralParcelById(parcelId)
+    return !!(space && parcel && space.propertyId === parcel.propertyId)
+  }
+
+  function assignSpaceToCadastral(spaceId: number, parcelId: number | null) {
+    const space = getSpaceById(spaceId)
+    if (!space) return false
+
+    const previousParcelId = space.cadastralParcelId
+
+    if (parcelId === null) {
+      space.cadastralParcelId = undefined
+      if (previousParcelId) syncParcelAreaFromSpaces(previousParcelId)
+      return true
+    }
+
+    if (!canAssignSpaceToParcel(spaceId, parcelId)) return false
+    space.cadastralParcelId = parcelId
+    syncParcelAreaFromSpaces(parcelId)
+    if (previousParcelId && previousParcelId !== parcelId) {
+      syncParcelAreaFromSpaces(previousParcelId)
+    }
+    return true
+  }
+
+  function getTotalCadastralValueForProperty(propertyId: number) {
+    return getCadastralParcelsForProperty(propertyId).reduce((sum, p) => sum + p.cadastralValue, 0)
+  }
+
   function getTotalAreaForProperty(propertyId: number) {
     return getSpacesForProperty(propertyId).reduce((sum, s) => sum + s.area, 0)
+  }
+
+  function getAllocatedAreaForProperty(propertyId: number, excludeSpaceId?: number) {
+    return getSpacesForProperty(propertyId)
+      .filter((s) => s.id !== excludeSpaceId)
+      .reduce((sum, s) => sum + s.area, 0)
+  }
+
+  function getAvailableAreaForProperty(propertyId: number, excludeSpaceId?: number) {
+    const property = getPropertyById(propertyId)
+    if (!property) return 0
+    return Math.max(0, property.totalArea - getAllocatedAreaForProperty(propertyId, excludeSpaceId))
+  }
+
+  function canAllocateArea(propertyId: number, area: number, excludeSpaceId?: number) {
+    return area > 0 && area <= getAvailableAreaForProperty(propertyId, excludeSpaceId)
   }
 
   function getTotalMonthlyRateForProperty(propertyId: number) {
@@ -201,8 +323,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     })
   }
 
-  function getDocuments(entityType: DocumentEntityType, entityId: number) {
-    return documents.value.filter((d) => d.entityType === entityType && d.entityId === entityId)
+  function getDocuments(entityType: DocumentEntityType, entityId: number, category?: DocumentCategory) {
+    return documents.value.filter(
+      (d) =>
+        d.entityType === entityType &&
+        d.entityId === entityId &&
+        (category == null || d.category === category),
+    )
   }
 
   function addDocument(data: Omit<AttachedDocument, 'id' | 'uploadedAt'>) {
@@ -248,29 +375,66 @@ export const usePortfolioStore = defineStore('portfolio', () => {
 
   function addProperty(data: PropertyFormData) {
     const id = Date.now()
-    const createdSpaces: Space[] = data.spaces.map((s, i) => ({
-      id: id + i + 1,
-      propertyId: id,
-      name: s.name.trim(),
-      area: s.area,
-      monthlyRate: s.monthlyRate,
-    }))
 
     properties.value.push({
       id,
       address: data.address,
       type: data.type,
+      totalArea: data.totalArea,
       spacesOccupied: 0,
-      spacesTotal: createdSpaces.length,
+      spacesTotal: 0,
       occupancy: 0,
       income: 0,
       expense: 0,
     })
-    spaces.value.push(...createdSpaces)
 
-    addDocumentsBatch(attachPendingDocuments(data.documents, 'property', id))
+    const parcelId = Date.now() + 1
+    cadastralParcels.value.push({
+      id: parcelId,
+      propertyId: id,
+      cadastralNumber: data.cadastralNumber.trim(),
+      area: 0,
+      cadastralValue: data.cadastralValue,
+      purchasePrice: data.purchasePrice,
+    })
+
+    addDocumentsBatch([
+      ...attachPendingDocuments(data.titleDocuments, 'property', id, 'title'),
+      ...attachPendingDocuments(data.serviceDocuments, 'property', id, 'service'),
+    ])
 
     propertyModalOpen.value = false
+  }
+
+  function addSpace(propertyId: number, data: SpaceFormData) {
+    const property = getPropertyById(propertyId)
+    if (!property) return false
+
+    const name = data.name.trim()
+    if (getSpaceByName(propertyId, name)) return false
+    if (!canAllocateArea(propertyId, data.area)) return false
+
+    const spaceId = Date.now()
+    const space: Space = {
+      id: spaceId,
+      propertyId,
+      name,
+      area: data.area,
+      monthlyRate: data.monthlyRate,
+      accountNumber: data.accountNumber.trim() || undefined,
+      ceilingHeight: data.ceilingHeight ?? undefined,
+      renovation: data.renovation !== 'none' ? data.renovation : undefined,
+      spaceType: data.spaceType.trim() || undefined,
+      status: data.status,
+      floor: data.floor.trim() || undefined,
+    }
+
+    spaces.value.push(space)
+    property.spacesTotal += 1
+    syncPropertyStats(propertyId)
+
+    spaceModalOpen.value = false
+    return true
   }
 
   function addTenant(data: TenantFormData) {
@@ -289,7 +453,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       contract: data.contract,
       status: getTenantStatus(data.contract),
     })
-    addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenantId))
+    addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenantId, 'lease'))
     syncPropertyStats(data.propertyId)
     tenantModalOpen.value = false
     tenantModalPrefill.value = null
@@ -298,13 +462,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   function updateSpace(id: number, data: SpaceUpdateData) {
     const space = getSpaceById(id)
     if (!space) return false
+    if (!canAllocateArea(space.propertyId, data.area, id)) return false
 
     const oldName = space.name
     space.name = data.name.trim()
     space.area = data.area
     space.monthlyRate = data.monthlyRate
     space.accountNumber = data.accountNumber.trim() || undefined
-    space.cadastralNumber = data.cadastralNumber.trim() || undefined
     space.ceilingHeight = data.ceilingHeight ?? undefined
     space.renovation = data.renovation || undefined
     space.spaceType = data.spaceType.trim() || undefined
@@ -316,6 +480,94 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       if (tenant) tenant.space = space.name
     }
 
+    if (space.cadastralParcelId) {
+      syncParcelAreaFromSpaces(space.cadastralParcelId)
+    }
+
+    return true
+  }
+
+  function addCadastralParcel(propertyId: number, data: CadastralParcelFormData) {
+    const property = getPropertyById(propertyId)
+    if (!property) return false
+    if (!data.cadastralNumber.trim() || data.cadastralValue <= 0) return false
+
+    cadastralParcels.value.push({
+      id: Date.now(),
+      propertyId,
+      cadastralNumber: data.cadastralNumber.trim(),
+      area: 0,
+      cadastralValue: data.cadastralValue,
+      purchasePrice: data.purchasePrice && data.purchasePrice > 0 ? data.purchasePrice : undefined,
+    })
+    cadastralModalOpen.value = false
+    cadastralEditId.value = null
+    return true
+  }
+
+  function updateCadastralParcel(id: number, data: CadastralParcelFormData) {
+    const parcel = getCadastralParcelById(id)
+    if (!parcel) return false
+    if (!data.cadastralNumber.trim() || data.cadastralValue <= 0) return false
+
+    parcel.cadastralNumber = data.cadastralNumber.trim()
+    parcel.cadastralValue = data.cadastralValue
+    parcel.purchasePrice = data.purchasePrice && data.purchasePrice > 0 ? data.purchasePrice : undefined
+    syncParcelAreaFromSpaces(id)
+
+    cadastralModalOpen.value = false
+    cadastralEditId.value = null
+    return true
+  }
+
+  function openCadastralModal(propertyId: number, parcelId?: number) {
+    cadastralModalPropertyId.value = propertyId
+    cadastralEditId.value = parcelId ?? null
+    cadastralModalOpen.value = true
+  }
+
+  function closeCadastralModal() {
+    cadastralModalOpen.value = false
+    cadastralModalPropertyId.value = null
+    cadastralEditId.value = null
+  }
+
+  function openSplitCadastralModal(parcelId: number) {
+    splitCadastralParcelId.value = parcelId
+    splitCadastralModalOpen.value = true
+  }
+
+  function closeSplitCadastralModal() {
+    splitCadastralModalOpen.value = false
+    splitCadastralParcelId.value = null
+  }
+
+  /** Делит один кадастровый номер на два: сумма площадей = исходная площадь номера */
+  function splitCadastralParcel(parcelId: number, data: SplitCadastralFormData) {
+    const original = getCadastralParcelById(parcelId)
+    if (!original) return false
+    if (!data.newCadastralNumber.trim()) return false
+    if (data.firstCadastralValue <= 0 || data.secondCadastralValue <= 0) return false
+
+    original.cadastralValue = data.firstCadastralValue
+    original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
+      ? data.firstPurchasePrice
+      : undefined
+    syncParcelAreaFromSpaces(parcelId)
+
+    cadastralParcels.value.push({
+      id: Date.now(),
+      propertyId: original.propertyId,
+      cadastralNumber: data.newCadastralNumber.trim(),
+      area: 0,
+      cadastralValue: data.secondCadastralValue,
+      purchasePrice: data.secondPurchasePrice && data.secondPurchasePrice > 0
+        ? data.secondPurchasePrice
+        : undefined,
+    })
+
+    splitCadastralModalOpen.value = false
+    splitCadastralParcelId.value = null
     return true
   }
 
@@ -338,6 +590,16 @@ export const usePortfolioStore = defineStore('portfolio', () => {
 
   function closePropertyModal() {
     propertyModalOpen.value = false
+  }
+
+  function openSpaceModal(propertyId: number) {
+    spaceModalPropertyId.value = propertyId
+    spaceModalOpen.value = true
+  }
+
+  function closeSpaceModal() {
+    spaceModalOpen.value = false
+    spaceModalPropertyId.value = null
   }
 
   function openTenantModal(prefill?: TenantModalPrefill) {
@@ -382,10 +644,18 @@ export const usePortfolioStore = defineStore('portfolio', () => {
 
   return {
     properties,
+    cadastralParcels,
     spaces,
     tenants,
     documents,
+    cadastralModalOpen,
+    cadastralModalPropertyId,
+    cadastralEditId,
+    splitCadastralModalOpen,
+    splitCadastralParcelId,
     propertyModalOpen,
+    spaceModalOpen,
+    spaceModalPropertyId,
     tenantModalOpen,
     tenantModalPrefill,
     propertyDetailOpen,
@@ -402,8 +672,23 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     getTenantsByInn,
     getLeasesByInn,
     getSpaceById,
+    getCadastralParcelsForProperty,
+    getCadastralParcelById,
+    getTotalCadastralAreaForProperty,
+    getAvailableCadastralAreaForProperty,
+    getSpacesAreaForParcel,
+    syncParcelAreaFromSpaces,
+    getAvailableAreaForParcel,
+    getSpacesForParcel,
+    getUnassignedSpacesForProperty,
+    canAssignSpaceToParcel,
+    assignSpaceToCadastral,
+    getTotalCadastralValueForProperty,
     getSpacesForProperty,
     getTotalAreaForProperty,
+    getAllocatedAreaForProperty,
+    getAvailableAreaForProperty,
+    canAllocateArea,
     getTotalMonthlyRateForProperty,
     getSpaceByName,
     getTenantForSpace,
@@ -416,11 +701,21 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     formatDate,
     formatArea,
     addProperty,
+    addSpace,
     addTenant,
     updateSpace,
     updateTenant,
+    addCadastralParcel,
+    updateCadastralParcel,
+    splitCadastralParcel,
+    openCadastralModal,
+    closeCadastralModal,
+    openSplitCadastralModal,
+    closeSplitCadastralModal,
     openPropertyModal,
     closePropertyModal,
+    openSpaceModal,
+    closeSpaceModal,
     openTenantModal,
     closeTenantModal,
     openPropertyDetail,

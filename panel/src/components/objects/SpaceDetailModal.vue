@@ -8,13 +8,14 @@ import {
   User,
 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
-import FileAttachments from '@/components/ui/FileAttachments.vue'
+import { RouterLink } from 'vue-router'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useAccountingStore } from '@/stores/accountingStore'
 import {
   PROPERTY_TYPE_LABELS,
   RENOVATION_LABELS,
   SPACE_STATUS_LABELS,
+  formatAreaShare,
 } from '@/types/portfolio'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
 import type { RenovationType, SpaceStatus, SpaceUpdateData, TenantUpdateData } from '@/types/portfolio'
@@ -40,7 +41,6 @@ const infoForm = ref<SpaceUpdateData>({
   area: 0,
   monthlyRate: 0,
   accountNumber: '',
-  cadastralNumber: '',
   ceilingHeight: null,
   renovation: '',
   spaceType: '',
@@ -116,8 +116,10 @@ const accountNumber = computed(() =>
   space.value?.accountNumber ?? (space.value ? `645${space.value.propertyId}${space.value.id}` : '—'),
 )
 
-const cadastralNumber = computed(() =>
-  space.value?.cadastralNumber ?? (space.value ? `77:${String(space.value.propertyId).padStart(2, '0')}:000${space.value.id}:1670` : '—'),
+const cadastralParcel = computed(() =>
+  space.value?.cadastralParcelId
+    ? store.getCadastralParcelById(space.value.cadastralParcelId)
+    : null,
 )
 
 const ceilingHeight = computed(() =>
@@ -134,6 +136,18 @@ const expenseShare = computed(() =>
   property.value && property.value.spacesTotal > 0
     ? Math.round(property.value.expense / property.value.spacesTotal)
     : 0,
+)
+
+const availableArea = computed(() =>
+  space.value && property.value
+    ? store.getAvailableAreaForProperty(property.value.id, space.value.id)
+    : 0,
+)
+
+const areaShareLabel = computed(() =>
+  space.value && property.value
+    ? formatAreaShare(space.value.area, property.value.totalArea)
+    : '—',
 )
 
 function onClose() {
@@ -177,7 +191,6 @@ function fillInfoForm() {
     area: space.value.area,
     monthlyRate: space.value.monthlyRate,
     accountNumber: space.value.accountNumber ?? `645${space.value.propertyId}${space.value.id}`,
-    cadastralNumber: space.value.cadastralNumber ?? `77:${String(space.value.propertyId).padStart(2, '0')}:000${space.value.id}:1670`,
     ceilingHeight: space.value.ceilingHeight ?? null,
     renovation: space.value.renovation ?? '',
     spaceType: space.value.spaceType ?? '',
@@ -211,13 +224,23 @@ function validateInfo() {
   infoErrors.value = {}
   if (!infoForm.value.name.trim()) infoErrors.value.name = 'Укажите номер помещения'
   if (infoForm.value.area <= 0) infoErrors.value.area = 'Укажите площадь'
+  if (space.value && property.value) {
+    const maxArea = store.getAvailableAreaForProperty(property.value.id, space.value.id)
+    if (infoForm.value.area > maxArea) {
+      infoErrors.value.area = `Максимум ${maxArea} м²`
+    }
+  }
   if (infoForm.value.monthlyRate < 0) infoErrors.value.monthlyRate = 'Ставка не может быть отрицательной'
   return Object.keys(infoErrors.value).length === 0
 }
 
 function saveInfo() {
   if (!space.value || !validateInfo()) return
-  store.updateSpace(space.value.id, { ...infoForm.value })
+  const ok = store.updateSpace(space.value.id, { ...infoForm.value })
+  if (!ok) {
+    infoErrors.value.area = 'Площадь превышает доступный остаток объекта'
+    return
+  }
   editingInfo.value = false
 }
 
@@ -332,6 +355,9 @@ watch(
               <label class="block text-xs text-slate-500 mb-1">Площадь, м²</label>
               <input v-model.number="infoForm.area" type="number" min="0" step="0.1" :class="[INPUT_CLASS, { 'border-red-500': infoErrors.area }]" />
               <p v-if="infoErrors.area" class="text-xs text-red-400 mt-1">{{ infoErrors.area }}</p>
+              <p v-else-if="property" class="text-xs text-slate-500 mt-1 font-mono">
+                из {{ property.totalArea }} м² объекта · свободно {{ availableArea }} м²
+              </p>
             </div>
             <div>
               <label class="block text-xs text-slate-500 mb-1">Базовая ставка, ₽</label>
@@ -341,10 +367,6 @@ watch(
             <div>
               <label class="block text-xs text-slate-500 mb-1">Лицевой счёт</label>
               <input v-model="infoForm.accountNumber" type="text" :class="INPUT_CLASS" />
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">Кадастровый номер</label>
-              <input v-model="infoForm.cadastralNumber" type="text" :class="INPUT_CLASS" />
             </div>
             <div>
               <label class="block text-xs text-slate-500 mb-1">Статус помещения</label>
@@ -386,12 +408,27 @@ watch(
               <p class="text-sm text-slate-200">{{ property.address }}</p>
             </div>
             <div>
-              <p class="text-xs text-slate-500 mb-1">Лицевой счёт</p>
-              <p class="text-sm font-mono text-slate-200">{{ accountNumber }}</p>
+              <p class="text-xs text-slate-500 mb-1">Кадастровый номер</p>
+              <template v-if="cadastralParcel">
+                <p class="text-sm font-mono text-slate-200">{{ cadastralParcel.cadastralNumber }}</p>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  {{ store.formatMoney(cadastralParcel.cadastralValue) }} · {{ store.formatArea(cadastralParcel.area) }}
+                </p>
+              </template>
+              <template v-else-if="property">
+                <p class="text-sm text-amber-400/90">Не привязано</p>
+                <RouterLink
+                  :to="{ path: '/landlord/cadastral', query: { property: property.id } }"
+                  class="text-xs text-emerald-brand hover:underline"
+                  @click="onClose"
+                >
+                  Привязать в разделе «Кадастр»
+                </RouterLink>
+              </template>
             </div>
             <div>
-              <p class="text-xs text-slate-500 mb-1">Кадастровый номер</p>
-              <p class="text-sm font-mono text-slate-200">{{ cadastralNumber }}</p>
+              <p class="text-xs text-slate-500 mb-1">Лицевой счёт</p>
+              <p class="text-sm font-mono text-slate-200">{{ accountNumber }}</p>
             </div>
             <div>
               <p class="text-xs text-slate-500 mb-1">Статус помещения</p>
@@ -403,7 +440,10 @@ watch(
             </div>
             <div>
               <p class="text-xs text-slate-500 mb-1">Площадь</p>
-              <p class="text-sm font-mono text-slate-200">{{ store.formatArea(space.area) }}</p>
+              <p class="text-sm font-mono text-slate-200">{{ areaShareLabel }}</p>
+              <p v-if="property" class="text-xs text-slate-500 mt-0.5">
+                {{ Math.round((space.area / property.totalArea) * 100) }}% объекта
+              </p>
             </div>
             <div>
               <p class="text-xs text-slate-500 mb-1">Высота потолков</p>
@@ -571,14 +611,6 @@ watch(
             </template>
           </div>
         </section>
-
-        <!-- Documents -->
-        <FileAttachments
-          entity-type="space"
-          :entity-id="space.id"
-          :label="`Документы помещения №${space.name}`"
-          compact
-        />
       </div>
 
       <!-- Физические лица -->

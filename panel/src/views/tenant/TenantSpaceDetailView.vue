@@ -7,7 +7,7 @@ import { ArrowLeft, Building2, MapPin } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useBillingStore } from '@/stores/billingStore'
-import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
+import { PROPERTY_TYPE_LABELS, TENANT_DOCUMENT_LABEL, formatAreaShare } from '@/types/portfolio'
 import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS } from '@/types/billing'
 
 const route = useRoute()
@@ -24,8 +24,10 @@ const lease = computed(() => {
   return portfolio.getLeasesByInn(inn).find((l) => l.tenant.id === leaseId.value) ?? null
 })
 
-const spaceDocuments = computed(() =>
-  lease.value ? portfolio.getDocuments('space', lease.value.space.id) : [],
+const areaShareLabel = computed(() =>
+  lease.value
+    ? formatAreaShare(lease.value.space.area, lease.value.property.totalArea)
+    : '',
 )
 
 const recentBills = computed(() =>
@@ -79,7 +81,7 @@ function billStatusClass(status: string) {
       <div class="grid sm:grid-cols-2 gap-4 mb-6">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Помещение</p>
-          <p class="text-sm text-slate-200">{{ portfolio.formatArea(lease.space.area) }}</p>
+          <p class="text-sm text-slate-200 font-mono">{{ areaShareLabel }}</p>
           <p class="text-xs text-slate-500 mt-1">Ставка {{ portfolio.formatMoney(lease.space.monthlyRate) }}/мес</p>
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
@@ -129,25 +131,15 @@ function billStatusClass(status: string) {
       </div>
 
       <!-- Read-only documents -->
-      <div class="space-y-5">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <FileAttachments
-            entity-type="tenant"
-            :entity-id="lease.tenant.id"
-            label="Договор и документы"
-            compact
-            readonly
-          />
-        </div>
-        <div v-if="spaceDocuments.length" class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-          <FileAttachments
-            entity-type="space"
-            :entity-id="lease.space.id"
-            label="Документы помещения"
-            compact
-            readonly
-          />
-        </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+        <FileAttachments
+          entity-type="tenant"
+          :entity-id="lease.tenant.id"
+          category="lease"
+          :label="TENANT_DOCUMENT_LABEL"
+          compact
+          readonly
+        />
       </div>
     </div>
 

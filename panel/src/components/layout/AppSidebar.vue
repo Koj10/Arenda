@@ -2,7 +2,7 @@
 import { useRoute, RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { usePlan } from '@/composables/usePlan'
-import { BarChart2, Building2, Users, Calculator, Settings, HelpCircle, LogOut, Sparkles } from '@lucide/vue'
+import { BarChart2, Building2, Landmark, Users, Calculator, Settings, HelpCircle, LogOut, Sparkles } from '@lucide/vue'
 import PropCountLogo from '@/components/ui/PropCountLogo.vue'
 import { redirectToLandingLogin } from '@/utils/authRedirect'
 import { SITE } from '@/config/site'
@@ -16,10 +16,11 @@ const auth = useAuthStore()
 const { plan, isPaid, nextPlan, openUpgrade, startCheckout, usage, limits } = usePlan()
 
 const menuItems = [
-  { to: '/landlord/reports', label: 'Аналитика', icon: BarChart2 },
+  { to: '/landlord/accounting', label: 'Аналитика', icon: BarChart2 },
   { to: '/landlord/objects', label: 'Объекты', icon: Building2 },
+  { to: '/landlord/cadastral', label: 'Кадастр', icon: Landmark },
   { to: '/landlord/tenants', label: 'Арендаторы', icon: Users },
-  { to: '/landlord/accounting', label: 'Финансы', icon: Calculator },
+  { to: '/landlord/reports', label: 'Финансы', icon: Calculator },
 ]
 
 function isActive(path: string) {
