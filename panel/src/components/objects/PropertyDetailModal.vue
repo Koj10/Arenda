@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Building2, ChevronRight, MapPin, Plus, Landmark } from '@lucide/vue'
+import { Building2, ChevronRight, Download, MapPin, Plus, Landmark } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { PROPERTY_TYPE_LABELS, PROPERTY_DOCUMENT_LABELS, formatAreaShare } from '@/types/portfolio'
 import { usePlan } from '@/composables/usePlan'
+import { downloadDocumentsArchive } from '@/composables/useDocuments'
 
 type PropertyTab = 'spaces' | 'documents'
 
@@ -14,6 +15,8 @@ const store = usePortfolioStore()
 const { canAddSpace, requireCanAddSpace } = usePlan()
 
 const activeTab = ref<PropertyTab>('spaces')
+const downloadingAll = ref(false)
+const downloadError = ref<string | null>(null)
 
 const property = computed(() =>
   store.propertyDetailId ? store.getPropertyById(store.propertyDetailId) : null,
@@ -25,6 +28,10 @@ const parcels = computed(() =>
 
 const spaces = computed(() =>
   property.value ? store.getSpacesWithTenants(property.value.id) : [],
+)
+
+const propertyDocuments = computed(() =>
+  property.value ? store.getDocuments('property', property.value.id) : [],
 )
 
 const spacesAreaTotal = computed(() =>
@@ -46,6 +53,7 @@ const TABS: { id: PropertyTab; label: string }[] = [
 
 function onClose() {
   activeTab.value = 'spaces'
+  downloadError.value = null
   store.closePropertyDetail()
 }
 
@@ -57,6 +65,23 @@ function onAddSpace() {
   if (!property.value) return
   if (!requireCanAddSpace()) return
   store.openSpaceModal(property.value.id)
+}
+
+async function onDownloadAllDocuments() {
+  if (!property.value || !propertyDocuments.value.length || downloadingAll.value) return
+  downloadingAll.value = true
+  downloadError.value = null
+  try {
+    const ok = await downloadDocumentsArchive(
+      propertyDocuments.value,
+      `Документы — ${property.value.address}`,
+    )
+    if (!ok) downloadError.value = 'Нет документов для выгрузки'
+  } catch {
+    downloadError.value = 'Не удалось собрать архив'
+  } finally {
+    downloadingAll.value = false
+  }
 }
 
 function areaShareLabel(spaceArea: number) {
@@ -131,6 +156,7 @@ function occupancyClass(occupied: boolean) {
         >
           {{ tab.label }}
           <span v-if="tab.id === 'spaces'" class="text-slate-600 font-normal">({{ spaces.length }})</span>
+          <span v-if="tab.id === 'documents'" class="text-slate-600 font-normal">({{ propertyDocuments.length }})</span>
         </button>
       </nav>
 
@@ -198,6 +224,22 @@ function occupancyClass(occupied: boolean) {
 
       <!-- Документы -->
       <div v-else class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-xs text-slate-500">
+            Все документы объекта можно скачать одним ZIP-архивом
+          </p>
+          <button
+            type="button"
+            class="panel-btn-secondary text-xs py-1.5 px-2.5 disabled:opacity-50"
+            :disabled="!propertyDocuments.length || downloadingAll"
+            @click="onDownloadAllDocuments"
+          >
+            <Download class="w-3.5 h-3.5" />
+            {{ downloadingAll ? 'Сборка архива...' : 'Скачать все' }}
+          </button>
+        </div>
+        <p v-if="downloadError" class="text-xs text-rose-400">{{ downloadError }}</p>
+
         <FileAttachments
           entity-type="property"
           :entity-id="property.id"
