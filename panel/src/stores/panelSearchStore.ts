@@ -24,9 +24,11 @@ export interface PanelSearchHit {
 }
 
 const PAGES_LANDLORD: { title: string; subtitle: string; to: string; keys: string }[] = [
-  { title: 'Аналитика', subtitle: 'Доходы и расходы', to: '/landlord/accounting', keys: 'аналитика транзакции счета accounting' },
+  { title: 'Аналитика', subtitle: 'Доходы и расходы', to: '/landlord/accounting', keys: 'аналитика транзакции accounting' },
   { title: 'Объекты', subtitle: 'Недвижимость', to: '/landlord/objects', keys: 'объекты недвижимость objects' },
+  { title: 'Кадастр', subtitle: 'Кадастровые номера', to: '/landlord/cadastral', keys: 'кадастр cadastral' },
   { title: 'Арендаторы', subtitle: 'Контракты', to: '/landlord/tenants', keys: 'арендаторы tenants' },
+  { title: 'Счета', subtitle: 'Коммунальные счета', to: '/landlord/bills', keys: 'счета bills коммунальные жкх' },
   { title: 'Финансы', subtitle: 'Отчёты', to: '/landlord/reports', keys: 'финансы отчёты reports' },
   { title: 'Настройки', subtitle: 'Профиль и тариф', to: '/settings', keys: 'настройки профиль тариф' },
   { title: 'Помощь', subtitle: 'FAQ', to: '/help', keys: 'помощь faq поддержка' },

@@ -46,6 +46,7 @@ const router = createRouter({
     { path: '/reports', redirect: '/landlord/reports' },
     { path: '/accounting', redirect: '/landlord/accounting' },
     { path: '/cadastral', redirect: '/landlord/cadastral' },
+    { path: '/bills', redirect: '/landlord/bills' },
 
     // Landlord panel
     {
@@ -71,6 +72,12 @@ const router = createRouter({
       name: 'landlord-tenants',
       component: () => import('@/views/TenantsView.vue'),
       meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Арендаторы', pageSubtitle: 'Контракты и арендаторы' },
+    },
+    {
+      path: '/landlord/bills',
+      name: 'landlord-bills',
+      component: () => import('@/views/BillsView.vue'),
+      meta: { requiresAuth: true, role: 'landlord', pageTitle: 'Счета', pageSubtitle: 'Коммунальные счета и распределение по помещениям' },
     },
     {
       path: '/landlord/accounting',

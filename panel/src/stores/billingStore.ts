@@ -51,16 +51,16 @@ export const useBillingStore = defineStore('billing', () => {
     return invoices.value.filter((i) => i.tenantId === tenantId)
   }
 
-  function addTenantInvoice(data: UploadBillFormData, tenant: Tenant) {
+  function addTenantInvoice(data: UploadBillFormData, tenant: Tenant, period?: string) {
     const today = new Date().toISOString().slice(0, 10)
     invoices.value.unshift({
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       tenantId: tenant.id,
       inn: tenant.inn,
       propertyId: tenant.propertyId,
       space: tenant.space,
-      period: currentPeriod(),
-      type: 'other',
+      period: period ?? currentPeriod(),
+      type: 'utilities',
       title: data.title || data.document.name,
       amount: data.amount,
       status: 'pending',

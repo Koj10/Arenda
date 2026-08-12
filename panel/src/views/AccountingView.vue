@@ -3,22 +3,19 @@ import { ref, computed } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AddExpenseModal from '@/components/accounting/AddExpenseModal.vue'
 import ExpenseDetailModal from '@/components/accounting/ExpenseDetailModal.vue'
-import UploadBillModal from '@/components/accounting/UploadBillModal.vue'
 import CashFlowChart from '@/components/charts/CashFlowChart.vue'
 import ExpenseDonutChart from '@/components/charts/ExpenseDonutChart.vue'
 import RevenueBarChart from '@/components/charts/RevenueBarChart.vue'
-import { Plus, Search, Receipt, Paperclip, FileUp, TrendingUp, TrendingDown, Wallet, Clock, ArrowUpRight, ArrowDownRight } from '@lucide/vue'
+import { Plus, Search, Receipt, Paperclip, TrendingUp, TrendingDown, Wallet, Clock, ArrowUpRight, ArrowDownRight } from '@lucide/vue'
 import { useAccountingStore } from '@/stores/accountingStore'
-import { useBillingStore } from '@/stores/billingStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
 import type { ExpenseCategory } from '@/types/accounting'
 
 const accounting = useAccountingStore()
-const billing = useBillingStore()
 const portfolio = usePortfolioStore()
 
-const activeTab = ref<'overview' | 'transactions' | 'invoices'>('overview')
+const activeTab = ref<'overview' | 'transactions'>('overview')
 const search = ref('')
 const categoryFilter = ref<ExpenseCategory | 'all'>('all')
 
@@ -90,13 +87,6 @@ function formatShort(n: number) {
             @click="activeTab = 'transactions'"
           >
             Транзакции
-          </button>
-          <button
-            type="button"
-            :class="['panel-tab', activeTab === 'invoices' && 'panel-tab-active']"
-            @click="activeTab = 'invoices'"
-          >
-            Счета
           </button>
         </div>
         <div class="panel-toolbar-actions">
@@ -218,25 +208,9 @@ function formatShort(n: number) {
         </div>
       </template>
 
-      <template v-else>
-        <div class="panel-card p-8 text-center">
-          <div class="w-14 h-14 rounded-2xl bg-emerald-brand/10 text-emerald-brand flex items-center justify-center mx-auto mb-4">
-            <FileUp class="w-7 h-7" />
-          </div>
-          <h3 class="text-lg font-semibold mb-2">Входящие счета</h3>
-          <p class="text-sm text-slate-500 mb-6 max-w-md mx-auto">
-            Загружайте PDF-счета — система распознает сумму и привяжет к объекту.
-          </p>
-          <button type="button" class="panel-btn-primary" @click="billing.openUploadBillModal()">
-            <FileUp class="w-4 h-4" />
-            Загрузить счёт
-          </button>
-        </div>
-      </template>
     </div>
 
     <AddExpenseModal />
     <ExpenseDetailModal />
-    <UploadBillModal />
   </AppLayout>
 </template>

@@ -2,7 +2,7 @@
 import { useRoute, RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { usePlan } from '@/composables/usePlan'
-import { BarChart2, Building2, Landmark, Users, Calculator, Settings, HelpCircle, LogOut, Sparkles } from '@lucide/vue'
+import { BarChart2, Building2, Landmark, Users, Calculator, Receipt, Settings, HelpCircle, LogOut, Sparkles } from '@lucide/vue'
 import PropCountLogo from '@/components/ui/PropCountLogo.vue'
 import { redirectToLandingLogin } from '@/utils/authRedirect'
 import { SITE } from '@/config/site'
@@ -20,6 +20,7 @@ const menuItems = [
   { to: '/landlord/objects', label: 'Объекты', icon: Building2 },
   { to: '/landlord/cadastral', label: 'Кадастр', icon: Landmark },
   { to: '/landlord/tenants', label: 'Арендаторы', icon: Users },
+  { to: '/landlord/bills', label: 'Счета', icon: Receipt },
   { to: '/landlord/reports', label: 'Финансы', icon: Calculator },
 ]
 
