@@ -5,6 +5,7 @@ import {
   FileText,
   Pencil,
   Plus,
+  Trash2,
   User,
 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -35,6 +36,8 @@ const editingInfo = ref(false)
 const editingDeal = ref(false)
 const infoErrors = ref<Partial<Record<keyof SpaceUpdateData, string>>>({})
 const dealErrors = ref<Partial<Record<keyof TenantUpdateData, string>>>({})
+const deleting = ref(false)
+const deleteError = ref<string | null>(null)
 
 const infoForm = ref<SpaceUpdateData>({
   name: '',
@@ -154,6 +157,19 @@ function onClose() {
   store.closeSpaceDetail()
 }
 
+async function onDelete() {
+  if (!space.value || deleting.value) return
+  const occupiedNote = tenant.value
+    ? `\n\nСейчас его занимает ${tenant.value.company}. Договор будет отвязан.`
+    : ''
+  if (!confirm(`Удалить помещение №${space.value.name}?${occupiedNote}`)) return
+  deleting.value = true
+  deleteError.value = null
+  const ok = await store.removeSpace(space.value.id)
+  deleting.value = false
+  if (!ok) deleteError.value = store.lastError || 'Не удалось удалить помещение'
+}
+
 function statusLabel(status: string) {
   const map: Record<string, string> = { active: 'Активен', expiring: 'Истекает', overdue: 'Просрочен' }
   return map[status] ?? status
@@ -234,11 +250,11 @@ function validateInfo() {
   return Object.keys(infoErrors.value).length === 0
 }
 
-function saveInfo() {
+async function saveInfo() {
   if (!space.value || !validateInfo()) return
-  const ok = store.updateSpace(space.value.id, { ...infoForm.value })
+  const ok = await store.updateSpace(space.value.id, { ...infoForm.value })
   if (!ok) {
-    infoErrors.value.area = 'Площадь превышает доступный остаток объекта'
+    infoErrors.value.area = store.lastError || 'Площадь превышает доступный остаток объекта'
     return
   }
   editingInfo.value = false
@@ -278,7 +294,11 @@ function saveDeal() {
 watch(
   () => store.spaceDetailOpen,
   (open) => {
-    if (!open) resetEditing()
+    if (!open) {
+      resetEditing()
+      deleting.value = false
+      deleteError.value = null
+    }
   },
 )
 </script>
@@ -745,6 +765,16 @@ watch(
     </template>
 
     <template #footer>
+      <p v-if="deleteError" class="text-xs text-rose-400 mr-auto">{{ deleteError }}</p>
+      <button
+        type="button"
+        class="panel-btn-secondary text-rose-400 hover:text-rose-300 hover:border-rose-400/40"
+        :disabled="deleting"
+        @click="onDelete"
+      >
+        <Trash2 class="w-4 h-4" />
+        {{ deleting ? 'Удаление...' : 'Удалить помещение' }}
+      </button>
       <button type="button" class="panel-btn-secondary" @click="onClose">
         Закрыть
       </button>

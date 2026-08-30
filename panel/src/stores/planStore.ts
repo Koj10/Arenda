@@ -6,17 +6,8 @@ import type { LimitKey, PlanEntitlements, PlanFeature, PlanId, PlanUsage } from 
 
 const STORAGE_KEY = 'propcount-plan'
 
-function loadCached(): PlanEntitlements | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as PlanEntitlements) : null
-  } catch {
-    return null
-  }
-}
-
 export const usePlanStore = defineStore('plan', () => {
-  const entitlements = ref<PlanEntitlements | null>(loadCached())
+  const entitlements = ref<PlanEntitlements | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const upgradeOpen = ref(false)

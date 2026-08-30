@@ -74,8 +74,7 @@ async function confirm() {
   }
 
   loading.value = true
-  await new Promise((r) => setTimeout(r, 400))
-  const result = auth.completeRoleChoice(
+  const result = await auth.completeRoleChoice(
     selected.value,
     selected.value === 'tenant' && isRegister.value ? tenantInn.value.trim() : undefined,
   )

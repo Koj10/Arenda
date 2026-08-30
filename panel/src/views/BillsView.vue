@@ -55,7 +55,10 @@ watch(
 )
 
 watch(selectedPropertyId, (id) => {
-  if (id) utilityBills.ensureSettingsForProperty(id)
+  if (id) {
+    utilityBills.ensureSettingsForProperty(id)
+    void utilityBills.loadForProperty(id)
+  }
   const query = id ? { property: String(id) } : {}
   if (String(route.query.property ?? '') !== String(id ?? '')) {
     void router.replace({ query })
@@ -65,6 +68,7 @@ watch(selectedPropertyId, (id) => {
 function selectProperty(id: number) {
   selectedPropertyId.value = id
   utilityBills.ensureSettingsForProperty(id)
+  void utilityBills.loadForProperty(id)
 }
 
 function onAddBill() {
@@ -75,7 +79,7 @@ function onAddBill() {
 function togglePayer(spaceId: number, criterion: UtilityCriterion) {
   const current = utilityBills.getPayer(spaceId, criterion)
   const next: BillPayer = current === 'landlord' ? 'tenant' : 'landlord'
-  utilityBills.setSpacePayer(spaceId, criterion, next)
+  void utilityBills.setSpacePayer(spaceId, criterion, next)
 }
 
 function payerClass(payer: BillPayer) {
@@ -111,6 +115,13 @@ function tenantName(spaceName: string) {
             </div>
           </div>
           <ul class="max-h-[520px] overflow-y-auto divide-y divide-border">
+            <li v-if="portfolio.loadingRemote" class="px-4 py-8 text-center text-sm text-slate-500">
+              Загрузка объектов...
+            </li>
+            <li v-else-if="filteredProperties.length === 0" class="px-4 py-8 text-center text-sm text-slate-500">
+              Нет объектов
+            </li>
+            <template v-else>
             <li v-for="p in filteredProperties" :key="p.id">
               <button
                 type="button"
@@ -125,6 +136,7 @@ function tenantName(spaceName: string) {
                 </p>
               </button>
             </li>
+            </template>
           </ul>
         </div>
 

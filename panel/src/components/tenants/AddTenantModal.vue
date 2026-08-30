@@ -87,9 +87,13 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!validate()) return
-  store.addTenant({ ...form.value })
+  const ok = await store.addTenant({ ...form.value })
+  if (!ok) {
+    errors.value.company = store.lastError || 'Не удалось сохранить арендатора'
+    return
+  }
   resetForm()
 }
 

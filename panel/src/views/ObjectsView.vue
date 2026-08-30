@@ -16,7 +16,7 @@ import AddTenantModal from '@/components/tenants/AddTenantModal.vue'
 
 import TenantDetailModal from '@/components/tenants/TenantDetailModal.vue'
 
-import { Plus, MapPin, Search, Lock } from '@lucide/vue'
+import { Plus, MapPin, Search, Lock, Trash2 } from '@lucide/vue'
 
 import { usePortfolioStore } from '@/stores/portfolioStore'
 
@@ -31,6 +31,8 @@ const store = usePortfolioStore()
 const { canAddObject, requireCanAddObject, limits, usage } = usePlan()
 
 const search = ref('')
+const deletingId = ref<number | null>(null)
+const deleteError = ref<string | null>(null)
 
 
 
@@ -57,12 +59,22 @@ function onAddObject() {
 
 
 function occupancyClass(rate: number) {
-
   if (rate === 100) return 'text-emerald-brand bg-emerald-brand/10'
   if (rate > 0) return 'text-yellow-400 bg-yellow-500/10'
-
   return 'text-rose-600 bg-rose-500/10'
+}
 
+async function onDeleteProperty(p: (typeof store.properties)[number]) {
+  if (deletingId.value) return
+  const extra = p.spacesTotal
+    ? `\n\nБудут удалены помещения (${p.spacesTotal}) и связанные данные объекта.`
+    : ''
+  if (!confirm(`Удалить объект «${p.address}»?${extra}`)) return
+  deletingId.value = p.id
+  deleteError.value = null
+  const ok = await store.removeProperty(p.id)
+  deletingId.value = null
+  if (!ok) deleteError.value = store.lastError || 'Не удалось удалить объект'
 }
 
 </script>
@@ -97,6 +109,11 @@ function occupancyClass(rate: number) {
       </div>
 
       <div class="panel-card">
+        <div v-if="store.loadingRemote" class="py-12 text-center text-slate-500 text-sm">
+          Загрузка объектов...
+        </div>
+        <template v-else>
+        <p v-if="deleteError" class="px-5 pt-3 text-xs text-rose-400">{{ deleteError }}</p>
         <div class="panel-table-wrap">
         <table class="w-full text-sm">
 
@@ -115,6 +132,7 @@ function occupancyClass(rate: number) {
               <th class="px-5 py-3 font-medium hidden md:table-cell">Доход/мес</th>
 
               <th class="px-5 py-3 font-medium hidden lg:table-cell">Расход/мес</th>
+              <th class="px-5 py-3 w-12"></th>
 
             </tr>
 
@@ -153,6 +171,17 @@ function occupancyClass(rate: number) {
               <td class="px-5 py-3.5 font-mono text-emerald-brand hidden md:table-cell">{{ store.formatMoney(p.income) }}</td>
 
               <td class="px-5 py-3.5 font-mono text-rose-600/90 hidden lg:table-cell">{{ store.formatMoney(p.expense) }}</td>
+              <td class="px-3 py-3.5 text-right">
+                <button
+                  type="button"
+                  class="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-40"
+                  :disabled="deletingId === p.id"
+                  title="Удалить объект"
+                  @click="onDeleteProperty(p)"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </td>
 
             </tr>
 
@@ -163,10 +192,9 @@ function occupancyClass(rate: number) {
         </div>
 
         <div v-if="filtered.length === 0" class="py-12 text-center text-slate-500 text-sm">
-
           Объекты не найдены
-
         </div>
+        </template>
 
       </div>
 

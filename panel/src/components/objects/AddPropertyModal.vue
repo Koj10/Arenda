@@ -29,13 +29,17 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!validate()) return
   const purchasePrice = form.value.purchasePrice
-  store.addProperty({
+  const ok = await store.addProperty({
     ...form.value,
     purchasePrice: purchasePrice && purchasePrice > 0 ? purchasePrice : undefined,
   })
+  if (!ok) {
+    errors.value.address = store.lastError || 'Не удалось сохранить объект'
+    return
+  }
   resetForm()
 }
 

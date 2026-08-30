@@ -1,10 +1,10 @@
 <script setup lang="ts">
 const segments = [
-  { label: 'Коммунальные', value: 35, color: '#2dd4bf' },
-  { label: 'Обслуживание', value: 25, color: '#a855f7' },
-  { label: 'Налоги', value: 20, color: '#eab308' },
-  { label: 'Страхование', value: 12, color: '#3b82f6' },
-  { label: 'Прочее', value: 8, color: '#64748b' },
+  { label: 'Коммунальные', value: 0, color: '#2dd4bf' },
+  { label: 'Обслуживание', value: 0, color: '#a855f7' },
+  { label: 'Налоги', value: 0, color: '#eab308' },
+  { label: 'Страхование', value: 0, color: '#3b82f6' },
+  { label: 'Прочее', value: 0, color: '#64748b' },
 ]
 
 const cx = 100
@@ -43,7 +43,7 @@ const arcs = segments.map((seg) => {
       <svg viewBox="0 0 200 200" class="w-44 h-44">
         <path v-for="a in arcs" :key="a.label" :d="a.d" :fill="a.color" opacity="0.9" />
         <text :x="cx" :y="cy - 6" text-anchor="middle" fill="#888" font-size="10">Total</text>
-        <text :x="cx" :y="cy + 14" text-anchor="middle" fill="white" font-size="16" font-weight="600">₽205K</text>
+        <text :x="cx" :y="cy + 14" text-anchor="middle" fill="white" font-size="16" font-weight="600">₽0</text>
       </svg>
       <div class="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 w-full">
         <div v-for="seg in segments" :key="seg.label" class="flex items-center gap-2 text-xs text-slate-400">

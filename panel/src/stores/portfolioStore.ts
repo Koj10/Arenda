@@ -24,53 +24,11 @@ import type {
   TenantUpdateData,
 } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
-
-const initialProperties: Property[] = [
-  { id: 1, address: 'г. Москва, ул. Тверская, д. 12', type: 'office', totalArea: 362, spacesOccupied: 3, spacesTotal: 4, occupancy: 75, income: 1890000, expense: 320000 },
-  { id: 2, address: 'г. Москва, Ленинградский пр-т, д. 39', type: 'office', totalArea: 830, spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 3448000, expense: 580000 },
-  { id: 3, address: 'г. Москва, ул. Арбат, д. 24', type: 'retail', totalArea: 260, spacesOccupied: 1, spacesTotal: 2, occupancy: 50, income: 1650000, expense: 210000 },
-  { id: 4, address: 'г. Москва, ул. Садовническая, д. 82', type: 'warehouse', totalArea: 5800, spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 10950000, expense: 890000 },
-  { id: 5, address: 'г. Москва, Пресненская наб., д. 10', type: 'office', totalArea: 1090, spacesOccupied: 2, spacesTotal: 3, occupancy: 67, income: 5088000, expense: 720000 },
-]
-
-const initialCadastralParcels: CadastralParcel[] = [
-  { id: 1001, propertyId: 1, cadastralNumber: '77:01:0004012:1670', area: 147, cadastralValue: 20000000, purchasePrice: 19000000 },
-  { id: 1002, propertyId: 1, cadastralNumber: '77:01:0004012:1680', area: 215, cadastralValue: 30000000, purchasePrice: 29000000 },
-  { id: 2001, propertyId: 2, cadastralNumber: '77:02:0004012:1670', area: 830, cadastralValue: 80000000, purchasePrice: 75000000 },
-  { id: 3001, propertyId: 3, cadastralNumber: '77:03:0004012:1670', area: 260, cadastralValue: 45000000, purchasePrice: 42000000 },
-  { id: 4001, propertyId: 4, cadastralNumber: '77:04:0004012:1670', area: 5800, cadastralValue: 60000000 },
-  { id: 5001, propertyId: 5, cadastralNumber: '77:05:0004012:1670', area: 1090, cadastralValue: 90000000, purchasePrice: 85000000 },
-]
-
-const initialSpaces: Space[] = [
-  { id: 101, propertyId: 1, cadastralParcelId: 1001, name: '101', area: 85, monthlyRate: 420000, accountNumber: '6453435434343', ceilingHeight: 3.25, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'active', floor: '1' },
-  { id: 102, propertyId: 1, cadastralParcelId: 1001, name: '102', area: 62, monthlyRate: 280000, ceilingHeight: 3.1, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'active', floor: '1' },
-  { id: 103, propertyId: 1, cadastralParcelId: 1002, name: '202', area: 120, monthlyRate: 540000, ceilingHeight: 3.4, renovation: 'design', spaceType: 'Офисное помещение', status: 'active', floor: '2' },
-  { id: 104, propertyId: 1, cadastralParcelId: 1002, name: '203', area: 95, monthlyRate: 450000, ceilingHeight: 3.2, renovation: 'cosmetic', spaceType: 'Офисное помещение', status: 'vacant', floor: '2' },
-  { id: 201, propertyId: 2, cadastralParcelId: 2001, name: 'A-01', area: 340, monthlyRate: 1890000 },
-  { id: 202, propertyId: 2, cadastralParcelId: 2001, name: 'A-02', area: 280, monthlyRate: 1600000 },
-  { id: 203, propertyId: 2, cadastralParcelId: 2001, name: 'A-03', area: 210, monthlyRate: 1200000 },
-  { id: 301, propertyId: 3, cadastralParcelId: 3001, name: 'R-1', area: 150, monthlyRate: 1650000 },
-  { id: 302, propertyId: 3, cadastralParcelId: 3001, name: 'R-2', area: 110, monthlyRate: 900000 },
-  { id: 401, propertyId: 4, cadastralParcelId: 4001, name: 'WH-1', area: 2400, monthlyRate: 6000000 },
-  { id: 402, propertyId: 4, cadastralParcelId: 4001, name: 'WH-2', area: 1800, monthlyRate: 4500000 },
-  { id: 403, propertyId: 4, cadastralParcelId: 4001, name: 'WH-3', area: 1600, monthlyRate: 4000000 },
-  { id: 501, propertyId: 5, cadastralParcelId: 5001, name: 'B-01', area: 420, monthlyRate: 2800000 },
-  { id: 502, propertyId: 5, cadastralParcelId: 5001, name: 'B-02', area: 380, monthlyRate: 2400000 },
-  { id: 503, propertyId: 5, cadastralParcelId: 5001, name: 'B-03', area: 290, monthlyRate: 1900000 },
-]
-
-const initialTenants: Tenant[] = [
-  { id: 1, company: 'ООО «ТехноСофт»', inn: '7707083893', propertyId: 1, space: '101', rent: 420000, contract: '2026-12-31', status: 'active' },
-  { id: 2, company: 'АО «МедиаГрупп»', inn: '7710140679', propertyId: 1, space: '102', rent: 272000, contract: '2025-05-31', status: 'expiring' },
-  { id: 3, company: 'ООО «ФинансКонсалт»', inn: '7728168971', propertyId: 1, space: '202', rent: 540000, contract: '2025-02-28', status: 'expiring' },
-  { id: 4, company: 'ООО «Инновации Плюс»', inn: '7701234567', propertyId: 2, space: 'A-01', rent: 1890000, contract: '2025-01-14', status: 'active' },
-  { id: 5, company: 'ООО «ЛогистикПро»', inn: '7702345678', propertyId: 2, space: 'A-02', rent: 1558000, contract: '2024-08-31', status: 'overdue' },
-  { id: 6, company: 'ООО «СкладСервис»', inn: '7704567890', propertyId: 4, space: 'WH-1', rent: 6000000, contract: '2026-03-31', status: 'active' },
-  { id: 7, company: 'ООО «РитейлМаркет»', inn: '7703456789', propertyId: 3, space: 'R-1', rent: 1650000, contract: '2026-06-30', status: 'active' },
-  { id: 8, company: 'ООО «БизнесЦентр»', inn: '7705678901', propertyId: 5, space: 'B-01', rent: 2800000, contract: '2025-11-30', status: 'active' },
-  { id: 9, company: 'ООО «ПремиумОфис»', inn: '7706789012', propertyId: 5, space: 'B-02', rent: 2288000, contract: '2026-01-15', status: 'active' },
-]
+import { formatApiError, getAccessToken } from '@/api/http'
+import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
+import * as landlordApi from '@/api/landlord'
+import { num } from '@/api/types'
+import type { ObjectDetailOut } from '@/api/types'
 
 function recalcPropertyStats(property: Property, propertyTenants: Tenant[]) {
   const occupiedSpaces = new Set(propertyTenants.map((t) => t.space))
@@ -100,11 +58,13 @@ function attachPendingDocuments(
 }
 
 export const usePortfolioStore = defineStore('portfolio', () => {
-  const properties = ref<Property[]>([...initialProperties])
-  const cadastralParcels = ref<CadastralParcel[]>([...initialCadastralParcels])
-  const spaces = ref<Space[]>([...initialSpaces])
-  const tenants = ref<Tenant[]>([...initialTenants])
+  const properties = ref<Property[]>([])
+  const cadastralParcels = ref<CadastralParcel[]>([])
+  const spaces = ref<Space[]>([])
+  const tenants = ref<Tenant[]>([])
   const documents = ref<AttachedDocument[]>([])
+  const lastError = ref<string | null>(null)
+  const loadingRemote = ref(Boolean(getAccessToken()))
 
   const cadastralModalOpen = ref(false)
   const cadastralModalPropertyId = ref<number | null>(null)
@@ -236,11 +196,20 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     return !!(space && parcel && space.propertyId === parcel.propertyId)
   }
 
-  function assignSpaceToCadastral(spaceId: number, parcelId: number | null) {
+  async function assignSpaceToCadastral(spaceId: number, parcelId: number | null) {
     const space = getSpaceById(spaceId)
     if (!space) return false
 
     const previousParcelId = space.cadastralParcelId
+
+    if (parcelId !== null && !canAssignSpaceToParcel(spaceId, parcelId)) return false
+
+    try {
+      await landlordApi.updateUnit(spaceId, { cadastre_id: parcelId })
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось привязать помещение')
+      return false
+    }
 
     if (parcelId === null) {
       space.cadastralParcelId = undefined
@@ -248,7 +217,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       return true
     }
 
-    if (!canAssignSpaceToParcel(spaceId, parcelId)) return false
     space.cadastralParcelId = parcelId
     syncParcelAreaFromSpaces(parcelId)
     if (previousParcelId && previousParcelId !== parcelId) {
@@ -367,157 +335,382 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     return 'active'
   }
 
+  function applyObjectDetail(detail: ObjectDetailOut) {
+    const totalArea = num(detail.total_area)
+    const occupancy = Math.round(detail.metrics?.occupancy_percent ?? 0)
+    const income = num(detail.metrics?.monthly_income)
+    const units = detail.units ?? []
+    const occupied = units.filter((u) => u.is_occupied).length
+
+    const existing = getPropertyById(detail.id)
+    const nextProperty: Property = {
+      id: detail.id,
+      address: detail.address,
+      type: detail.type,
+      totalArea,
+      spacesOccupied: occupied,
+      spacesTotal: units.length,
+      occupancy,
+      income,
+      expense: existing?.expense ?? 0,
+    }
+    if (existing) Object.assign(existing, nextProperty)
+    else properties.value.push(nextProperty)
+
+    cadastralParcels.value = cadastralParcels.value.filter((p) => p.propertyId !== detail.id)
+    for (const entry of detail.cadastre_entries ?? []) {
+      cadastralParcels.value.push({
+        id: entry.id,
+        propertyId: entry.object_id,
+        cadastralNumber: entry.number,
+        area: 0,
+        cadastralValue: num(entry.cadastral_value),
+        purchasePrice: entry.purchase_price ? num(entry.purchase_price) : undefined,
+      })
+    }
+
+    spaces.value = spaces.value.filter((s) => s.propertyId !== detail.id)
+    for (const unit of units) {
+      spaces.value.push({
+        id: unit.id,
+        propertyId: unit.object_id,
+        cadastralParcelId: unit.cadastre_id ?? undefined,
+        name: unit.number,
+        area: num(unit.area),
+        monthlyRate: num(unit.rent_rate),
+      })
+    }
+    for (const entry of detail.cadastre_entries ?? []) {
+      syncParcelAreaFromSpaces(entry.id)
+    }
+  }
+
+  async function uploadPending(
+    docs: PendingDocument[],
+    kind: 'title' | 'service' | 'contract' | 'supporting',
+    linkedType?: string,
+    linkedId?: number,
+  ) {
+    const ids: number[] = []
+    for (const doc of docs) {
+      const blob = dataUrlToBlob(doc.dataUrl, doc.mimeType)
+      const uploaded = await uploadFileApi(blob, {
+        filename: doc.name,
+        kind,
+        linked_type: linkedType,
+        linked_id: linkedId,
+      })
+      ids.push(uploaded.id)
+    }
+    return ids
+  }
+
+  function reset() {
+    properties.value = []
+    cadastralParcels.value = []
+    spaces.value = []
+    tenants.value = []
+    documents.value = []
+    lastError.value = null
+    loadingRemote.value = false
+  }
+
+  let loadInFlight: Promise<void> | null = null
+
+  async function loadFromApi() {
+    if (!getAccessToken()) return
+    if (loadInFlight) return loadInFlight
+    loadingRemote.value = true
+    loadInFlight = (async () => {
+      lastError.value = null
+      try {
+        const list = await landlordApi.listObjects()
+        properties.value = []
+        spaces.value = []
+        cadastralParcels.value = []
+        tenants.value = []
+        for (const item of list) {
+          const detail = await landlordApi.getObject(item.id)
+          applyObjectDetail(detail)
+        }
+
+        const tenantList = await landlordApi.listTenants()
+        for (const row of tenantList) {
+          const detail = await landlordApi.getTenant(row.id)
+          const leases = detail.leases ?? []
+          if (!leases.length) {
+            tenants.value.push({
+              id: row.id,
+              company: row.name,
+              inn: row.inn,
+              propertyId: 0,
+              space: '',
+              rent: 0,
+              contract: '',
+              status: 'active',
+            })
+            continue
+          }
+          for (const lease of leases) {
+            const space = lease.unit_id ? getSpaceById(lease.unit_id) : null
+            tenants.value.push({
+              id: row.id,
+              company: row.name,
+              inn: row.inn,
+              propertyId: space?.propertyId ?? lease.object_id ?? 0,
+              space: space?.name ?? lease.unit_number ?? '',
+              rent: num(lease.rent_monthly),
+              contract: lease.end_date,
+              status: getTenantStatus(lease.end_date),
+            })
+          }
+        }
+
+        for (const property of properties.value) {
+          syncPropertyStats(property.id)
+        }
+      } catch (err) {
+        lastError.value = formatApiError(err, 'Не удалось загрузить объекты')
+      } finally {
+        loadingRemote.value = false
+      }
+    })()
+    try {
+      await loadInFlight
+    } finally {
+      loadInFlight = null
+    }
+  }
+
   function syncPropertyStats(propertyId: number) {
     const property = getPropertyById(propertyId)
     if (!property) return
     recalcPropertyStats(property, getTenantsForProperty(propertyId))
   }
 
-  function addProperty(data: PropertyFormData) {
-    const id = Date.now()
-
-    properties.value.push({
-      id,
-      address: data.address,
-      type: data.type,
-      totalArea: data.totalArea,
-      spacesOccupied: 0,
-      spacesTotal: 0,
-      occupancy: 0,
-      income: 0,
-      expense: 0,
-    })
-
-    const parcelId = Date.now() + 1
-    cadastralParcels.value.push({
-      id: parcelId,
-      propertyId: id,
-      cadastralNumber: data.cadastralNumber.trim(),
-      area: 0,
-      cadastralValue: data.cadastralValue,
-      purchasePrice: data.purchasePrice,
-    })
-
-    addDocumentsBatch([
-      ...attachPendingDocuments(data.titleDocuments, 'property', id, 'title'),
-      ...attachPendingDocuments(data.serviceDocuments, 'property', id, 'service'),
-    ])
-
-    propertyModalOpen.value = false
+  async function addProperty(data: PropertyFormData) {
+    lastError.value = null
+    if (!getAccessToken()) {
+      lastError.value = 'Нет сессии API'
+      return false
+    }
+    try {
+      const created = await landlordApi.createObject({
+        address: data.address.trim(),
+        type: data.type,
+        total_area: data.totalArea,
+        cadastre_number: data.cadastralNumber.trim(),
+        cadastral_value: data.cadastralValue,
+        purchase_price: data.purchasePrice,
+      })
+      applyObjectDetail(created)
+      await uploadPending(data.titleDocuments, 'title', 'object', created.id)
+      await uploadPending(data.serviceDocuments, 'service', 'object', created.id)
+      addDocumentsBatch([
+        ...attachPendingDocuments(data.titleDocuments, 'property', created.id, 'title'),
+        ...attachPendingDocuments(data.serviceDocuments, 'property', created.id, 'service'),
+      ])
+      propertyModalOpen.value = false
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось создать объект')
+      return false
+    }
   }
 
-  function addSpace(propertyId: number, data: SpaceFormData) {
+  async function removeProperty(id: number) {
+    const property = getPropertyById(id)
+    if (!property) return false
+    lastError.value = null
+    try {
+      await landlordApi.deleteObject(id)
+      const spaceIds = new Set(getSpacesForProperty(id).map((s) => s.id))
+      properties.value = properties.value.filter((p) => p.id !== id)
+      spaces.value = spaces.value.filter((s) => s.propertyId !== id)
+      cadastralParcels.value = cadastralParcels.value.filter((p) => p.propertyId !== id)
+      tenants.value = tenants.value.filter((t) => t.propertyId !== id)
+      documents.value = documents.value.filter(
+        (d) => !(d.entityType === 'property' && d.entityId === id),
+      )
+      if (propertyDetailId.value === id) closePropertyDetail()
+      if (spaceDetailId.value && spaceIds.has(spaceDetailId.value)) closeSpaceDetail()
+      void import('@/stores/utilityBillsStore').then(({ useUtilityBillsStore }) => {
+        useUtilityBillsStore().removeForProperty(id)
+      })
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось удалить объект')
+      return false
+    }
+  }
+
+  async function addSpace(propertyId: number, data: SpaceFormData) {
     const property = getPropertyById(propertyId)
     if (!property) return false
-
     const name = data.name.trim()
     if (getSpaceByName(propertyId, name)) return false
     if (!canAllocateArea(propertyId, data.area)) return false
-
-    const spaceId = Date.now()
-    const space: Space = {
-      id: spaceId,
-      propertyId,
-      name,
-      area: data.area,
-      monthlyRate: data.monthlyRate,
-      accountNumber: data.accountNumber.trim() || undefined,
-      ceilingHeight: data.ceilingHeight ?? undefined,
-      renovation: data.renovation !== 'none' ? data.renovation : undefined,
-      spaceType: data.spaceType.trim() || undefined,
-      status: data.status,
-      floor: data.floor.trim() || undefined,
+    lastError.value = null
+    try {
+      await landlordApi.createUnit(propertyId, {
+        number: name,
+        area: data.area,
+        rent_rate: data.monthlyRate,
+      })
+      const detail = await landlordApi.getObject(propertyId)
+      applyObjectDetail(detail)
+      syncPropertyStats(propertyId)
+      spaceModalOpen.value = false
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось добавить помещение')
+      return false
     }
-
-    spaces.value.push(space)
-    property.spacesTotal += 1
-    syncPropertyStats(propertyId)
-
-    spaceModalOpen.value = false
-    return true
   }
 
-  function addTenant(data: TenantFormData) {
-    if (!data.propertyId) return
+  async function addTenant(data: TenantFormData) {
+    if (!data.propertyId) return false
     const existing = getTenantForSpace(data.propertyId, data.space)
-    if (existing) return
-
-    const tenantId = Date.now()
-    tenants.value.push({
-      id: tenantId,
-      company: data.company,
-      inn: data.inn,
-      propertyId: data.propertyId,
-      space: data.space,
-      rent: data.rent,
-      contract: data.contract,
-      status: getTenantStatus(data.contract),
-    })
-    addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenantId, 'lease'))
-    syncPropertyStats(data.propertyId)
-    tenantModalOpen.value = false
-    tenantModalPrefill.value = null
+    if (existing) return false
+    const space = getSpaceByName(data.propertyId, data.space)
+    if (!space) return false
+    lastError.value = null
+    try {
+      const tenant = await landlordApi.createTenant({
+        name: data.company.trim(),
+        inn: data.inn.trim(),
+      })
+      const fileIds = await uploadPending(data.documents, 'contract', 'lease')
+      await landlordApi.createLease({
+        tenant_id: tenant.id,
+        unit_id: space.id,
+        rent_monthly: data.rent,
+        end_date: data.contract,
+        file_ids: fileIds.length ? fileIds : undefined,
+      })
+      addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenant.id, 'lease'))
+      await loadFromApi()
+      tenantModalOpen.value = false
+      tenantModalPrefill.value = null
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось добавить арендатора')
+      return false
+    }
   }
 
-  function updateSpace(id: number, data: SpaceUpdateData) {
+  async function updateSpace(id: number, data: SpaceUpdateData) {
     const space = getSpaceById(id)
     if (!space) return false
     if (!canAllocateArea(space.propertyId, data.area, id)) return false
-
-    const oldName = space.name
-    space.name = data.name.trim()
-    space.area = data.area
-    space.monthlyRate = data.monthlyRate
-    space.accountNumber = data.accountNumber.trim() || undefined
-    space.ceilingHeight = data.ceilingHeight ?? undefined
-    space.renovation = data.renovation || undefined
-    space.spaceType = data.spaceType.trim() || undefined
-    space.status = data.status
-    space.floor = data.floor.trim() || undefined
-
-    if (space.name !== oldName) {
-      const tenant = getTenantForSpace(space.propertyId, oldName)
-      if (tenant) tenant.space = space.name
+    lastError.value = null
+    try {
+      await landlordApi.updateUnit(id, {
+        number: data.name.trim(),
+        area: data.area,
+        rent_rate: data.monthlyRate,
+        cadastre_id: space.cadastralParcelId ?? null,
+      })
+      const oldName = space.name
+      space.name = data.name.trim()
+      space.area = data.area
+      space.monthlyRate = data.monthlyRate
+      space.accountNumber = data.accountNumber.trim() || undefined
+      space.ceilingHeight = data.ceilingHeight ?? undefined
+      space.renovation = data.renovation || undefined
+      space.spaceType = data.spaceType.trim() || undefined
+      space.status = data.status
+      space.floor = data.floor.trim() || undefined
+      if (space.name !== oldName) {
+        const tenant = getTenantForSpace(space.propertyId, oldName)
+        if (tenant) tenant.space = space.name
+      }
+      if (space.cadastralParcelId) syncParcelAreaFromSpaces(space.cadastralParcelId)
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось сохранить помещение')
+      return false
     }
-
-    if (space.cadastralParcelId) {
-      syncParcelAreaFromSpaces(space.cadastralParcelId)
-    }
-
-    return true
   }
 
-  function addCadastralParcel(propertyId: number, data: CadastralParcelFormData) {
-    const property = getPropertyById(propertyId)
-    if (!property) return false
+  async function removeSpace(id: number) {
+    const space = getSpaceById(id)
+    if (!space) return false
+    lastError.value = null
+    try {
+      await landlordApi.deleteUnit(id)
+      const parcelId = space.cadastralParcelId
+      spaces.value = spaces.value.filter((s) => s.id !== id)
+      tenants.value = tenants.value.filter(
+        (t) => !(t.propertyId === space.propertyId && t.space === space.name),
+      )
+      if (parcelId) syncParcelAreaFromSpaces(parcelId)
+      try {
+        const detail = await landlordApi.getObject(space.propertyId)
+        applyObjectDetail(detail)
+      } catch {
+        /* список уже обновлён локально */
+      }
+      syncPropertyStats(space.propertyId)
+      if (spaceDetailId.value === id) closeSpaceDetail()
+      void import('@/stores/utilityBillsStore').then(({ useUtilityBillsStore }) => {
+        useUtilityBillsStore().removeSettingsForSpace(id)
+      })
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось удалить помещение')
+      return false
+    }
+  }
+
+  async function addCadastralParcel(propertyId: number, data: CadastralParcelFormData) {
     if (!data.cadastralNumber.trim() || data.cadastralValue <= 0) return false
-
-    cadastralParcels.value.push({
-      id: Date.now(),
-      propertyId,
-      cadastralNumber: data.cadastralNumber.trim(),
-      area: 0,
-      cadastralValue: data.cadastralValue,
-      purchasePrice: data.purchasePrice && data.purchasePrice > 0 ? data.purchasePrice : undefined,
-    })
-    cadastralModalOpen.value = false
-    cadastralEditId.value = null
-    return true
+    lastError.value = null
+    try {
+      const created = await landlordApi.createCadastre(propertyId, {
+        number: data.cadastralNumber.trim(),
+        cadastral_value: data.cadastralValue,
+        purchase_price: data.purchasePrice,
+      })
+      cadastralParcels.value.push({
+        id: created.id,
+        propertyId: created.object_id,
+        cadastralNumber: created.number,
+        area: 0,
+        cadastralValue: num(created.cadastral_value),
+        purchasePrice: created.purchase_price ? num(created.purchase_price) : undefined,
+      })
+      cadastralModalOpen.value = false
+      cadastralEditId.value = null
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось добавить кадастр')
+      return false
+    }
   }
 
-  function updateCadastralParcel(id: number, data: CadastralParcelFormData) {
+  async function updateCadastralParcel(id: number, data: CadastralParcelFormData) {
     const parcel = getCadastralParcelById(id)
     if (!parcel) return false
     if (!data.cadastralNumber.trim() || data.cadastralValue <= 0) return false
-
-    parcel.cadastralNumber = data.cadastralNumber.trim()
-    parcel.cadastralValue = data.cadastralValue
-    parcel.purchasePrice = data.purchasePrice && data.purchasePrice > 0 ? data.purchasePrice : undefined
-    syncParcelAreaFromSpaces(id)
-
-    cadastralModalOpen.value = false
-    cadastralEditId.value = null
-    return true
+    lastError.value = null
+    try {
+      await landlordApi.updateCadastre(id, {
+        number: data.cadastralNumber.trim(),
+        cadastral_value: data.cadastralValue,
+        purchase_price: data.purchasePrice,
+      })
+      parcel.cadastralNumber = data.cadastralNumber.trim()
+      parcel.cadastralValue = data.cadastralValue
+      parcel.purchasePrice = data.purchasePrice && data.purchasePrice > 0 ? data.purchasePrice : undefined
+      syncParcelAreaFromSpaces(id)
+      cadastralModalOpen.value = false
+      cadastralEditId.value = null
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось сохранить кадастр')
+      return false
+    }
   }
 
   function openCadastralModal(propertyId: number, parcelId?: number) {
@@ -543,32 +736,41 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   /** Делит один кадастровый номер на два: сумма площадей = исходная площадь номера */
-  function splitCadastralParcel(parcelId: number, data: SplitCadastralFormData) {
+  async function splitCadastralParcel(parcelId: number, data: SplitCadastralFormData) {
     const original = getCadastralParcelById(parcelId)
     if (!original) return false
     if (!data.newCadastralNumber.trim()) return false
     if (data.firstCadastralValue <= 0 || data.secondCadastralValue <= 0) return false
-
-    original.cadastralValue = data.firstCadastralValue
-    original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
-      ? data.firstPurchasePrice
-      : undefined
-    syncParcelAreaFromSpaces(parcelId)
-
-    cadastralParcels.value.push({
-      id: Date.now(),
-      propertyId: original.propertyId,
-      cadastralNumber: data.newCadastralNumber.trim(),
-      area: 0,
-      cadastralValue: data.secondCadastralValue,
-      purchasePrice: data.secondPurchasePrice && data.secondPurchasePrice > 0
-        ? data.secondPurchasePrice
-        : undefined,
-    })
-
-    splitCadastralModalOpen.value = false
-    splitCadastralParcelId.value = null
-    return true
+    lastError.value = null
+    try {
+      await landlordApi.updateCadastre(parcelId, {
+        cadastral_value: data.firstCadastralValue,
+        purchase_price: data.firstPurchasePrice,
+      })
+      const created = await landlordApi.createCadastre(original.propertyId, {
+        number: data.newCadastralNumber.trim(),
+        cadastral_value: data.secondCadastralValue,
+        purchase_price: data.secondPurchasePrice,
+      })
+      original.cadastralValue = data.firstCadastralValue
+      original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
+        ? data.firstPurchasePrice
+        : undefined
+      cadastralParcels.value.push({
+        id: created.id,
+        propertyId: created.object_id,
+        cadastralNumber: created.number,
+        area: 0,
+        cadastralValue: num(created.cadastral_value),
+        purchasePrice: created.purchase_price ? num(created.purchase_price) : undefined,
+      })
+      splitCadastralModalOpen.value = false
+      splitCadastralParcelId.value = null
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось разделить кадастр')
+      return false
+    }
   }
 
   function updateTenant(id: number, data: TenantUpdateData) {
@@ -648,6 +850,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     spaces,
     tenants,
     documents,
+    lastError,
+    loadingRemote,
     cadastralModalOpen,
     cadastralModalPropertyId,
     cadastralEditId,
@@ -700,14 +904,18 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     formatMoney,
     formatDate,
     formatArea,
+    reset,
     addProperty,
+    removeProperty,
     addSpace,
+    removeSpace,
     addTenant,
     updateSpace,
     updateTenant,
     addCadastralParcel,
     updateCadastralParcel,
     splitCadastralParcel,
+    loadFromApi,
     openCadastralModal,
     closeCadastralModal,
     openSplitCadastralModal,

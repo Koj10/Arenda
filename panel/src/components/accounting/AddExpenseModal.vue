@@ -32,9 +32,13 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!validate()) return
-  accounting.addExpense({ ...form.value })
+  const ok = await accounting.addExpense({ ...form.value })
+  if (!ok) {
+    errors.value.title = accounting.lastError || 'Не удалось сохранить расход'
+    return
+  }
   resetForm()
 }
 

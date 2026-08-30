@@ -98,7 +98,7 @@ function onDragLeaveZone() {
   dropTarget.value = null
 }
 
-function onDropZone(target: 'unassigned' | number, e: DragEvent) {
+async function onDropZone(target: 'unassigned' | number, e: DragEvent) {
   e.preventDefault()
   const raw = e.dataTransfer?.getData('text/plain')
   const spaceId = draggingSpaceId.value ?? (raw ? Number(raw) : null)
@@ -106,21 +106,21 @@ function onDropZone(target: 'unassigned' | number, e: DragEvent) {
 
   assignError.value = null
   const parcelId = target === 'unassigned' ? null : target
-  const ok = store.assignSpaceToCadastral(spaceId, parcelId)
+  const ok = await store.assignSpaceToCadastral(spaceId, parcelId)
   if (!ok) {
-    assignError.value = 'Не удалось привязать помещение'
+    assignError.value = store.lastError || 'Не удалось привязать помещение'
   }
 
   draggingSpaceId.value = null
   dropTarget.value = null
 }
 
-function onSelectParcel(space: Space, parcelId: string) {
+async function onSelectParcel(space: Space, parcelId: string) {
   assignError.value = null
   const id = parcelId === '' ? null : Number(parcelId)
-  const ok = store.assignSpaceToCadastral(space.id, id)
+  const ok = await store.assignSpaceToCadastral(space.id, id)
   if (!ok) {
-    assignError.value = 'Не удалось привязать помещение'
+    assignError.value = store.lastError || 'Не удалось привязать помещение'
   }
 }
 
@@ -161,6 +161,13 @@ function chipClass(spaceId: number) {
             </div>
           </div>
           <ul class="max-h-[480px] overflow-y-auto divide-y divide-border">
+            <li v-if="store.loadingRemote" class="px-4 py-8 text-center text-sm text-slate-500">
+              Загрузка объектов...
+            </li>
+            <li v-else-if="filteredProperties.length === 0" class="px-4 py-8 text-center text-sm text-slate-500">
+              Нет объектов
+            </li>
+            <template v-else>
             <li v-for="p in filteredProperties" :key="p.id">
               <button
                 type="button"
@@ -175,6 +182,7 @@ function chipClass(spaceId: number) {
                 </p>
               </button>
             </li>
+            </template>
           </ul>
         </div>
 

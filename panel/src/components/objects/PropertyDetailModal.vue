@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Building2, ChevronRight, Download, MapPin, Plus, Landmark } from '@lucide/vue'
+import { Building2, ChevronRight, Download, MapPin, Plus, Landmark, Trash2 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -17,6 +17,10 @@ const { canAddSpace, requireCanAddSpace } = usePlan()
 const activeTab = ref<PropertyTab>('spaces')
 const downloadingAll = ref(false)
 const downloadError = ref<string | null>(null)
+const deletingSpaceId = ref<number | null>(null)
+const spaceDeleteError = ref<string | null>(null)
+const deletingProperty = ref(false)
+const propertyDeleteError = ref<string | null>(null)
 
 const property = computed(() =>
   store.propertyDetailId ? store.getPropertyById(store.propertyDetailId) : null,
@@ -54,11 +58,41 @@ const TABS: { id: PropertyTab; label: string }[] = [
 function onClose() {
   activeTab.value = 'spaces'
   downloadError.value = null
+  spaceDeleteError.value = null
+  propertyDeleteError.value = null
   store.closePropertyDetail()
 }
 
 function openSpace(spaceId: number) {
   store.openSpaceDetail(spaceId)
+}
+
+async function onDeleteSpace(space: (typeof spaces.value)[number], e: Event) {
+  e.stopPropagation()
+  e.preventDefault()
+  if (deletingSpaceId.value) return
+  const occupiedNote = space.occupied && space.tenant
+    ? `\n\nСейчас его занимает ${space.tenant.company}. Договор будет отвязан.`
+    : ''
+  if (!confirm(`Удалить помещение №${space.name}?${occupiedNote}`)) return
+  deletingSpaceId.value = space.id
+  spaceDeleteError.value = null
+  const ok = await store.removeSpace(space.id)
+  deletingSpaceId.value = null
+  if (!ok) spaceDeleteError.value = store.lastError || 'Не удалось удалить помещение'
+}
+
+async function onDeleteProperty() {
+  if (!property.value || deletingProperty.value) return
+  const extra = property.value.spacesTotal
+    ? `\n\nБудут удалены помещения (${property.value.spacesTotal}) и связанные данные объекта.`
+    : ''
+  if (!confirm(`Удалить объект «${property.value.address}»?${extra}`)) return
+  deletingProperty.value = true
+  propertyDeleteError.value = null
+  const ok = await store.removeProperty(property.value.id)
+  deletingProperty.value = false
+  if (!ok) propertyDeleteError.value = store.lastError || 'Не удалось удалить объект'
 }
 
 function onAddSpace() {
@@ -182,12 +216,17 @@ function occupancyClass(occupied: boolean) {
           </button>
         </div>
 
+        <p v-if="spaceDeleteError" class="text-xs text-rose-400 mb-3">{{ spaceDeleteError }}</p>
+
         <div class="space-y-2">
-          <button
+          <div
             v-for="space in spaces"
             :key="space.id"
+            class="flex items-stretch gap-1"
+          >
+          <button
             type="button"
-            class="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border border-border bg-panel/40 text-left hover:border-emerald-brand/40 hover:bg-card-hover transition-colors group"
+            class="flex-1 min-w-0 flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border border-border bg-panel/40 text-left hover:border-emerald-brand/40 hover:bg-card-hover transition-colors group"
             @click="openSpace(space.id)"
           >
             <div class="min-w-0">
@@ -210,6 +249,16 @@ function occupancyClass(occupied: boolean) {
             </div>
             <ChevronRight class="w-4 h-4 text-slate-600 group-hover:text-emerald-brand shrink-0" />
           </button>
+          <button
+            type="button"
+            class="px-3 rounded-xl border border-border text-slate-500 hover:text-rose-400 hover:border-rose-400/40 hover:bg-rose-500/10 transition-colors disabled:opacity-40"
+            :disabled="deletingSpaceId === space.id"
+            title="Удалить помещение"
+            @click="onDeleteSpace(space, $event)"
+          >
+            <Trash2 class="w-4 h-4" />
+          </button>
+          </div>
         </div>
 
         <p v-if="spaces.length === 0" class="text-sm text-slate-500 text-center py-8 rounded-xl border border-dashed border-border">
@@ -258,6 +307,16 @@ function occupancyClass(occupied: boolean) {
     </template>
 
     <template #footer>
+      <p v-if="propertyDeleteError" class="text-xs text-rose-400 mr-auto">{{ propertyDeleteError }}</p>
+      <button
+        type="button"
+        class="panel-btn-secondary text-rose-400 hover:text-rose-300 hover:border-rose-400/40"
+        :disabled="deletingProperty"
+        @click="onDeleteProperty"
+      >
+        <Trash2 class="w-4 h-4" />
+        {{ deletingProperty ? 'Удаление...' : 'Удалить объект' }}
+      </button>
       <button type="button" class="panel-btn-secondary" @click="onClose">
         Закрыть
       </button>

@@ -6,7 +6,7 @@ import ExpenseDetailModal from '@/components/accounting/ExpenseDetailModal.vue'
 import CashFlowChart from '@/components/charts/CashFlowChart.vue'
 import ExpenseDonutChart from '@/components/charts/ExpenseDonutChart.vue'
 import RevenueBarChart from '@/components/charts/RevenueBarChart.vue'
-import { Plus, Search, Receipt, Paperclip, TrendingUp, TrendingDown, Wallet, Clock, ArrowUpRight, ArrowDownRight } from '@lucide/vue'
+import { Plus, Search, Receipt, Paperclip, Wallet, Clock, ArrowUpRight, ArrowDownRight } from '@lucide/vue'
 import { useAccountingStore } from '@/stores/accountingStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
@@ -106,7 +106,7 @@ function formatShort(n: number) {
               <span class="p-2 rounded-xl bg-emerald-brand/10 text-emerald-brand"><ArrowUpRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalIncome) }}</p>
-            <p class="text-xs text-emerald-brand mt-2 flex items-center gap-1"><TrendingUp class="w-3 h-3" />+18.2% к прошлому месяцу</p>
+            <p class="text-xs text-slate-500 mt-2">по текущим договорам</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
@@ -114,7 +114,7 @@ function formatShort(n: number) {
               <span class="p-2 rounded-xl bg-red-500/10 text-red-400"><ArrowDownRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalExpenses) }}</p>
-            <p class="text-xs text-red-400 mt-2 flex items-center gap-1"><TrendingDown class="w-3 h-3" />-8.5% к прошлому месяцу</p>
+            <p class="text-xs text-slate-500 mt-2">расходы объектов</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
@@ -122,15 +122,15 @@ function formatShort(n: number) {
               <span class="p-2 rounded-xl bg-orange-500/10 text-orange-400"><Wallet class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(netProfit) }}</p>
-            <p class="text-xs text-emerald-brand mt-2 flex items-center gap-1"><TrendingUp class="w-3 h-3" />+24.3% к прошлому месяцу</p>
+            <p class="text-xs text-slate-500 mt-2">доход минус расход</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
               <span class="text-xs text-slate-500 uppercase tracking-wide">Pending Payments</span>
               <span class="p-2 rounded-xl bg-yellow-500/10 text-yellow-400"><Clock class="w-4 h-4" /></span>
             </div>
-            <p class="text-2xl font-bold font-mono text-white">₽128K</p>
-            <p class="text-xs text-red-400 mt-2">3 просрочено</p>
+            <p class="text-2xl font-bold font-mono text-white">{{ formatShort(accounting.currentMonthTotal) }}</p>
+            <p class="text-xs text-slate-500 mt-2">транзакции за этот месяц</p>
           </div>
         </div>
 

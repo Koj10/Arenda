@@ -1,50 +1,17 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import type { Expense, ExpenseFormData, ExpenseDocument } from '@/types/accounting'
+import type { Expense, ExpenseFormData, ExpenseDocument, ExpenseCategory } from '@/types/accounting'
 import type { PendingDocument } from '@/types/portfolio'
+import { formatApiError, getAccessToken } from '@/api/http'
+import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
+import { createTransaction, listTransactions } from '@/api/landlord'
+import { num } from '@/api/types'
 
-const initialExpenses: Expense[] = [
-  {
-    id: 1,
-    date: '2026-07-01',
-    amount: 85000,
-    category: 'utilities',
-    title: 'Электроэнергия — Тверская 12',
-    note: 'Счёт за июнь',
-    propertyId: 1,
-    documents: [],
-  },
-  {
-    id: 2,
-    date: '2026-07-05',
-    amount: 42000,
-    category: 'maintenance',
-    title: 'Замена фильтров вентиляции',
-    note: 'Подрядчик ООО «КлиматСервис»',
-    propertyId: 2,
-    documents: [],
-  },
-  {
-    id: 3,
-    date: '2026-07-10',
-    amount: 156000,
-    category: 'tax',
-    title: 'Налог на имущество',
-    note: 'Квартальный платёж',
-    propertyId: null,
-    documents: [],
-  },
-  {
-    id: 4,
-    date: '2026-07-15',
-    amount: 28000,
-    category: 'insurance',
-    title: 'Страховой полис склада',
-    note: 'Садовническая 82',
-    propertyId: 4,
-    documents: [],
-  },
-]
+const CATEGORIES: ExpenseCategory[] = ['utilities', 'maintenance', 'tax', 'insurance', 'management', 'other']
+
+function asCategory(value: string): ExpenseCategory {
+  return CATEGORIES.includes(value as ExpenseCategory) ? (value as ExpenseCategory) : 'other'
+}
 
 function toExpenseDocuments(docs: PendingDocument[]): ExpenseDocument[] {
   return docs.map((d) => ({
@@ -58,7 +25,8 @@ function toExpenseDocuments(docs: PendingDocument[]): ExpenseDocument[] {
 }
 
 export const useAccountingStore = defineStore('accounting', () => {
-  const expenses = ref<Expense[]>([...initialExpenses])
+  const expenses = ref<Expense[]>([])
+  const lastError = ref<string | null>(null)
 
   const expenseModalOpen = ref(false)
   const expenseDetailOpen = ref(false)
@@ -90,18 +58,69 @@ export const useAccountingStore = defineStore('accounting', () => {
     return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date))
   }
 
-  function addExpense(data: ExpenseFormData) {
-    expenses.value.unshift({
-      id: Date.now(),
-      date: data.date,
-      amount: data.amount,
-      category: data.category,
-      title: data.title,
-      note: data.note,
-      propertyId: data.propertyId,
-      documents: toExpenseDocuments(data.documents),
-    })
-    expenseModalOpen.value = false
+  function reset() {
+    expenses.value = []
+    lastError.value = null
+  }
+
+  async function loadFromApi() {
+    if (!getAccessToken()) return
+    lastError.value = null
+    try {
+      const rows = await listTransactions({ type: 'expense' })
+      expenses.value = rows.map((row) => ({
+        id: row.id,
+        date: row.transaction_date,
+        amount: num(row.amount),
+        category: asCategory(row.category),
+        title: row.title,
+        note: row.comment ?? '',
+        propertyId: row.object_id ?? null,
+        documents: [],
+      }))
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось загрузить транзакции')
+    }
+  }
+
+  async function addExpense(data: ExpenseFormData) {
+    lastError.value = null
+    try {
+      const fileIds: number[] = []
+      for (const doc of data.documents) {
+        const uploaded = await uploadFileApi(dataUrlToBlob(doc.dataUrl, doc.mimeType), {
+          filename: doc.name,
+          kind: 'supporting',
+          linked_type: 'transaction',
+        })
+        fileIds.push(uploaded.id)
+      }
+      const created = await createTransaction({
+        type: 'expense',
+        title: data.title.trim(),
+        amount: data.amount,
+        category: data.category,
+        object_id: data.propertyId,
+        comment: data.note || null,
+        transaction_date: data.date,
+        file_ids: fileIds.length ? fileIds : undefined,
+      })
+      expenses.value.unshift({
+        id: created.id,
+        date: created.transaction_date,
+        amount: num(created.amount),
+        category: asCategory(created.category),
+        title: created.title,
+        note: created.comment ?? data.note,
+        propertyId: created.object_id ?? data.propertyId,
+        documents: toExpenseDocuments(data.documents),
+      })
+      expenseModalOpen.value = false
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось сохранить расход')
+      return false
+    }
   }
 
   function updateExpense(id: number, data: Partial<Omit<Expense, 'id' | 'documents'>>) {
@@ -154,6 +173,7 @@ export const useAccountingStore = defineStore('accounting', () => {
 
   return {
     expenses,
+    lastError,
     expenseModalOpen,
     expenseDetailOpen,
     expenseDetailId,
@@ -162,6 +182,8 @@ export const useAccountingStore = defineStore('accounting', () => {
     getExpenseById,
     formatMoney,
     formatDate,
+    loadFromApi,
+    reset,
     addExpense,
     updateExpense,
     removeExpense,

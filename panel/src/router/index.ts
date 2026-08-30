@@ -132,18 +132,23 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   auth.hydrate()
 
+  if (to.query.access_token) {
+    auth.applyTokens(String(to.query.access_token), to.query.refresh_token ? String(to.query.refresh_token) : undefined)
+  }
+
   if (to.query.autologin === '1' && to.query.email) {
     const email = String(to.query.email)
     const name = to.query.name ? String(to.query.name) : undefined
     const chooseRole = to.query.chooseRole === '1'
     const mode = to.query.mode === 'login' ? 'login' : 'register'
+    const role = to.query.role === 'tenant' ? 'tenant' : to.query.role === 'landlord' ? 'landlord' : undefined
 
     if (chooseRole) {
       auth.beginRoleChoice(email, name ?? email.split('@')[0] ?? 'User', mode)
       return { path: '/choose-role', replace: true }
     }
 
-    auth.login(email, name)
+    auth.login(email, name, { role })
     return { path: defaultHomeForRole(auth.user!.role), replace: true }
   }
 

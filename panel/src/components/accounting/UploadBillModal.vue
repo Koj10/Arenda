@@ -108,7 +108,7 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!validate() || !document.value) return
 
   const payload = {
@@ -124,7 +124,7 @@ function submit() {
   }
 
   if (recipientType.value === 'landlord') {
-    accounting.addExpense({
+    await accounting.addExpense({
       date: new Date().toISOString().slice(0, 10),
       amount: amount.value,
       category: category.value,

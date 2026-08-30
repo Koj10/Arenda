@@ -51,7 +51,7 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!property.value || !validate()) return
   const payload = {
     ...form.value,
@@ -60,10 +60,10 @@ function submit() {
       : undefined,
   }
   const ok = isEdit.value && editingParcel.value
-    ? store.updateCadastralParcel(editingParcel.value.id, payload)
-    : store.addCadastralParcel(property.value.id, payload)
+    ? await store.updateCadastralParcel(editingParcel.value.id, payload)
+    : await store.addCadastralParcel(property.value.id, payload)
   if (!ok) {
-    errors.value.cadastralNumber = 'Не удалось сохранить — проверьте данные'
+    errors.value.cadastralNumber = store.lastError || 'Не удалось сохранить — проверьте данные'
   }
 }
 

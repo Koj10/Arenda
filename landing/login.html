@@ -47,7 +47,7 @@
             <input type="checkbox" />
             <span>Запомнить меня</span>
           </label>
-          <a href="#" class="auth-link">Забыли пароль?</a>
+          <a href="#" class="auth-link" data-forgot-password>Забыли пароль?</a>
         </div>
 
         <button type="submit" class="btn-primary">Войти</button>
@@ -56,8 +56,8 @@
       <div class="auth-divider"><span>Или продолжайте с</span></div>
 
       <div class="auth-oauth">
-        <button type="button" class="auth-oauth-btn">Google</button>
-        <button type="button" class="auth-oauth-btn">Apple</button>
+        <button type="button" class="auth-oauth-btn" data-oauth="google">Google</button>
+        <button type="button" class="auth-oauth-btn" data-oauth="apple">Apple</button>
       </div>
 
       <p class="auth-footer-text">
@@ -70,6 +70,7 @@
   </main>
 
   <script src="https://unpkg.com/feather-icons"></script>
+  <script src="js/config.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
 </body>

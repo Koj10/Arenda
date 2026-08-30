@@ -212,6 +212,7 @@ function navBtnClass(active: boolean) {
           </button>
 
           <div class="space-y-1 max-h-[420px] overflow-y-auto pr-1">
+            <p v-if="store.loadingRemote" class="px-2 py-6 text-center text-sm text-slate-500">Загрузка объектов...</p>
             <div v-for="property in store.properties" :key="property.id">
               <div class="flex items-center gap-0.5">
                 <button

@@ -76,49 +76,89 @@ function initPasswordStrength() {
   })
 }
 
-function simulateSubmit(btn, onSuccess) {
-  btn.disabled = true
-  btn.innerHTML =
-    '<svg class="spin" width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>'
-
-  setTimeout(() => {
-    btn.classList.add('btn-success')
-    btn.textContent = '✓'
-    setTimeout(onSuccess, 800)
-  }, 1200)
+function apiBase() {
+  return window.PROPCOUNT_API || 'https://prop.gamesense-club.ru'
 }
 
-/** Панель: локально :5173, в проде (propcount.ru / :3001) — /panel/ на том же origin */
-function redirectToPanel(email, name, options = {}) {
-  const params = new URLSearchParams({ autologin: '1', email })
-  if (name) params.set('name', name)
+function parseApiError(payload, fallback) {
+  if (!payload) return fallback
+  if (typeof payload === 'string') return payload
+  const detail = payload.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item?.msg || '').filter(Boolean).join('. ') || fallback
+  }
+  return payload.message || fallback
+}
+
+async function apiPost(path, body) {
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(parseApiError(data, `Ошибка ${res.status}`))
+  return data
+}
+
+function setButtonLoading(btn, loading) {
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent
+  btn.disabled = loading
+  btn.innerHTML = loading
+    ? '<svg class="spin" width="20" height="20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>'
+    : btn.dataset.label
+}
+
+function showFormError(form, message) {
+  let el = form.querySelector('[data-form-error]')
+  if (!el) {
+    el = document.createElement('p')
+    el.dataset.formError = '1'
+    el.className = 'field-error'
+    el.style.display = 'block'
+    form.querySelector('[type="submit"]')?.before(el)
+  }
+  el.textContent = message || ''
+}
+
+/** Панель: локально :5173, в проде — /panel/ на том же origin */
+function redirectToPanel(session, options = {}) {
+  const user = session.user || {}
+  const params = new URLSearchParams({ autologin: '1', email: user.email || '' })
+  if (user.name) params.set('name', user.name)
+  if (session.access_token) params.set('access_token', session.access_token)
+  if (session.refresh_token) params.set('refresh_token', session.refresh_token)
   if (options.chooseRole) params.set('chooseRole', '1')
   if (options.mode) params.set('mode', options.mode)
+  if (session.current_role) params.set('role', session.current_role)
 
   const { protocol, hostname, port } = window.location
-  let panelUrl
-
-  if (port === '3000') {
-    // Local landing → Vite panel
-    panelUrl = `${protocol}//${hostname}:5173/?${params}`
-  } else {
-    // Production (nginx on :3001 / propcount.ru): same origin
-    panelUrl = `/panel/?${params}`
-  }
+  const panelUrl = port === '3000'
+    ? `${protocol}//${hostname}:5173/?${params}`
+    : `/panel/?${params}`
 
   window.location.href = panelUrl
+}
+
+function afterAuth(session, mode) {
+  const hasRole = session.current_role === 'landlord' || session.current_role === 'tenant'
+  redirectToPanel(session, {
+    chooseRole: !hasRole,
+    mode,
+  })
 }
 
 function initLoginForm() {
   const form = document.getElementById('login-form')
   if (!form) return
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault()
     let valid = true
     const email = form.querySelector('#email')
     const password = form.querySelector('#password')
-
+    showFormError(form, '')
     clearFieldError(email)
     clearFieldError(password)
 
@@ -133,7 +173,17 @@ function initLoginForm() {
     if (!valid) return
 
     const btn = form.querySelector('[type="submit"]')
-    simulateSubmit(btn, () => redirectToPanel(email.value, undefined, { chooseRole: true, mode: 'login' }))
+    setButtonLoading(btn, true)
+    try {
+      const session = await apiPost('/auth/login', {
+        email: email.value.trim(),
+        password: password.value,
+      })
+      afterAuth(session, 'login')
+    } catch (err) {
+      showFormError(form, err.message || 'Не удалось войти')
+      setButtonLoading(btn, false)
+    }
   })
 }
 
@@ -143,7 +193,7 @@ function initRegisterForm() {
 
   initPasswordStrength()
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault()
     let valid = true
     const name = form.querySelector('#name')
@@ -151,6 +201,7 @@ function initRegisterForm() {
     const password = form.querySelector('#password')
     const confirm = form.querySelector('#password-confirm')
     const terms = form.querySelector('#terms')
+    showFormError(form, '')
 
     ;[name, email, password, confirm].forEach(clearFieldError)
 
@@ -171,21 +222,65 @@ function initRegisterForm() {
       valid = false
     }
     if (!terms.checked) {
-      alert('Примите условия использования')
+      showFormError(form, 'Примите условия использования')
       valid = false
     }
     if (!valid) return
 
     const btn = form.querySelector('[type="submit"]')
-    simulateSubmit(btn, () =>
-      redirectToPanel(email.value, name.value.trim(), { chooseRole: true, mode: 'register' }),
-    )
+    setButtonLoading(btn, true)
+    try {
+      const session = await apiPost('/auth/register', {
+        name: name.value.trim(),
+        email: email.value.trim(),
+        password: password.value,
+        password_confirm: confirm.value,
+        terms: true,
+      })
+      afterAuth(session, 'register')
+    } catch (err) {
+      showFormError(form, err.message || 'Не удалось зарегистрироваться')
+      setButtonLoading(btn, false)
+    }
+  })
+}
+
+function initForgotPassword() {
+  const link = document.querySelector('[data-forgot-password]')
+  if (!link) return
+  link.addEventListener('click', async (e) => {
+    e.preventDefault()
+    const emailInput = document.querySelector('#email')
+    const email = emailInput?.value?.trim() || prompt('Email для сброса пароля')
+    if (!email || !validateEmail(email)) {
+      alert('Укажите корректный email')
+      return
+    }
+    try {
+      await apiPost('/auth/forgot-password', { email })
+      alert('Если аккаунт существует, мы отправим письмо для сброса пароля')
+    } catch (err) {
+      alert(err.message || 'Не удалось отправить запрос')
+    }
+  })
+}
+
+function initOauth() {
+  document.querySelectorAll('[data-oauth]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const provider = btn.getAttribute('data-oauth')
+      if (provider === 'google' || provider === 'apple') {
+        window.location.href = `${apiBase()}/auth/${provider}`
+      }
+    })
   })
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initLoginForm()
   initRegisterForm()
+  initForgotPassword()
+  initOauth()
 
   document.querySelectorAll('[data-toggle-password]').forEach((btn) => {
     btn.addEventListener('click', () => togglePassword(btn))

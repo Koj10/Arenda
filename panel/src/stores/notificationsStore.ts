@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { getAccessToken } from '@/api/http'
+import { listNotifications, markNotificationRead } from '@/api/landlord'
+import type { NotificationOut } from '@/api/types'
 
 export interface AppNotification {
   id: string
@@ -10,50 +13,15 @@ export interface AppNotification {
   href?: string
 }
 
-const STUB: AppNotification[] = [
-  {
-    id: '1',
-    title: 'Счёт ожидает оплаты',
-    body: 'ООО «ТехноСофт» — аренда за август, 420 000 ₽',
-    createdAt: new Date(Date.now() - 3600e3).toISOString(),
-    read: false,
-    href: '/landlord/accounting',
-  },
-  {
-    id: '2',
-    title: 'Договор истекает',
-    body: 'Помещение 101 на Тверской — через 30 дней',
-    createdAt: new Date(Date.now() - 864e5).toISOString(),
-    read: false,
-    href: '/landlord/tenants',
-  },
-  {
-    id: '3',
-    title: 'Добро пожаловать в PropCount',
-    body: 'Настройте объекты и пригласите арендаторов',
-    createdAt: new Date(Date.now() - 3 * 864e5).toISOString(),
-    read: true,
-  },
-]
-
-const TENANT_STUB: AppNotification[] = [
-  {
-    id: 't1',
-    title: 'Новый счёт',
-    body: 'Выставлен счёт за аренду — август',
-    createdAt: new Date(Date.now() - 7200e3).toISOString(),
-    read: false,
-    href: '/tenant/bills',
-  },
-  {
-    id: 't2',
-    title: 'Документ добавлен',
-    body: 'Акт сверки доступен в кабинете',
-    createdAt: new Date(Date.now() - 2 * 864e5).toISOString(),
-    read: true,
-    href: '/tenant/reports',
-  },
-]
+function mapNotification(n: NotificationOut): AppNotification {
+  return {
+    id: String(n.id),
+    title: n.title || 'Уведомление',
+    body: n.body || n.message || '',
+    createdAt: n.created_at || new Date().toISOString(),
+    read: Boolean(n.is_read ?? n.read),
+  }
+}
 
 export const useNotificationsStore = defineStore('notifications', () => {
   const items = ref<AppNotification[]>([])
@@ -61,22 +29,35 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   const unreadCount = computed(() => items.value.filter((n) => !n.read).length)
 
+  async function loadFromApi() {
+    if (!getAccessToken()) return
+    try {
+      const rows = await listNotifications() as NotificationOut[]
+      items.value = Array.isArray(rows) ? rows.map(mapNotification) : []
+    } catch {
+      /* keep current */
+    }
+  }
+
   function hydrate(role: 'landlord' | 'tenant', email: string) {
     const key = `${role}:${email}`
     if (loadedFor.value === key) return
     loadedFor.value = key
-    // TODO: GET /api/me/notifications
-    items.value = (role === 'tenant' ? TENANT_STUB : STUB).map((n) => ({ ...n }))
+    void loadFromApi()
   }
 
   function markRead(id: string) {
     const n = items.value.find((x) => x.id === id)
     if (n) n.read = true
+    const numeric = Number(id)
+    if (!Number.isNaN(numeric)) void markNotificationRead(numeric)
   }
 
   function markAllRead() {
     items.value.forEach((n) => {
       n.read = true
+      const numeric = Number(n.id)
+      if (!Number.isNaN(numeric)) void markNotificationRead(numeric)
     })
   }
 
@@ -85,5 +66,5 @@ export const useNotificationsStore = defineStore('notifications', () => {
     loadedFor.value = null
   }
 
-  return { items, unreadCount, hydrate, markRead, markAllRead, clear }
+  return { items, unreadCount, hydrate, loadFromApi, markRead, markAllRead, clear }
 })

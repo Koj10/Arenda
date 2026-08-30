@@ -49,9 +49,9 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!sourceParcel.value || !validate()) return
-  const ok = store.splitCadastralParcel(sourceParcel.value.id, {
+  const ok = await store.splitCadastralParcel(sourceParcel.value.id, {
     ...form.value,
     firstPurchasePrice: form.value.firstPurchasePrice && form.value.firstPurchasePrice > 0
       ? form.value.firstPurchasePrice
@@ -61,7 +61,7 @@ function submit() {
       : undefined,
   })
   if (!ok) {
-    errors.value.newCadastralNumber = 'Не удалось разделить — проверьте данные'
+    errors.value.newCadastralNumber = store.lastError || 'Не удалось разделить — проверьте данные'
   }
 }
 

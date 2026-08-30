@@ -3,44 +3,13 @@ import { ref } from 'vue'
 import type { Invoice, UploadBillFormData } from '@/types/billing'
 import type { Tenant } from '@/types/portfolio'
 
-const initialInvoices: Invoice[] = [
-  {
-    id: 1,
-    tenantId: 1,
-    inn: '7707083893',
-    propertyId: 1,
-    space: '101',
-    period: '2026-07',
-    type: 'utilities',
-    title: 'ЖКХ за июль 2026',
-    amount: 18500,
-    status: 'pending',
-    dueDate: '2026-07-15',
-    issuedAt: '2026-07-05',
-  },
-  {
-    id: 3,
-    tenantId: 1,
-    inn: '7707083893',
-    propertyId: 1,
-    space: '101',
-    period: '2026-06',
-    type: 'rent',
-    title: 'Аренда за июнь 2026',
-    amount: 420000,
-    status: 'paid',
-    dueDate: '2026-06-10',
-    issuedAt: '2026-06-01',
-  },
-]
-
 function currentPeriod() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 export const useBillingStore = defineStore('billing', () => {
-  const invoices = ref<Invoice[]>([...initialInvoices])
+  const invoices = ref<Invoice[]>([])
   const uploadBillModalOpen = ref(false)
 
   function getInvoicesByInn(inn: string) {

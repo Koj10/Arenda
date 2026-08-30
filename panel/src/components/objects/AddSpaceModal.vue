@@ -44,13 +44,14 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!validate() || !currentProperty.value) return
-  const ok = store.addSpace(currentProperty.value.id, { ...form.value })
-  if (!ok && !errors.value.area) {
-    errors.value.area = `Нельзя выделить больше ${availableArea.value} м²`
+  const ok = await store.addSpace(currentProperty.value.id, { ...form.value })
+  if (!ok) {
+    errors.value.area = store.lastError || `Нельзя выделить больше ${availableArea.value} м²`
+    return
   }
-  if (ok) resetForm()
+  resetForm()
 }
 
 function onClose() {

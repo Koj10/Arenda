@@ -67,6 +67,10 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
       </div>
 
       <div class="panel-card">
+        <div v-if="store.loadingRemote" class="py-12 text-center text-slate-500 text-sm">
+          Загрузка арендаторов...
+        </div>
+        <template v-else>
         <div class="panel-table-wrap">
           <table class="w-full text-sm">
             <thead>
@@ -110,6 +114,7 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
         <div v-if="filtered.length === 0" class="py-12 text-center text-slate-500 text-sm">
           Арендаторы не найдены
         </div>
+        </template>
       </div>
     </div>
 

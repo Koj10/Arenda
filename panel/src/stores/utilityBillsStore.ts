@@ -9,73 +9,20 @@ import type {
 } from '@/types/utilityBills'
 import {
   createDefaultSpaceUtilityPayers,
-  UTILITY_CRITERION_LABELS,
 } from '@/types/utilityBills'
+import { getAccessToken } from '@/api/http'
+import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
+import {
+  createUtilityBill,
+  getObjectPayers,
+  listObjectBills,
+  updateUnitPayer,
+} from '@/api/landlord'
+import { num } from '@/api/types'
 import { usePortfolioStore } from '@/stores/portfolioStore'
-import { useBillingStore } from '@/stores/billingStore'
-import { useAccountingStore } from '@/stores/accountingStore'
-
-const initialSettings: SpaceUtilitySettings[] = [
-  {
-    spaceId: 101,
-    propertyId: 1,
-    payers: {
-      electricity: 'tenant',
-      water: 'tenant',
-      heating: 'landlord',
-      management: 'landlord',
-      garbage: 'tenant',
-      gas: 'landlord',
-      sewerage: 'tenant',
-      cleaning: 'landlord',
-    },
-  },
-  {
-    spaceId: 102,
-    propertyId: 1,
-    payers: {
-      electricity: 'tenant',
-      water: 'tenant',
-      heating: 'landlord',
-      management: 'landlord',
-      garbage: 'tenant',
-      gas: 'landlord',
-      sewerage: 'tenant',
-      cleaning: 'landlord',
-    },
-  },
-  {
-    spaceId: 103,
-    propertyId: 1,
-    payers: {
-      electricity: 'tenant',
-      water: 'tenant',
-      heating: 'tenant',
-      management: 'tenant',
-      garbage: 'tenant',
-      gas: 'tenant',
-      sewerage: 'tenant',
-      cleaning: 'tenant',
-    },
-  },
-  {
-    spaceId: 104,
-    propertyId: 1,
-    payers: {
-      electricity: 'tenant',
-      water: 'tenant',
-      heating: 'tenant',
-      management: 'tenant',
-      garbage: 'tenant',
-      gas: 'tenant',
-      sewerage: 'tenant',
-      cleaning: 'tenant',
-    },
-  },
-]
 
 export const useUtilityBillsStore = defineStore('utilityBills', () => {
-  const spaceSettings = ref<SpaceUtilitySettings[]>([...initialSettings])
+  const spaceSettings = ref<SpaceUtilitySettings[]>([])
   const propertyBills = ref<PropertyBill[]>([])
   const addBillModalOpen = ref(false)
   const addBillPropertyId = ref<number | null>(null)
@@ -92,6 +39,19 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     return getSettingsForSpace(spaceId)?.payers[criterion] ?? 'landlord'
   }
 
+  function removeSettingsForSpace(spaceId: number) {
+    spaceSettings.value = spaceSettings.value.filter((s) => s.spaceId !== spaceId)
+  }
+
+  function removeForProperty(propertyId: number) {
+    spaceSettings.value = spaceSettings.value.filter((s) => s.propertyId !== propertyId)
+    propertyBills.value = propertyBills.value.filter((b) => b.propertyId !== propertyId)
+    if (addBillPropertyId.value === propertyId) {
+      addBillModalOpen.value = false
+      addBillPropertyId.value = null
+    }
+  }
+
   function ensureSettingsForProperty(propertyId: number) {
     const portfolio = usePortfolioStore()
     const spaces = portfolio.getSpacesForProperty(propertyId)
@@ -106,20 +66,60 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     }
   }
 
-  function setSpacePayer(spaceId: number, criterion: UtilityCriterion, payer: BillPayer) {
-    const existing = getSettingsForSpace(spaceId)
-    if (existing) {
-      existing.payers[criterion] = payer
-      return
+  async function loadForProperty(propertyId: number) {
+    if (!getAccessToken()) return
+    try {
+      const matrix = await getObjectPayers(propertyId)
+      const units = matrix.units ?? []
+      for (const row of units) {
+        const payers = { ...createDefaultSpaceUtilityPayers(), ...row.utility_payers }
+        const existing = getSettingsForSpace(row.unit_id)
+        if (existing) {
+          existing.propertyId = propertyId
+          existing.payers = payers
+        } else {
+          spaceSettings.value.push({ spaceId: row.unit_id, propertyId, payers })
+        }
+      }
+      const bills = await listObjectBills(propertyId)
+      propertyBills.value = [
+        ...propertyBills.value.filter((b) => b.propertyId !== propertyId),
+        ...bills.map((bill) => ({
+          id: bill.id,
+          propertyId: bill.object_id,
+          period: bill.period,
+          title: bill.title,
+          totalAmount: num(bill.total),
+          dueDate: bill.pay_by,
+          issuedAt: bill.created_at.slice(0, 10),
+          status: 'distributed' as const,
+          lines: [],
+        })),
+      ]
+    } catch {
+      /* keep local settings */
     }
-    const portfolio = usePortfolioStore()
-    const space = portfolio.getSpaceById(spaceId)
-    if (!space) return
-    spaceSettings.value.push({
-      spaceId,
-      propertyId: space.propertyId,
-      payers: { ...createDefaultSpaceUtilityPayers(), [criterion]: payer },
-    })
+  }
+
+  async function setSpacePayer(spaceId: number, criterion: UtilityCriterion, payer: BillPayer) {
+    const existing = getSettingsForSpace(spaceId)
+    const previous = existing?.payers[criterion]
+    if (existing) existing.payers[criterion] = payer
+    else {
+      const portfolio = usePortfolioStore()
+      const space = portfolio.getSpaceById(spaceId)
+      if (!space) return
+      spaceSettings.value.push({
+        spaceId,
+        propertyId: space.propertyId,
+        payers: { ...createDefaultSpaceUtilityPayers(), [criterion]: payer },
+      })
+    }
+    try {
+      await updateUnitPayer(spaceId, criterion, payer)
+    } catch {
+      if (existing && previous) existing.payers[criterion] = previous
+    }
   }
 
   function getBillsForProperty(propertyId: number) {
@@ -136,103 +136,51 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     addBillPropertyId.value = null
   }
 
-  function distributeBill(bill: PropertyBill) {
-    const portfolio = usePortfolioStore()
-    const billing = useBillingStore()
-    const accounting = useAccountingStore()
-
-    const spaces = portfolio.getSpacesForProperty(bill.propertyId)
-    if (!spaces.length) return
-
-    const totalArea = spaces.reduce((sum, s) => sum + s.area, 0)
-    const tenantShares = new Map<number, { amount: number; parts: string[] }>()
-    let landlordTotal = 0
-
-    for (const line of bill.lines) {
-      if (line.amount <= 0) continue
-      const label = UTILITY_CRITERION_LABELS[line.criterion]
-
-      for (const space of spaces) {
-        const share = totalArea > 0 ? (space.area / totalArea) * line.amount : 0
-        if (share <= 0) continue
-
-        const payer = getPayer(space.id, line.criterion)
-        if (payer === 'landlord') {
-          landlordTotal += share
-        } else {
-          const current = tenantShares.get(space.id) ?? { amount: 0, parts: [] }
-          current.amount += share
-          current.parts.push(`${label}: ${Math.round(share).toLocaleString('ru-RU')} ₽`)
-          tenantShares.set(space.id, current)
-        }
-      }
-    }
-
-    if (landlordTotal > 0) {
-      accounting.addExpense({
-        date: bill.issuedAt,
-        amount: Math.round(landlordTotal * 100) / 100,
-        category: 'utilities',
-        title: `${bill.title} (моя доля)`,
-        note: `Коммунальные услуги · ${bill.period}`,
-        propertyId: bill.propertyId,
-        documents: bill.document
-          ? [{
-              name: bill.document.name,
-              mimeType: bill.document.mimeType,
-              size: bill.document.size,
-              dataUrl: bill.document.dataUrl,
-            }]
-          : [],
-      })
-    }
-
-    for (const [spaceId, data] of tenantShares) {
-      if (data.amount <= 0) continue
-      const space = portfolio.getSpaceById(spaceId)
-      if (!space) continue
-      const tenant = portfolio.getTenantForSpace(bill.propertyId, space.name)
-      if (!tenant) continue
-
-      billing.addTenantInvoice(
-        {
-          recipientType: 'tenant',
-          tenantInn: tenant.inn,
-          tenantId: tenant.id,
-          title: `${bill.title} · пом. ${space.name}`,
-          amount: Math.round(data.amount * 100) / 100,
-          dueDate: bill.dueDate,
-          category: 'utilities',
-          propertyId: bill.propertyId,
-          document: bill.document!,
-        },
-        tenant,
-        bill.period,
-      )
-    }
-  }
-
-  function addPropertyBill(data: PropertyBillFormData): boolean {
+  async function addPropertyBill(data: PropertyBillFormData): Promise<boolean> {
     const totalAmount = data.lines.reduce((sum, l) => sum + (l.amount > 0 ? l.amount : 0), 0)
     if (totalAmount <= 0) return false
 
-    const bill: PropertyBill = {
-      id: Date.now(),
-      propertyId: data.propertyId,
-      period: data.period,
-      title: data.title.trim(),
-      totalAmount,
-      dueDate: data.dueDate,
-      issuedAt: new Date().toISOString().slice(0, 10),
-      status: 'distributed',
-      document: data.document,
-      lines: data.lines.filter((l) => l.amount > 0),
-    }
+    try {
+      let fileId: number | undefined
+      if (data.document?.dataUrl) {
+        const uploaded = await uploadFileApi(
+          dataUrlToBlob(data.document.dataUrl, data.document.mimeType),
+          { filename: data.document.name, kind: 'supporting', linked_type: 'bill' },
+        )
+        fileId = uploaded.id
+      }
 
-    propertyBills.value.unshift(bill)
-    distributeBill(bill)
-    closeAddBillModal()
-    return true
+      const amounts: Record<string, number> = {}
+      for (const line of data.lines) {
+        if (line.amount > 0) amounts[line.criterion] = line.amount
+      }
+
+      const created = await createUtilityBill({
+        object_id: data.propertyId,
+        file_id: fileId,
+        title: data.title.trim(),
+        period: data.period,
+        pay_by: data.dueDate,
+        amounts,
+      }) as { id?: number; total?: string; created_at?: string }
+
+      propertyBills.value.unshift({
+        id: created.id ?? Date.now(),
+        propertyId: data.propertyId,
+        period: data.period,
+        title: data.title.trim(),
+        totalAmount: created.total ? num(created.total) : totalAmount,
+        dueDate: data.dueDate,
+        issuedAt: created.created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+        status: 'distributed',
+        document: data.document,
+        lines: data.lines.filter((l) => l.amount > 0),
+      })
+      closeAddBillModal()
+      return true
+    } catch {
+      return false
+    }
   }
 
   function formatMoney(value: number) {
@@ -257,7 +205,10 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     getSettingsForSpace,
     getSettingsForProperty,
     getPayer,
+    removeSettingsForSpace,
+    removeForProperty,
     ensureSettingsForProperty,
+    loadForProperty,
     setSpacePayer,
     getBillsForProperty,
     openAddBillModal,

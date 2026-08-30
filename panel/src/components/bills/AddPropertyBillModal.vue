@@ -92,10 +92,10 @@ function validate() {
   return Object.keys(errors.value).length === 0
 }
 
-function submit() {
+async function submit() {
   if (!property.value || !document.value || !validate()) return
 
-  const ok = utilityBills.addPropertyBill({
+  const ok = await utilityBills.addPropertyBill({
     propertyId: property.value.id,
     period: period.value,
     title: title.value.trim(),

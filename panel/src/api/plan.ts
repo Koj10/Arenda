@@ -1,14 +1,7 @@
-import { apiRequest, isApiConfigured } from '@/api/http'
 import { PLAN_CATALOG } from '@/config/plans'
 import type { PlanEntitlements, PlanId, PlanUsage } from '@/types/plan'
-
-/**
- * Контракт бэкенда (реализуй позже):
- *   GET  /api/me/entitlements  → PlanEntitlements
- *   POST /api/billing/checkout { planId } → { url: string }  (опционально)
- *
- * Пока VITE_API_URL пуст — stub по email / роли.
- */
+import { apiRequest, getAccessToken } from '@/api/http'
+import { getSubscription, upgradeSubscription } from '@/api/landlord'
 
 const emptyUsage = (): PlanUsage => ({
   objects: 0,
@@ -17,6 +10,11 @@ const emptyUsage = (): PlanUsage => ({
   users: 1,
   storageMb: 0,
 })
+
+function asPlanId(plan: string): PlanId {
+  if (plan === 'profi' || plan === 'elite') return plan
+  return 'start'
+}
 
 function entitlementsFromPlan(
   planId: PlanId,
@@ -36,16 +34,13 @@ function entitlementsFromPlan(
   }
 }
 
-/** Stub: демо-арендодатель на Profi, новые — Start; арендатор без отчётов пока не купит */
 function stubEntitlements(input: {
   email: string
   role: 'landlord' | 'tenant'
 }): PlanEntitlements {
-  const email = input.email.toLowerCase()
-
   if (input.role === 'tenant') {
     return entitlementsFromPlan('start', {
-      tenantReportsUnlocked: email === 'tenant@propcount.ru' ? false : false,
+      tenantReportsUnlocked: false,
       features: [],
       limits: {
         maxObjects: null,
@@ -56,11 +51,6 @@ function stubEntitlements(input: {
       },
     })
   }
-
-  if (email === 'demo@propcount.ru') {
-    return entitlementsFromPlan('profi')
-  }
-
   return entitlementsFromPlan('start')
 }
 
@@ -69,27 +59,65 @@ export async function fetchEntitlements(params: {
   role: 'landlord' | 'tenant'
   token?: string | null
 }): Promise<PlanEntitlements> {
-  if (isApiConfigured()) {
-    try {
-      return await apiRequest<PlanEntitlements>('/api/me/entitlements', {
-        token: params.token,
+  if (!getAccessToken() && !params.token) return stubEntitlements(params)
+
+  try {
+    if (params.role === 'tenant') {
+      const sub = await apiRequest<{
+        plan: string
+        status: string
+        expires_at?: string | null
+        can_export?: boolean
+      }>('/tenant/subscription', { token: params.token })
+      return entitlementsFromPlan('start', {
+        renewsAt: sub.expires_at ?? null,
+        tenantReportsUnlocked: Boolean(sub.can_export) || sub.plan === 'tenant_reports',
+        features: sub.can_export ? ['exportReports', 'tenantReportsIncluded'] : [],
       })
-    } catch {
-      // fallback to stub while API is incomplete
     }
+
+    const sub = await getSubscription() as {
+      plan: string
+      status: string
+      expires_at?: string | null
+      objects: { limit: number; occupied: number }
+      tenants: { limit: number; occupied: number }
+      units: { limit: number; occupied: number }
+    }
+    const planId = asPlanId(sub.plan)
+    const def = PLAN_CATALOG[planId]
+    return entitlementsFromPlan(planId, {
+      renewsAt: sub.expires_at ?? null,
+      status: sub.status === 'active' ? 'active' : 'active',
+      limits: {
+        maxObjects: sub.objects.limit || def.limits.maxObjects,
+        maxSpaces: sub.units.limit || def.limits.maxSpaces,
+        maxTenants: sub.tenants.limit || def.limits.maxTenants,
+        maxUsers: def.limits.maxUsers,
+        storageMb: def.limits.storageMb,
+      },
+      usage: {
+        objects: sub.objects.occupied,
+        spaces: sub.units.occupied,
+        tenants: sub.tenants.occupied,
+        users: 1,
+        storageMb: 0,
+      },
+    })
+  } catch {
+    return stubEntitlements(params)
   }
-  return stubEntitlements(params)
 }
 
-/** Заготовка под checkout — вернёт URL оплаты, когда API появится */
 export async function createCheckoutSession(
   planId: PlanId,
-  token?: string | null,
+  _token?: string | null,
 ): Promise<{ url: string } | null> {
-  if (!isApiConfigured()) return null
-  return apiRequest<{ url: string }>('/api/billing/checkout', {
-    method: 'POST',
-    token,
-    body: { planId },
-  })
+  try {
+    const result = await upgradeSubscription(planId) as { url?: string }
+    if (result?.url) return { url: result.url }
+  } catch {
+    /* no billing url */
+  }
+  return null
 }
