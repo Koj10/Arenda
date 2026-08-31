@@ -92,11 +92,6 @@ async function saveMeters() {
 
 watch(metersPeriod, () => { void loadMeters() }, { immediate: true })
 
-const auth = useAuthStore()
-const billing = useBillingStore()
-
-const statusFilter = ref<InvoiceStatus | 'all'>('all')
-
 const bills = computed(() => {
   const inn = auth.tenantInn
   if (!inn) return []
