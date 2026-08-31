@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AddPropertyBillModal from '@/components/bills/AddPropertyBillModal.vue'
+import RentInvoicesCard from '@/components/bills/RentInvoicesCard.vue'
 import { Building2, FileUp, Gauge, Search, Settings2 } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useUtilityBillsStore } from '@/stores/utilityBillsStore'
@@ -120,6 +121,7 @@ function tenantName(spaceName: string) {
 <template>
   <AppLayout>
     <div class="panel-page-wide space-y-5">
+      <RentInvoicesCard />
       <div class="panel-card p-5 border-emerald-brand/20 bg-emerald-brand/5">
         <h2 class="text-sm font-semibold text-white mb-2">Как работают счета</h2>
         <ol class="space-y-1.5 text-sm text-slate-400 list-decimal list-inside">

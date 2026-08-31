@@ -9,6 +9,7 @@ from app.db import get_session
 from app.enums import Plan, Role
 from app.schemas.meters import MeterReadingOut, MeterReadingUpsert, TenantMetersOut
 from app.schemas.tenant_panel import (
+    TenantInvoicePayRequest,
     TenantInvoicesResponse,
     TenantReportResponse,
     TenantSpacesResponse,
@@ -16,6 +17,7 @@ from app.schemas.tenant_panel import (
 )
 from app.services import meters as meters_service
 from app.services import tenant_panel as tenant_panel_service
+from app.services.invoice_payments import tenant_submit_payment
 from app.services.users import get_or_create_subscription
 
 router = APIRouter(prefix="/tenant")
@@ -48,6 +50,28 @@ def tenant_invoices(
         auth.user.id,
         status,
     )
+
+
+@router.post(
+    "/invoices/{invoice_id}/pay",
+    summary="Отметить оплату счёта",
+    response_model=TenantInvoicesResponse,
+)
+def tenant_pay_invoice(
+    invoice_id: int,
+    payload: TenantInvoicePayRequest,
+    auth: AuthContext = Depends(require_tenant),
+    session: Session = Depends(get_session),
+):
+    invoice = tenant_panel_service.get_accessible_invoice(session, auth.user.id, invoice_id)
+    tenant_submit_payment(
+        session,
+        invoice,
+        payload.method,
+        payload.file_ids,
+        payer_user_id=auth.user.id,
+    )
+    return tenant_panel_service.get_tenant_invoices(session, auth.user.id)
 
 
 @router.get(

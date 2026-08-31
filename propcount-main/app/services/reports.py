@@ -6,10 +6,10 @@ from typing import Iterable, List, Optional
 from fastapi import HTTPException, status
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
-from app.enums import InvoiceKind, TransactionType
+from app.enums import InvoiceKind, InvoiceStatus, TransactionType
 from app.models import Invoice, Lease, Object, Transaction, Unit
 from app.schemas.reports import ReportResponse, ReportRow, ReportTotals
 from app.services.realestate import get_user_object, get_user_unit
@@ -55,8 +55,9 @@ def invoice_sum_for_object(
     object_id: int,
     period: str,
     kind: str,
+    status_value: str | None = None,
 ) -> Decimal:
-    value = session.exec(
+    statement = (
         select(func.coalesce(func.sum(Invoice.amount), 0))
         .join(Unit, Invoice.unit_id == Unit.id)
         .where(
@@ -65,7 +66,10 @@ def invoice_sum_for_object(
             Invoice.period == period,
             Invoice.kind == kind,
         )
-    ).first()
+    )
+    if status_value:
+        statement = statement.where(Invoice.status == status_value)
+    value = session.exec(statement).first()
 
     return d(value)
 
@@ -76,15 +80,17 @@ def invoice_sum_for_unit(
     unit_id: int,
     period: str,
     kind: str,
+    status_value: str | None = None,
 ) -> Decimal:
-    value = session.exec(
-        select(func.coalesce(func.sum(Invoice.amount), 0)).where(
-            Invoice.user_id == user_id,
-            Invoice.unit_id == unit_id,
-            Invoice.period == period,
-            Invoice.kind == kind,
-        )
-    ).first()
+    statement = select(func.coalesce(func.sum(Invoice.amount), 0)).where(
+        Invoice.user_id == user_id,
+        Invoice.unit_id == unit_id,
+        Invoice.period == period,
+        Invoice.kind == kind,
+    )
+    if status_value:
+        statement = statement.where(Invoice.status == status_value)
+    value = session.exec(statement).first()
 
     return d(value)
 
@@ -103,6 +109,10 @@ def transaction_income_for_object(
             Transaction.type == TransactionType.income.value,
             Transaction.date >= date_from,
             Transaction.date <= date_to,
+            or_(
+                Transaction.comment.is_(None),
+                ~Transaction.comment.startswith("[invoice:"),
+            ),
         )
     ).first()
 
@@ -165,6 +175,7 @@ def build_object_row(
         obj.id,
         period,
         InvoiceKind.rent.value,
+        InvoiceStatus.paid.value,
     )
 
     utility_income = invoice_sum_for_object(
@@ -237,6 +248,7 @@ def build_unit_row(
         unit.id,
         period,
         InvoiceKind.rent.value,
+        InvoiceStatus.paid.value,
     )
 
     utility_income = invoice_sum_for_unit(

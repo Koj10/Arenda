@@ -26,6 +26,7 @@ from app.schemas.tenant_panel import (
     TenantSpacesResponse,
     TenantSubscriptionResponse,
 )
+from app.services.invoice_payments import list_invoice_files
 from app.services.realestate import get_lease_status
 from app.services.users import get_or_create_subscription
 from app.utils.inn import normalize_inn
@@ -237,6 +238,10 @@ def get_tenant_invoices(
                 Invoice.status == InvoiceStatus.pending.value,
                 Invoice.due_date >= date.today(),
             )
+        elif status_value == InvoiceStatus.awaiting_confirmation.value:
+            statement = statement.where(
+                Invoice.status == InvoiceStatus.awaiting_confirmation.value,
+            )
         elif status_value == InvoiceStatus.paid.value:
             statement = statement.where(Invoice.status == InvoiceStatus.paid.value)
         elif status_value == "overdue":
@@ -271,6 +276,8 @@ def get_tenant_invoices(
                 object_address=object_address,
                 unit_number=unit_number,
                 unit_id=invoice.unit_id,
+                payment_method=invoice.payment_method,
+                files=list_invoice_files(session, invoice.id),
             )
         )
 
@@ -279,6 +286,17 @@ def get_tenant_invoices(
         message=None,
         invoices=invoices_out,
     )
+
+
+def get_accessible_invoice(session: Session, user_id: int, invoice_id: int) -> Invoice:
+    profile = get_tenant_profile(session, user_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
+    tenant_ids = get_matched_tenant_ids(session, profile)
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice or invoice.tenant_id not in tenant_ids:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
+    return invoice
 
 
 def empty_report_totals(tab: str) -> Dict[str, Any]:

@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete, func, update
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlmodel import Session, select
 
 from app.enums import UTILITY_CRITERIA, FileLinkedType, Payer
@@ -228,13 +229,20 @@ def create_object(
     obj = Object(
         user_id=user_id,
         address=payload.address,
-        type=payload.type.value,
+        type=str(payload.type),
         total_area=payload.total_area,
     )
 
     session.add(obj)
-    session.commit()
-    session.refresh(obj)
+    try:
+        session.commit()
+        session.refresh(obj)
+    except (DataError, IntegrityError) as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Не удалось сохранить объект. Проверьте площадь, адрес и кадастр.",
+        ) from exc
 
     if payload.cadastre_number and payload.cadastral_value is not None:
         cadastre_entry = CadastreEntry(
@@ -245,7 +253,14 @@ def create_object(
         )
 
         session.add(cadastre_entry)
-        session.commit()
+        try:
+            session.commit()
+        except (DataError, IntegrityError) as exc:
+            session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Не удалось сохранить кадастр. Проверьте номер и стоимость.",
+            ) from exc
 
     if payload.file_ids:
         link_files_by_ids(
@@ -356,7 +371,7 @@ def update_object(
         obj.address = payload.address
 
     if payload.type is not None:
-        obj.type = payload.type.value
+        obj.type = str(payload.type)
 
     if payload.total_area is not None:
         obj.total_area = payload.total_area

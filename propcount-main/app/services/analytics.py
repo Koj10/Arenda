@@ -240,6 +240,7 @@ def get_landlord_analytics(
         user_id,
         period,
         kind=InvoiceKind.rent.value,
+        status_value=InvoiceStatus.paid.value,
     )
 
     utility_accrued = sum_invoices(
@@ -265,7 +266,11 @@ def get_landlord_analytics(
 
     current_revenue = rent_accrued + utility_accrued
     previous_revenue = sum_invoices(
-        session, user_id, prev_period, kind=InvoiceKind.rent.value
+        session,
+        user_id,
+        prev_period,
+        kind=InvoiceKind.rent.value,
+        status_value=InvoiceStatus.paid.value,
     ) + sum_invoices(session, user_id, prev_period, kind=InvoiceKind.utility.value)
 
     return LandlordAnalyticsResponse(

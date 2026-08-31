@@ -8,32 +8,48 @@ from app.schemas.subscription import LandlordSubscriptionResponse, LimitItem
 from app.services.users import get_or_create_subscription
 
 
+def as_int(value) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if hasattr(value, "__getitem__") and not isinstance(value, (str, bytes)):
+        try:
+            return as_int(value[0])
+        except Exception:
+            return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
 def get_plan_limits(plan: str) -> dict:
     return PLAN_LIMITS.get(plan, PLAN_LIMITS[Plan.start.value])
 
 
 def get_counts(session: Session, user_id: int) -> dict:
-    objects_count = (
+    objects_count = as_int(
         session.exec(
-            select(func.count(Object.id)).where(Object.user_id == user_id)
-        ).first()
-        or 0
+            select(func.count()).select_from(Object).where(Object.user_id == user_id)
+        ).one()
     )
 
-    tenants_count = (
+    tenants_count = as_int(
         session.exec(
-            select(func.count(Tenant.id)).where(Tenant.user_id == user_id)
-        ).first()
-        or 0
+            select(func.count()).select_from(Tenant).where(Tenant.user_id == user_id)
+        ).one()
     )
 
-    units_count = (
+    units_count = as_int(
         session.exec(
-            select(func.count(Unit.id))
+            select(func.count())
+            .select_from(Unit)
             .join(Object, Unit.object_id == Object.id)
             .where(Object.user_id == user_id)
-        ).first()
-        or 0
+        ).one()
     )
 
     return {
@@ -44,11 +60,10 @@ def get_counts(session: Session, user_id: int) -> dict:
 
 
 def count_units_for_object(session: Session, object_id: int) -> int:
-    return (
+    return as_int(
         session.exec(
-            select(func.count(Unit.id)).where(Unit.object_id == object_id)
-        ).first()
-        or 0
+            select(func.count()).select_from(Unit).where(Unit.object_id == object_id)
+        ).one()
     )
 
 

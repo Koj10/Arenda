@@ -9,6 +9,8 @@ import type {
   TransactionOut,
   UnitInObjectOut,
   UtilityBillListItem,
+  LandlordInvoiceOut,
+  InvoiceDetailOut,
 } from '@/api/types'
 
 export async function listObjects(q?: string) {
@@ -174,6 +176,21 @@ export async function upgradeSubscription(plan?: string) {
   return apiRequest('/landlord/subscription/upgrade', {
     method: 'POST',
     body: plan ? { plan } : {},
+  })
+}
+
+export async function listLandlordInvoices(status?: string) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  return apiRequest<LandlordInvoiceOut[]>(`/landlord/invoices${query}`)
+}
+
+export async function getLandlordInvoice(invoiceId: number) {
+  return apiRequest<InvoiceDetailOut>(`/landlord/invoices/${invoiceId}`)
+}
+
+export async function confirmInvoicePayment(invoiceId: number) {
+  return apiRequest<InvoiceDetailOut>(`/landlord/invoices/${invoiceId}/confirm-payment`, {
+    method: 'POST',
   })
 }
 

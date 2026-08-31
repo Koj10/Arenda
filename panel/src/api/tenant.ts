@@ -10,6 +10,16 @@ export async function listTenantInvoices(status?: string) {
   return apiRequest<TenantInvoicesResponse>(`/tenant/invoices${query}`)
 }
 
+export async function payTenantInvoice(invoiceId: number, body: {
+  method: 'cash' | 'bank' | 'in_app'
+  file_ids?: number[]
+}) {
+  return apiRequest<TenantInvoicesResponse>(`/tenant/invoices/${invoiceId}/pay`, {
+    method: 'POST',
+    body,
+  })
+}
+
 export async function listTenantMeters(period: string) {
   return apiRequest<TenantMetersOut>(`/tenant/meters?period=${encodeURIComponent(period)}`)
 }

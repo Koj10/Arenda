@@ -12,14 +12,16 @@ from fastapi import (
 from fastapi import (
     File as FileParam,
 )
+from fastapi.responses import FileResponse
 from sqlmodel import Session
 
 from app.api.deps import AuthContext, get_current_auth
 from app.core.config import settings
 from app.db import get_session
 from app.enums import FileKind, FileLinkedType
-from app.models import File
+from app.models import File, Invoice
 from app.schemas.files import FileOut
+from app.services.tenant_panel import get_accessible_invoice
 
 router = APIRouter()
 
@@ -88,3 +90,44 @@ async def upload_file(
     session.refresh(file_row)
 
     return FileOut.model_validate(file_row)
+
+
+def _can_access_file(session: Session, auth: AuthContext, file_row: File) -> bool:
+    if file_row.user_id == auth.user.id:
+        return True
+    if file_row.linked_type != FileLinkedType.invoice.value or not file_row.linked_id:
+        return False
+    invoice = session.get(Invoice, file_row.linked_id)
+    if not invoice:
+        return False
+    if invoice.user_id == auth.user.id:
+        return True
+    if auth.role == "tenant":
+        try:
+            get_accessible_invoice(session, auth.user.id, invoice.id)
+            return True
+        except HTTPException:
+            return False
+    return False
+
+
+@router.get(
+    "/files/{file_id}",
+    summary="Скачать файл",
+)
+def download_file(
+    file_id: int,
+    auth: AuthContext = Depends(get_current_auth),
+    session: Session = Depends(get_session),
+):
+    file_row = session.get(File, file_id)
+    if not file_row or not _can_access_file(session, auth, file_row):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    path = Path(settings.storage_dir) / file_row.storage_key
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    return FileResponse(
+        path,
+        filename=file_row.original_name,
+        media_type=file_row.mime_type or "application/octet-stream",
+    )

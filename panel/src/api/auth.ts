@@ -82,7 +82,7 @@ export function oauthUrl(provider: 'google' | 'apple'): string {
 
 export async function uploadFileApi(file: Blob, extra: {
   filename: string
-  kind?: 'title' | 'service' | 'supporting' | 'contract'
+  kind?: 'title' | 'service' | 'supporting' | 'contract' | 'receipt'
   linked_type?: string
   linked_id?: number
 }): Promise<FileOut> {

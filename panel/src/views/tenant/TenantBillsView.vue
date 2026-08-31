@@ -3,9 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import TenantLayout from '@/components/layout/TenantLayout.vue'
 import { FileText } from '@lucide/vue'
 import { useBillingStore } from '@/stores/billingStore'
-import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS } from '@/types/billing'
-import type { InvoiceStatus } from '@/types/billing'
-import { listTenantMeters, upsertTenantMeter } from '@/api/tenant'
+import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types/billing'
+import type { InvoiceStatus, PaymentMethod } from '@/types/billing'
+import { listTenantMeters, payTenantInvoice, upsertTenantMeter } from '@/api/tenant'
+import { uploadFileApi } from '@/api/auth'
 import { num, type MeterReadingOut } from '@/api/types'
 import { METERED_CRITERIA, UTILITY_CRITERION_LABELS } from '@/types/utilityBills'
 import type { UtilityCriterion } from '@/types/utilityBills'
@@ -16,6 +17,11 @@ const billing = useBillingStore()
 const tenantPanel = useTenantPanelStore()
 
 const statusFilter = ref<InvoiceStatus | 'all'>('all')
+const payTarget = ref<number | null>(null)
+const payMethod = ref<PaymentMethod>('cash')
+const payFile = ref<File | null>(null)
+const payError = ref('')
+const paySaving = ref(false)
 const metersPeriod = ref(currentPeriod())
 const meterUnits = ref<{ unit_id: number; unit_number: string; object_address: string }[]>([])
 const meterDrafts = ref<Record<string, { previous: string; current: string }>>({})
@@ -109,8 +115,53 @@ function statusClass(status: string) {
     pending: 'text-accent-amber bg-accent-amber/10',
     paid: 'text-emerald-400 bg-emerald-500/10',
     overdue: 'text-rose-400 bg-rose-500/10',
+    awaiting_confirmation: 'text-sky-300 bg-sky-500/10',
   }
   return map[status] ?? ''
+}
+
+const payBill = computed(() => tenantPanel.invoices.find((item) => item.id === payTarget.value) ?? null)
+
+function openPay(id: number) {
+  payTarget.value = id
+  payMethod.value = 'cash'
+  payFile.value = null
+  payError.value = ''
+}
+
+function onPayFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  payFile.value = input.files?.[0] ?? null
+}
+
+async function submitPay() {
+  if (!payBill.value) return
+  payError.value = ''
+  if (payMethod.value === 'bank' && !payFile.value) {
+    payError.value = 'Прикрепите чек или квитанцию'
+    return
+  }
+  paySaving.value = true
+  try {
+    const fileIds: number[] = []
+    if (payMethod.value === 'bank' && payFile.value) {
+      const uploaded = await uploadFileApi(payFile.value, {
+        filename: payFile.value.name,
+        kind: 'receipt',
+      })
+      fileIds.push(uploaded.id)
+    }
+    await payTenantInvoice(payBill.value.id, {
+      method: payMethod.value,
+      file_ids: fileIds,
+    })
+    payTarget.value = null
+    await tenantPanel.loadFromApi()
+  } catch (err) {
+    payError.value = formatApiError(err, 'Не удалось отправить оплату')
+  } finally {
+    paySaving.value = false
+  }
 }
 </script>
 
@@ -194,7 +245,7 @@ function statusClass(status: string) {
 
       <div class="panel-tabs mb-4">
         <button
-          v-for="opt in ([['all', 'Все'], ['pending', 'К оплате'], ['paid', 'Оплаченные'], ['overdue', 'Просроченные']] as const)"
+          v-for="opt in ([['all', 'Все'], ['pending', 'К оплате'], ['awaiting_confirmation', 'На проверке'], ['paid', 'Оплаченные'], ['overdue', 'Просроченные']] as const)"
           :key="opt[0]"
           type="button"
           class="panel-tab !text-xs !px-3 !py-1.5"
@@ -215,6 +266,7 @@ function statusClass(status: string) {
               <th class="px-5 py-3 font-medium hidden md:table-cell">Помещение</th>
               <th class="px-5 py-3 font-medium">Сумма</th>
               <th class="px-5 py-3 font-medium">Статус</th>
+              <th class="px-5 py-3 font-medium">Оплата</th>
             </tr>
           </thead>
           <tbody>
@@ -240,6 +292,17 @@ function statusClass(status: string) {
                   {{ INVOICE_STATUS_LABELS[bill.status] }}
                 </span>
               </td>
+              <td class="px-5 py-3.5">
+                <button
+                  v-if="bill.status === 'pending' || bill.status === 'overdue'"
+                  type="button"
+                  class="panel-btn-primary text-xs"
+                  @click="openPay(bill.id)"
+                >
+                  Оплатить
+                </button>
+                <span v-else class="text-xs text-slate-500">{{ bill.paymentMethod ? PAYMENT_METHOD_LABELS[bill.paymentMethod] : '—' }}</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -250,8 +313,45 @@ function statusClass(status: string) {
       </div>
 
       <p class="text-xs text-slate-600 mt-4 text-center">
-        Счета формируются арендодателем и будут приходить автоматически через API
+        Счёт на аренду появляется после того, как арендодатель добавил вас и указал сумму.
+        Безнал — с чеком, наличные и оплата в приложении — без файла. В приложении оплата подтверждается сразу.
       </p>
+
+      <div
+        v-if="payBill"
+        class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+        @click.self="payTarget = null"
+      >
+        <div class="panel-card w-full max-w-md p-5">
+          <h3 class="text-base font-semibold text-white mb-1">Оплата счёта</h3>
+          <p class="text-xs text-slate-500 mb-4">
+            {{ INVOICE_TYPE_LABELS[payBill.kind] }} · {{ billing.formatMoney(payBill.amount) }} · {{ payBill.unitNumber }}
+          </p>
+          <div class="space-y-2 mb-4">
+            <label v-for="method in (['cash', 'bank', 'in_app'] as const)" :key="method" class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+              <input v-model="payMethod" type="radio" :value="method" class="accent-emerald-brand" />
+              {{ PAYMENT_METHOD_LABELS[method] }}
+            </label>
+          </div>
+          <label v-if="payMethod === 'bank'" class="block mb-4">
+            <span class="text-xs text-slate-500 mb-1.5 block">Чек / квитанция</span>
+            <input type="file" accept="image/*,.pdf" class="text-xs text-slate-400" @change="onPayFile" />
+          </label>
+          <p v-if="payMethod === 'in_app'" class="text-xs text-slate-500 mb-4">
+            Оплата в приложении подтверждается автоматически и сразу попадает в доходы арендодателя.
+          </p>
+          <p v-else class="text-xs text-slate-500 mb-4">
+            Арендодатель получит уведомление и подтвердит оплату. После этого сумма попадёт в доходы.
+          </p>
+          <p v-if="payError" class="text-sm text-rose-400 mb-3">{{ payError }}</p>
+          <div class="flex gap-2">
+            <button type="button" class="panel-btn-primary text-xs" :disabled="paySaving" @click="submitPay">
+              {{ paySaving ? 'Отправка...' : 'Отправить' }}
+            </button>
+            <button type="button" class="panel-btn-secondary text-xs" @click="payTarget = null">Отмена</button>
+          </div>
+        </div>
+      </div>
     </div>
   </TenantLayout>
 </template>

@@ -234,6 +234,9 @@ class Invoice(SQLModel, table=True):
     due_date: date = Field(index=True)
     status: str = Field(default=InvoiceStatus.pending.value, index=True)
     paid_at: Optional[datetime] = Field(default=None)
+    payment_method: Optional[str] = Field(default=None, index=True)
+    payment_submitted_at: Optional[datetime] = Field(default=None)
+    income_transaction_id: Optional[int] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=utcnow)
 
     source_bill: Optional[UtilityBill] = Relationship(back_populates="invoices")

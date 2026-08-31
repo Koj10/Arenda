@@ -519,9 +519,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         address: data.address.trim(),
         type: data.type,
         total_area: data.totalArea,
-        cadastre_number: data.cadastralNumber.trim(),
-        cadastral_value: data.cadastralValue,
-        purchase_price: data.purchasePrice,
+        ...(data.cadastralNumber.trim()
+          ? {
+              cadastre_number: data.cadastralNumber.trim(),
+              cadastral_value: data.cadastralValue,
+              purchase_price: data.purchasePrice,
+            }
+          : {}),
       })
       applyObjectDetail(created)
       await uploadPending(data.titleDocuments, 'title', 'object', created.id)

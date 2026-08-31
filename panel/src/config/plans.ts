@@ -20,7 +20,7 @@ export const PLAN_CATALOG: Record<PlanId, PlanDefinition> = {
   profi: {
     id: 'profi',
     name: 'Profi',
-    priceMonthly: 4990,
+    priceMonthly: 5990,
     description: 'До 30 объектов, помещения без лимита',
     limits: {
       maxObjects: 30,

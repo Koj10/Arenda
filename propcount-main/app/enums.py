@@ -72,6 +72,7 @@ class FileKind(str, Enum):
     service = "service"
     supporting = "supporting"
     contract = "contract"
+    receipt = "receipt"
 
 
 class FileLinkedType(str, Enum):
@@ -105,7 +106,14 @@ class InvoiceKind(str, Enum):
 
 class InvoiceStatus(str, Enum):
     pending = "pending"
+    awaiting_confirmation = "awaiting_confirmation"
     paid = "paid"
+
+
+class PaymentMethod(str, Enum):
+    cash = "cash"
+    bank = "bank"
+    in_app = "in_app"
 
 
 OBJECT_LIMIT_START = 3

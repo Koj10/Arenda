@@ -13,6 +13,7 @@ from app.schemas.invoices import (
     InvoiceUpdate,
 )
 from app.services import invoices as invoices_service
+from app.services.invoice_payments import landlord_confirm_payment
 
 router = APIRouter(prefix="/landlord")
 
@@ -92,6 +93,21 @@ def update_invoice(
     session: Session = Depends(get_session),
 ):
     return invoices_service.update_invoice(session, auth.user.id, invoice_id, payload)
+
+
+@router.post(
+    "/invoices/{invoice_id}/confirm-payment",
+    summary="Подтвердить оплату аренды",
+    response_model=InvoiceDetailOut,
+)
+def confirm_invoice_payment(
+    invoice_id: int,
+    auth: AuthContext = Depends(require_landlord),
+    session: Session = Depends(get_session),
+):
+    invoice = invoices_service.get_user_invoice(session, auth.user.id, invoice_id)
+    landlord_confirm_payment(session, invoice)
+    return invoices_service.build_invoice_detail(session, invoice)
 
 
 @router.delete(

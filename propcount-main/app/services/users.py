@@ -1,5 +1,6 @@
 from typing import List
 
+from sqlalchemy import or_
 from sqlmodel import Session, select
 
 from app.enums import (
@@ -13,7 +14,12 @@ from app.models import Subscription, User, UserRole
 
 
 def get_roles(session: Session, user_id: int) -> List[str]:
-    return session.exec(select(UserRole.role).where(UserRole.user_id == user_id)).all()
+    rows = session.exec(select(UserRole.role).where(UserRole.user_id == user_id)).all()
+    roles: List[str] = []
+    for row in rows:
+        value = row[0] if isinstance(row, (tuple, list)) else row
+        roles.append(str(value))
+    return roles
 
 
 def has_role(session: Session, user: User, role: str) -> bool:
@@ -59,7 +65,7 @@ def get_or_create_subscription(
         .where(
             Subscription.user_id == user_id,
             Subscription.status == SubscriptionStatus.active.value,
-            Subscription.plan.in_(allowed_plans),
+            or_(*[Subscription.plan == plan for plan in allowed_plans]),
         )
         .order_by(Subscription.id.desc())
     )

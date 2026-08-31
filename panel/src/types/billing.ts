@@ -1,7 +1,8 @@
 import type { ExpenseCategory } from '@/types/accounting'
 
 export type InvoiceType = 'rent' | 'utilities' | 'other'
-export type InvoiceStatus = 'pending' | 'paid' | 'overdue'
+export type InvoiceStatus = 'pending' | 'paid' | 'overdue' | 'awaiting_confirmation'
+export type PaymentMethod = 'cash' | 'bank' | 'in_app'
 
 export interface InvoiceDocument {
   name: string
@@ -56,6 +57,13 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   pending: 'К оплате',
   paid: 'Оплачен',
   overdue: 'Просрочен',
+  awaiting_confirmation: 'Ожидает подтверждения',
+}
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Наличными',
+  bank: 'Безнал (с чеком)',
+  in_app: 'В приложении',
 }
 
 export const BILL_RECIPIENT_LABELS: Record<BillRecipientType, string> = {

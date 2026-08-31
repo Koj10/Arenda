@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { formatApiError } from '@/api/http'
 import { listTenantInvoices, listTenantSpaces } from '@/api/tenant'
 import { num } from '@/api/types'
-import type { InvoiceStatus, InvoiceType } from '@/types/billing'
+import type { InvoiceStatus, InvoiceType, PaymentMethod } from '@/types/billing'
 
 export interface TenantPanelSpace {
   leaseId: number
@@ -30,16 +30,26 @@ export interface TenantPanelInvoice {
   objectAddress: string
   unitNumber: string
   unitId: number | null
+  paymentMethod: PaymentMethod | null
+  files: { id: number; original_name: string }[]
 }
 
 function asInvoiceType(kind: string): InvoiceType {
-  if (kind === 'rent' || kind === 'utilities' || kind === 'other') return kind
+  if (kind === 'rent') return 'rent'
+  if (kind === 'utility' || kind === 'utilities') return 'utilities'
   return 'other'
 }
 
 function asInvoiceStatus(status: string): InvoiceStatus {
-  if (status === 'paid' || status === 'overdue' || status === 'pending') return status
+  if (status === 'paid' || status === 'overdue' || status === 'pending' || status === 'awaiting_confirmation') {
+    return status
+  }
   return 'pending'
+}
+
+function asPaymentMethod(value?: string | null): PaymentMethod | null {
+  if (value === 'cash' || value === 'bank' || value === 'in_app') return value
+  return null
 }
 
 export const useTenantPanelStore = defineStore('tenantPanel', () => {
@@ -92,6 +102,11 @@ export const useTenantPanelStore = defineStore('tenantPanel', () => {
         objectAddress: row.object_address ?? '',
         unitNumber: row.unit_number ?? '',
         unitId: row.unit_id ?? null,
+        paymentMethod: asPaymentMethod(row.payment_method),
+        files: (row.files ?? []).map((file) => ({
+          id: file.id,
+          original_name: file.original_name || file.filename || file.name || `файл ${file.id}`,
+        })),
       }))
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось загрузить данные арендатора')

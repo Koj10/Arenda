@@ -79,6 +79,7 @@ def build_invoice_out(session: Session, invoice: Invoice) -> InvoiceOut:
         due_date=invoice.due_date,
         status=invoice.status,
         paid_at=invoice.paid_at,
+        payment_method=invoice.payment_method,
         created_at=invoice.created_at,
         computed_status=computed_invoice_status(invoice),
         tenant_name=tenant.name if tenant else "",
@@ -90,7 +91,6 @@ def build_invoice_out(session: Session, invoice: Invoice) -> InvoiceOut:
 def build_invoice_detail(session: Session, invoice: Invoice) -> InvoiceDetailOut:
     files = session.exec(
         select(File).where(
-            File.user_id == invoice.user_id,
             File.linked_type == FileLinkedType.invoice.value,
             File.linked_id == invoice.id,
         )
@@ -110,6 +110,7 @@ def build_invoice_detail(session: Session, invoice: Invoice) -> InvoiceDetailOut
         due_date=invoice_out.due_date,
         status=invoice_out.status,
         paid_at=invoice_out.paid_at,
+        payment_method=invoice_out.payment_method,
         created_at=invoice_out.created_at,
         computed_status=invoice_out.computed_status,
         tenant_name=invoice_out.tenant_name,
@@ -151,6 +152,10 @@ def list_invoices(
             statement = statement.where(
                 Invoice.status == InvoiceStatus.pending.value,
                 Invoice.due_date >= date.today(),
+            )
+        elif status_value == InvoiceStatus.awaiting_confirmation.value:
+            statement = statement.where(
+                Invoice.status == InvoiceStatus.awaiting_confirmation.value,
             )
         elif status_value == InvoiceStatus.paid.value:
             statement = statement.where(Invoice.status == InvoiceStatus.paid.value)
@@ -226,8 +231,11 @@ def update_invoice(
 
     if payload.status is not None:
         if payload.status == InvoiceStatus.paid:
-            invoice.status = InvoiceStatus.paid.value
-            invoice.paid_at = datetime.now(timezone.utc)
+            from app.services.invoice_payments import mark_invoice_paid
+
+            mark_invoice_paid(session, invoice, invoice.payment_method or "cash")
+        elif payload.status == InvoiceStatus.awaiting_confirmation:
+            invoice.status = InvoiceStatus.awaiting_confirmation.value
         else:
             invoice.status = InvoiceStatus.pending.value
             invoice.paid_at = None

@@ -97,6 +97,12 @@ def create_lease(
     )
 
     session.add(lease)
+    session.flush()
+
+    from app.services.invoice_payments import ensure_rent_invoice_for_lease
+
+    ensure_rent_invoice_for_lease(session, lease)
+
     session.commit()
     session.refresh(lease)
 

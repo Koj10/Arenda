@@ -123,6 +123,7 @@ export interface FileOut {
   id: number
   name?: string
   filename?: string
+  original_name?: string
   mime_type?: string
   size?: number
 }
@@ -205,7 +206,29 @@ export interface TenantInvoiceOut {
   object_address?: string | null
   unit_number?: string | null
   unit_id?: number | null
+  payment_method?: string | null
+  files?: FileOut[]
 }
+
+export interface LandlordInvoiceOut {
+  id: number
+  tenant_id: number
+  unit_id?: number | null
+  kind: string
+  period: string
+  amount: string | number
+  due_date: string
+  status: string
+  computed_status: string
+  paid_at?: string | null
+  payment_method?: string | null
+  tenant_name: string
+  unit_number?: string | null
+  object_address?: string | null
+  files?: FileOut[]
+}
+
+export type InvoiceDetailOut = LandlordInvoiceOut
 
 export interface TenantInvoicesResponse {
   matched: boolean

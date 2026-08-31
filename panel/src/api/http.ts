@@ -171,3 +171,12 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   return apiRequest<T>(path, { method: 'POST', body: form })
 }
+
+export async function downloadFileBlob(fileId: number): Promise<Blob> {
+  const token = getAccessToken()
+  const res = await fetch(`${getApiBaseUrl()}/files/${fileId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  })
+  if (!res.ok) throw new ApiError('Не удалось скачать файл', res.status)
+  return res.blob()
+}

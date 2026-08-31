@@ -2,7 +2,10 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.enums import PaymentMethod
+from app.schemas.files import FileOut
 
 
 class TenantSpaceOut(BaseModel):
@@ -41,6 +44,13 @@ class TenantInvoiceOut(BaseModel):
     object_address: Optional[str] = None
     unit_number: Optional[str] = None
     unit_id: Optional[int] = None
+    payment_method: Optional[str] = None
+    files: List[FileOut] = []
+
+
+class TenantInvoicePayRequest(BaseModel):
+    method: PaymentMethod
+    file_ids: List[int] = Field(default_factory=list)
 
 
 class TenantInvoicesResponse(BaseModel):

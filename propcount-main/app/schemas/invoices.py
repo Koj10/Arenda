@@ -54,6 +54,7 @@ class InvoiceOut(BaseModel):
     due_date: date
     status: str
     paid_at: Optional[datetime] = None
+    payment_method: Optional[str] = None
     created_at: datetime
 
     computed_status: str
