@@ -173,6 +173,46 @@ export interface ObjectMetersOut {
   readings: MeterReadingOut[]
 }
 
+export interface TenantSpaceOut {
+  lease_id: number
+  status: string
+  start_date?: string | null
+  end_date: string
+  rent_monthly: string | number
+  unit_id: number
+  unit_number: string
+  unit_area: string | number
+  object_id: number
+  object_address: string
+  tenant_name?: string
+  tenant_inn?: string
+}
+
+export interface TenantSpacesResponse {
+  matched: boolean
+  message?: string | null
+  spaces: TenantSpaceOut[]
+}
+
+export interface TenantInvoiceOut {
+  id: number
+  kind: string
+  period: string
+  amount: string | number
+  due_date: string
+  status: string
+  computed_status: string
+  object_address?: string | null
+  unit_number?: string | null
+  unit_id?: number | null
+}
+
+export interface TenantInvoicesResponse {
+  matched: boolean
+  message?: string | null
+  invoices: TenantInvoiceOut[]
+}
+
 export interface TenantMetersOut {
   period: string
   criteria: string[]

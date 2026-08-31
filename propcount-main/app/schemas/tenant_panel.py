@@ -19,6 +19,8 @@ class TenantSpaceOut(BaseModel):
 
     object_id: int
     object_address: str
+    tenant_name: str = ""
+    tenant_inn: str = ""
 
 
 class TenantSpacesResponse(BaseModel):
@@ -38,6 +40,7 @@ class TenantInvoiceOut(BaseModel):
 
     object_address: Optional[str] = None
     unit_number: Optional[str] = None
+    unit_id: Optional[int] = None
 
 
 class TenantInvoicesResponse(BaseModel):

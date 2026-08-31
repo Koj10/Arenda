@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import TenantLayout from '@/components/layout/TenantLayout.vue'
-import { FileText, Download } from '@lucide/vue'
-import type { Invoice } from '@/types/billing'
-import { useAuthStore } from '@/stores/authStore'
+import { FileText } from '@lucide/vue'
 import { useBillingStore } from '@/stores/billingStore'
 import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS } from '@/types/billing'
 import type { InvoiceStatus } from '@/types/billing'
@@ -12,9 +10,10 @@ import { num, type MeterReadingOut } from '@/api/types'
 import { METERED_CRITERIA, UTILITY_CRITERION_LABELS } from '@/types/utilityBills'
 import type { UtilityCriterion } from '@/types/utilityBills'
 import { formatApiError } from '@/api/http'
+import { useTenantPanelStore } from '@/stores/tenantPanelStore'
 
-const auth = useAuthStore()
 const billing = useBillingStore()
+const tenantPanel = useTenantPanelStore()
 
 const statusFilter = ref<InvoiceStatus | 'all'>('all')
 const metersPeriod = ref(currentPeriod())
@@ -91,30 +90,19 @@ async function saveMeters() {
 }
 
 watch(metersPeriod, () => { void loadMeters() }, { immediate: true })
+onMounted(() => { void tenantPanel.loadFromApi() })
 
 const bills = computed(() => {
-  const inn = auth.tenantInn
-  if (!inn) return []
-  let list = billing.getInvoicesByInn(inn)
+  let list = tenantPanel.invoices
   if (statusFilter.value !== 'all') {
     list = list.filter((b) => b.status === statusFilter.value)
   }
-  return list.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
+  return [...list].sort((a, b) => b.dueDate.localeCompare(a.dueDate))
 })
 
 const pendingTotal = computed(() =>
   bills.value.filter((b) => b.status === 'pending' || b.status === 'overdue').reduce((s, b) => s + b.amount, 0),
 )
-
-function downloadBill(bill: Invoice) {
-  if (!bill.document) return
-  const link = document.createElement('a')
-  link.href = bill.document.dataUrl
-  link.download = bill.document.name
-  link.target = '_blank'
-  link.rel = 'noopener'
-  link.click()
-}
 
 function statusClass(status: string) {
   const map: Record<string, string> = {
@@ -227,7 +215,6 @@ function statusClass(status: string) {
               <th class="px-5 py-3 font-medium hidden md:table-cell">Помещение</th>
               <th class="px-5 py-3 font-medium">Сумма</th>
               <th class="px-5 py-3 font-medium">Статус</th>
-              <th class="px-5 py-3 font-medium hidden lg:table-cell">Файл</th>
             </tr>
           </thead>
           <tbody>
@@ -240,30 +227,18 @@ function statusClass(status: string) {
                 <div class="flex items-center gap-2">
                   <FileText class="w-4 h-4 text-slate-500 shrink-0" />
                   <div>
-                    <p class="text-slate-200">{{ bill.title }}</p>
-                    <p class="text-xs text-slate-500">{{ INVOICE_TYPE_LABELS[bill.type] }} · до {{ billing.formatDate(bill.dueDate) }}</p>
+                    <p class="text-slate-200">{{ INVOICE_TYPE_LABELS[bill.kind] }}</p>
+                    <p class="text-xs text-slate-500">до {{ billing.formatDate(bill.dueDate) }}</p>
                   </div>
                 </div>
               </td>
               <td class="px-5 py-3.5 text-slate-400 text-xs hidden sm:table-cell">{{ billing.formatPeriod(bill.period) }}</td>
-              <td class="px-5 py-3.5 font-mono text-slate-400 hidden md:table-cell">{{ bill.space }}</td>
+              <td class="px-5 py-3.5 font-mono text-slate-400 hidden md:table-cell">{{ bill.unitNumber }}</td>
               <td class="px-5 py-3.5 font-mono text-slate-200">{{ billing.formatMoney(bill.amount) }}</td>
               <td class="px-5 py-3.5">
                 <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(bill.status)">
                   {{ INVOICE_STATUS_LABELS[bill.status] }}
                 </span>
-              </td>
-              <td class="px-5 py-3.5 hidden lg:table-cell">
-                <button
-                  v-if="bill.document"
-                  type="button"
-                  class="inline-flex items-center gap-1 text-xs text-accent-teal hover:underline"
-                  @click="downloadBill(bill)"
-                >
-                  <Download class="w-3.5 h-3.5" />
-                  Скачать
-                </button>
-                <span v-else class="text-xs text-slate-600">—</span>
               </td>
             </tr>
           </tbody>

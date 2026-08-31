@@ -19,6 +19,7 @@ from app.services.users import (
     get_or_create_subscription,
     get_roles,
 )
+from app.utils.inn import normalize_inn
 
 router = APIRouter(prefix="/me")
 
@@ -122,7 +123,7 @@ def update_tenant_profile(
             profile.company_name = payload.company_name
 
         if payload.inn is not None:
-            profile.inn = payload.inn
+            profile.inn = normalize_inn(payload.inn)
     else:
         if not payload.company_name or not payload.inn:
             raise HTTPException(
@@ -133,7 +134,7 @@ def update_tenant_profile(
         profile = TenantProfile(
             user_id=auth.user.id,
             company_name=payload.company_name,
-            inn=payload.inn,
+            inn=normalize_inn(payload.inn),
         )
 
     session.add(profile)

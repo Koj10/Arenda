@@ -47,10 +47,10 @@ const scopeTitle = computed(() => {
     return reportKind.value === 'leases' ? 'Все помещения' : 'Все счета'
   }
   const lease = leases.value.find((l) =>
-    scope.value.kind !== 'all' && l.tenant.id === scope.value.tenantId,
+    scope.value.kind !== 'all' && l.leaseId === scope.value.tenantId,
   )
   if (!lease) return 'Отчёт'
-  return `${lease.property.address} · ${lease.space.name}`
+  return `${lease.objectAddress} · ${lease.unitNumber}`
 })
 
 function selectAllLeases() {
@@ -197,13 +197,13 @@ function navBtnClass(active: boolean) {
           <div class="space-y-1 max-h-64 overflow-y-auto pr-1">
             <button
               v-for="lease in leases"
-              :key="lease.tenant.id"
+              :key="lease.leaseId"
               type="button"
               class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-left transition-colors border border-transparent"
-              :class="navBtnClass(scope.kind !== 'all' && scope.tenantId === lease.tenant.id)"
-              @click="selectLease(lease.tenant.id)"
+              :class="navBtnClass(scope.kind !== 'all' && scope.tenantId === lease.leaseId)"
+              @click="selectLease(lease.leaseId)"
             >
-              <span class="font-mono truncate">{{ lease.space.name }}</span>
+              <span class="font-mono truncate">{{ lease.unitNumber }}</span>
               <ChevronRight class="w-3.5 h-3.5 shrink-0 opacity-50" />
             </button>
           </div>

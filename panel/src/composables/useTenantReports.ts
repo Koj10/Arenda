@@ -1,7 +1,8 @@
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useBillingStore } from '@/stores/billingStore'
+import { useTenantPanelStore } from '@/stores/tenantPanelStore'
 import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS } from '@/types/billing'
 import type { TenantBillReportRow, TenantLeaseReportRow, TenantReportScope } from '@/types/tenantReports'
 
@@ -15,46 +16,46 @@ export function useTenantReports(scope: () => TenantReportScope, reportKind: () 
   const auth = useAuthStore()
   const portfolio = usePortfolioStore()
   const billing = useBillingStore()
+  const tenantPanel = useTenantPanelStore()
 
-  const leases = computed(() => {
-    const inn = auth.tenantInn
-    if (!inn) return []
-    return portfolio.getLeasesByInn(inn)
+  onMounted(() => {
+    void tenantPanel.loadFromApi()
   })
+
+  const leases = computed(() => tenantPanel.spaces)
 
   const leaseRows = computed<TenantLeaseReportRow[]>(() => {
     let list = leases.value
     const s = scope()
-    if (s.kind === 'lease') {
-      list = list.filter((l) => l.tenant.id === s.tenantId)
-    } else if (s.kind === 'space') {
-      list = list.filter((l) => l.tenant.id === s.tenantId)
+    if (s.kind === 'lease' || s.kind === 'space') {
+      list = list.filter((l) => l.leaseId === s.tenantId)
     }
     return list.map((l) => ({
-      address: l.property.address,
-      space: l.space.name,
-      area: l.space.area,
-      rent: l.tenant.rent,
-      contract: portfolio.formatDate(l.tenant.contract),
-      status: STATUS_LABELS[l.tenant.status] ?? l.tenant.status,
+      address: l.objectAddress,
+      space: l.unitNumber,
+      area: l.unitArea,
+      rent: l.rentMonthly,
+      contract: portfolio.formatDate(l.endDate),
+      status: STATUS_LABELS[l.status] ?? l.status,
     }))
   })
 
   const billRows = computed<TenantBillReportRow[]>(() => {
-    const inn = auth.tenantInn
-    if (!inn) return []
-    let list = billing.getInvoicesByInn(inn)
+    let list = tenantPanel.invoices
     const s = scope()
     if (s.kind === 'lease' || s.kind === 'space') {
-      list = list.filter((i) => i.tenantId === s.tenantId)
+      const lease = leases.value.find((l) => l.leaseId === s.tenantId)
+      if (lease) {
+        list = list.filter((i) => i.unitId === lease.unitId)
+      }
     }
-    return list
-      .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
+    return [...list]
+      .sort((a, b) => b.dueDate.localeCompare(a.dueDate))
       .map((i) => ({
         period: billing.formatPeriod(i.period),
-        title: i.title,
-        type: INVOICE_TYPE_LABELS[i.type],
-        space: i.space,
+        title: INVOICE_TYPE_LABELS[i.kind],
+        type: INVOICE_TYPE_LABELS[i.kind],
+        space: i.unitNumber,
         amount: i.amount,
         status: INVOICE_STATUS_LABELS[i.status],
         dueDate: billing.formatDate(i.dueDate),
@@ -81,7 +82,7 @@ export function useTenantReports(scope: () => TenantReportScope, reportKind: () 
     }
   })
 
-  return { leases, leaseRows, billRows, displayRows, summary, portfolio, billing }
+  return { leases, leaseRows, billRows, displayRows, summary, portfolio, billing, auth }
 }
 
 export function formatTenantCell(key: string, value: string | number, portfolio: ReturnType<typeof usePortfolioStore>) {

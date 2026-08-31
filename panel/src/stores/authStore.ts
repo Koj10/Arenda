@@ -75,13 +75,19 @@ export const useAuthStore = defineStore('auth', () => {
         role: current.role,
         token: getAccessToken(),
       })
+      if (current.role === 'tenant') {
+        void import('@/stores/tenantPanelStore').then(({ useTenantPanelStore }) => {
+          void useTenantPanelStore().loadFromApi()
+        })
+      } else {
+        void import('@/stores/portfolioStore').then(({ usePortfolioStore }) => {
+          void usePortfolioStore().loadFromApi()
+        })
+        void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
+          void useAccountingStore().loadFromApi()
+        })
+      }
     }
-    void import('@/stores/portfolioStore').then(({ usePortfolioStore }) => {
-      void usePortfolioStore().loadFromApi()
-    })
-    void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
-      void useAccountingStore().loadFromApi()
-    })
     void import('@/stores/notificationsStore').then(({ useNotificationsStore }) => {
       void useNotificationsStore().loadFromApi()
     })
@@ -94,7 +100,9 @@ export const useAuthStore = defineStore('auth', () => {
       usePlanStore().clear()
       void import('@/stores/portfolioStore').then(({ usePortfolioStore }) => {
         usePortfolioStore().reset()
-        void usePortfolioStore().loadFromApi()
+      })
+      void import('@/stores/tenantPanelStore').then(({ useTenantPanelStore }) => {
+        useTenantPanelStore().reset()
       })
     }
     user.value = next
@@ -201,6 +209,9 @@ export const useAuthStore = defineStore('auth', () => {
     })
     void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
       useAccountingStore().reset()
+    })
+    void import('@/stores/tenantPanelStore').then(({ useTenantPanelStore }) => {
+      useTenantPanelStore().reset()
     })
     void import('@/stores/notificationsStore').then(({ useNotificationsStore }) => {
       useNotificationsStore().clear()

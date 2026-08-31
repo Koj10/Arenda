@@ -17,6 +17,7 @@ from app.schemas.tenants import (
 )
 from app.services.limits import ensure_tenant_limit
 from app.services.realestate import get_lease_status
+from app.utils.inn import normalize_inn
 
 
 def get_user_tenant(session: Session, user_id: int, tenant_id: int) -> Tenant:
@@ -83,10 +84,11 @@ def create_tenant(
 ) -> TenantOut:
     ensure_tenant_limit(session, user_id)
 
+    inn = normalize_inn(payload.inn)
     existing = session.exec(
         select(Tenant).where(
             Tenant.user_id == user_id,
-            Tenant.inn == payload.inn,
+            Tenant.inn == inn,
         )
     ).first()
 
@@ -99,7 +101,7 @@ def create_tenant(
     tenant = Tenant(
         user_id=user_id,
         name=payload.name,
-        inn=payload.inn,
+        inn=inn,
     )
 
     session.add(tenant)
@@ -164,22 +166,24 @@ def update_tenant(
     if payload.name is not None:
         tenant.name = payload.name
 
-    if payload.inn is not None and payload.inn != tenant.inn:
-        existing = session.exec(
-            select(Tenant).where(
-                Tenant.user_id == user_id,
-                Tenant.inn == payload.inn,
-                Tenant.id != tenant.id,
-            )
-        ).first()
+    if payload.inn is not None:
+        inn = normalize_inn(payload.inn)
+        if inn != tenant.inn:
+            existing = session.exec(
+                select(Tenant).where(
+                    Tenant.user_id == user_id,
+                    Tenant.inn == inn,
+                    Tenant.id != tenant.id,
+                )
+            ).first()
 
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Tenant with this INN already exists",
-            )
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Tenant with this INN already exists",
+                )
 
-        tenant.inn = payload.inn
+            tenant.inn = inn
 
     session.add(tenant)
     session.commit()

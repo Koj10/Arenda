@@ -28,6 +28,7 @@ from app.schemas.tenant_panel import (
 )
 from app.services.realestate import get_lease_status
 from app.services.users import get_or_create_subscription
+from app.utils.inn import normalize_inn
 from app.utils.period import parse_period
 
 EMPTY_STATE_MESSAGE = "Арендодатель должен добавить вашу компанию по ИНН"
@@ -91,9 +92,12 @@ def get_tenant_profile(session: Session, user_id: int) -> Optional[TenantProfile
 
 
 def get_matched_tenant_ids(session: Session, profile: TenantProfile) -> List[int]:
-    tenants = session.exec(select(Tenant).where(Tenant.inn == profile.inn)).all()
+    inn = normalize_inn(profile.inn)
+    if not inn:
+        return []
 
-    return [tenant.id for tenant in tenants]
+    tenants = session.exec(select(Tenant)).all()
+    return [tenant.id for tenant in tenants if normalize_inn(tenant.inn) == inn]
 
 
 def computed_invoice_status(invoice: Invoice) -> str:
@@ -172,6 +176,8 @@ def get_tenant_spaces(session: Session, user_id: int) -> TenantSpacesResponse:
         if not obj:
             continue
 
+        tenant = session.get(Tenant, lease.tenant_id)
+
         spaces.append(
             TenantSpaceOut(
                 lease_id=lease.id,
@@ -184,6 +190,8 @@ def get_tenant_spaces(session: Session, user_id: int) -> TenantSpacesResponse:
                 unit_area=unit.area,
                 object_id=obj.id,
                 object_address=obj.address,
+                tenant_name=tenant.name if tenant else "",
+                tenant_inn=tenant.inn if tenant else profile.inn,
             )
         )
 
@@ -262,6 +270,7 @@ def get_tenant_invoices(
                 computed_status=computed_invoice_status(invoice),
                 object_address=object_address,
                 unit_number=unit_number,
+                unit_id=invoice.unit_id,
             )
         )
 

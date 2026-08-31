@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TenantLayout from '@/components/layout/TenantLayout.vue'
-import FileAttachments from '@/components/ui/FileAttachments.vue'
 import { ArrowLeft, Building2, MapPin } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useBillingStore } from '@/stores/billingStore'
-import { PROPERTY_TYPE_LABELS, TENANT_DOCUMENT_LABEL, formatAreaShare } from '@/types/portfolio'
+import { useTenantPanelStore } from '@/stores/tenantPanelStore'
 import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS } from '@/types/billing'
 
 const route = useRoute()
@@ -15,23 +14,22 @@ const router = useRouter()
 const auth = useAuthStore()
 const portfolio = usePortfolioStore()
 const billing = useBillingStore()
+const tenantPanel = useTenantPanelStore()
 
 const leaseId = computed(() => Number(route.params.leaseId))
 
-const lease = computed(() => {
-  const inn = auth.tenantInn
-  if (!inn) return null
-  return portfolio.getLeasesByInn(inn).find((l) => l.tenant.id === leaseId.value) ?? null
+onMounted(() => {
+  if (!tenantPanel.spaces.length) void tenantPanel.loadFromApi()
 })
 
+const lease = computed(() => tenantPanel.getSpaceByLeaseId(leaseId.value))
+
 const areaShareLabel = computed(() =>
-  lease.value
-    ? formatAreaShare(lease.value.space.area, lease.value.property.totalArea)
-    : '',
+  lease.value ? portfolio.formatArea(lease.value.unitArea) : '',
 )
 
 const recentBills = computed(() =>
-  lease.value ? billing.getInvoicesByTenantId(lease.value.tenant.id).slice(0, 5) : [],
+  lease.value ? tenantPanel.invoicesForUnit(lease.value.unitId).slice(0, 5) : [],
 )
 
 function statusLabel(status: string) {
@@ -71,10 +69,10 @@ function billStatusClass(status: string) {
       </button>
 
       <div class="mb-6">
-        <h1 class="text-2xl font-bold text-white mb-1 font-mono">{{ lease.space.name }}</h1>
+        <h1 class="text-2xl font-bold text-white mb-1 font-mono">{{ lease.unitNumber }}</h1>
         <p class="text-sm text-slate-400 flex items-center gap-1.5">
           <MapPin class="w-4 h-4" />
-          {{ lease.property.address }}
+          {{ lease.objectAddress }}
         </p>
       </div>
 
@@ -82,30 +80,28 @@ function billStatusClass(status: string) {
         <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Помещение</p>
           <p class="text-sm text-slate-200 font-mono">{{ areaShareLabel }}</p>
-          <p class="text-xs text-slate-500 mt-1">Ставка {{ portfolio.formatMoney(lease.space.monthlyRate) }}/мес</p>
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Договор</p>
-          <p class="text-sm font-mono text-slate-200">до {{ portfolio.formatDate(lease.tenant.contract) }}</p>
-          <span class="inline-flex mt-2 px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(lease.tenant.status)">
-            {{ statusLabel(lease.tenant.status) }}
+          <p class="text-sm font-mono text-slate-200">до {{ portfolio.formatDate(lease.endDate) }}</p>
+          <span class="inline-flex mt-2 px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(lease.status)">
+            {{ statusLabel(lease.status) }}
           </span>
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Аренда / мес</p>
-          <p class="text-xl font-mono text-emerald-400">{{ portfolio.formatMoney(lease.tenant.rent) }}</p>
+          <p class="text-xl font-mono text-emerald-400">{{ portfolio.formatMoney(lease.rentMonthly) }}</p>
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-          <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Тип объекта</p>
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Арендатор</p>
           <p class="text-sm text-slate-200 flex items-center gap-1.5">
             <Building2 class="w-4 h-4 text-slate-500" />
-            {{ PROPERTY_TYPE_LABELS[lease.property.type] }}
+            {{ lease.tenantName || 'Компания' }}
           </p>
-          <p class="text-xs text-slate-500 mt-1 font-mono">ИНН {{ lease.tenant.inn }}</p>
+          <p class="text-xs text-slate-500 mt-1 font-mono">ИНН {{ lease.tenantInn || auth.tenantInn }}</p>
         </div>
       </div>
 
-      <!-- Recent bills -->
       <div class="rounded-2xl border border-slate-800 bg-slate-900/40 overflow-hidden mb-6">
         <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
           <h2 class="text-sm font-medium text-slate-300">Счета по помещению</h2>
@@ -116,8 +112,8 @@ function billStatusClass(status: string) {
         <div v-if="recentBills.length" class="divide-y divide-slate-800/80">
           <div v-for="bill in recentBills" :key="bill.id" class="px-5 py-3.5 flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm text-slate-200">{{ bill.title }}</p>
-              <p class="text-xs text-slate-500">{{ INVOICE_TYPE_LABELS[bill.type] }} · {{ billing.formatPeriod(bill.period) }}</p>
+              <p class="text-sm text-slate-200">{{ INVOICE_TYPE_LABELS[bill.kind] }}</p>
+              <p class="text-xs text-slate-500">{{ billing.formatPeriod(bill.period) }}</p>
             </div>
             <div class="text-right shrink-0">
               <p class="font-mono text-sm text-slate-200">{{ billing.formatMoney(bill.amount) }}</p>
@@ -129,22 +125,10 @@ function billStatusClass(status: string) {
         </div>
         <p v-else class="px-5 py-8 text-center text-sm text-slate-500">Счетов пока нет</p>
       </div>
-
-      <!-- Read-only documents -->
-      <div class="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-        <FileAttachments
-          entity-type="tenant"
-          :entity-id="lease.tenant.id"
-          category="lease"
-          :label="TENANT_DOCUMENT_LABEL"
-          compact
-          readonly
-        />
-      </div>
     </div>
 
     <div v-else class="max-w-md mx-auto py-16 text-center">
-      <p class="text-slate-400 mb-4">Помещение не найдено или недоступно</p>
+      <p class="text-slate-400 mb-4">{{ tenantPanel.loading ? 'Загрузка...' : 'Помещение не найдено или недоступно' }}</p>
       <button type="button" class="text-accent-teal hover:underline text-sm" @click="router.push('/tenant/spaces')">
         Вернуться к списку
       </button>

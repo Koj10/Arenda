@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useAccountingStore } from '@/stores/accountingStore'
-import { useBillingStore } from '@/stores/billingStore'
+import { useTenantPanelStore } from '@/stores/tenantPanelStore'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
 import { INVOICE_STATUS_LABELS } from '@/types/billing'
@@ -61,7 +61,6 @@ export const usePanelSearchStore = defineStore('panelSearch', () => {
     const auth = useAuthStore()
     const portfolio = usePortfolioStore()
     const accounting = useAccountingStore()
-    const billing = useBillingStore()
     const hits: PanelSearchHit[] = []
 
     const pages = auth.isTenant ? PAGES_TENANT : PAGES_LANDLORD
@@ -78,32 +77,30 @@ export const usePanelSearchStore = defineStore('panelSearch', () => {
     }
 
     if (auth.isTenant) {
-      const inn = auth.tenantInn
-      if (inn) {
-        for (const lease of portfolio.getLeasesByInn(inn)) {
-          const hay = `${lease.property.address} ${lease.space.name} ${lease.tenant.company}`
-          if (match(hay, q)) {
-            hits.push({
-              id: `lease:${lease.tenant.id}`,
-              kind: 'space',
-              title: lease.space.name,
-              subtitle: lease.property.address,
-              to: `/tenant/spaces/${lease.tenant.id}`,
-              leaseId: lease.tenant.id,
-            })
-          }
+      const tenantPanel = useTenantPanelStore()
+      for (const lease of tenantPanel.spaces) {
+        const hay = `${lease.objectAddress} ${lease.unitNumber} ${lease.tenantName}`
+        if (match(hay, q)) {
+          hits.push({
+            id: `lease:${lease.leaseId}`,
+            kind: 'space',
+            title: lease.unitNumber,
+            subtitle: lease.objectAddress,
+            to: `/tenant/spaces/${lease.leaseId}`,
+            leaseId: lease.leaseId,
+          })
         }
-        for (const inv of billing.getInvoicesByInn(inn)) {
-          const hay = `${inv.title} ${inv.space} ${inv.period}`
-          if (match(hay, q)) {
-            hits.push({
-              id: `inv:${inv.id}`,
-              kind: 'invoice',
-              title: inv.title,
-              subtitle: `${INVOICE_STATUS_LABELS[inv.status]} · ${inv.space}`,
-              to: '/tenant/bills',
-            })
-          }
+      }
+      for (const inv of tenantPanel.invoices) {
+        const hay = `${inv.kind} ${inv.unitNumber} ${inv.period}`
+        if (match(hay, q)) {
+          hits.push({
+            id: `inv:${inv.id}`,
+            kind: 'invoice',
+            title: INVOICE_STATUS_LABELS[inv.status],
+            subtitle: `${inv.unitNumber} · ${inv.period}`,
+            to: '/tenant/bills',
+          })
         }
       }
     } else {
