@@ -3,6 +3,7 @@ from typing import List, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
+from sqlalchemy import update
 from sqlmodel import Session, select
 
 from app.enums import (
@@ -15,7 +16,7 @@ from app.enums import (
 from app.models import Invoice, Lease, Notification, Object, Tenant, TenantProfile, Transaction, Unit
 from app.schemas.files import FileOut
 from app.utils.inn import normalize_inn
-from app.utils.period import clamp_day, parse_period
+from app.utils.period import parse_period
 
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 
@@ -31,17 +32,102 @@ def current_period_for_date(value: date) -> str:
     return f"{value.year}-{value.month:02d}"
 
 
-def due_date_for_period(period: str, invoice_day: int = 1) -> date:
-    month_start, _month_end = parse_period(period)
-    return clamp_day(month_start.year, month_start.month, invoice_day)
+def due_date_for_period(period: str) -> date:
+    _month_start, month_end = parse_period(period)
+    return month_end
 
 
-def is_rent_billing_day(lease: Lease, on_date: date) -> bool:
+def lease_is_active_on(lease: Lease, on_date: date) -> bool:
     start = lease.start_date or on_date
-    if lease.end_date < on_date or start > on_date:
-        return False
-    billing = clamp_day(on_date.year, on_date.month, lease.invoice_day or 1)
-    return on_date == billing
+    return start <= on_date <= lease.end_date
+
+
+def get_latest_rent_invoice(session: Session, lease: Lease) -> Optional[Invoice]:
+    invoices = session.exec(
+        select(Invoice).where(
+            Invoice.user_id == lease.user_id,
+            Invoice.tenant_id == lease.tenant_id,
+            Invoice.unit_id == lease.unit_id,
+            Invoice.kind == InvoiceKind.rent.value,
+        )
+    ).all()
+    if not invoices:
+        return None
+    return max(invoices, key=lambda item: (item.period or "", item.id or 0))
+
+
+def _unlink_invoice_files(session: Session, invoice_id: int) -> None:
+    from app.models import File
+
+    session.exec(
+        update(File)
+        .where(
+            File.linked_type == FileLinkedType.invoice.value,
+            File.linked_id == invoice_id,
+        )
+        .values(linked_type=None, linked_id=None)
+    )
+
+
+def _reset_rent_invoice(
+    session: Session,
+    invoice: Invoice,
+    lease: Lease,
+    period: str,
+    *,
+    notify: bool,
+) -> Invoice:
+    invoice.period = period
+    invoice.amount = lease.rent_monthly
+    invoice.due_date = due_date_for_period(period)
+    invoice.status = InvoiceStatus.pending.value
+    invoice.paid_at = None
+    invoice.payment_method = None
+    invoice.payment_submitted_at = None
+    invoice.income_transaction_id = None
+    session.add(invoice)
+    _unlink_invoice_files(session, invoice.id)
+
+    if notify:
+        tenant = session.get(Tenant, lease.tenant_id)
+        unit = session.get(Unit, lease.unit_id)
+        obj = session.get(Object, unit.object_id) if unit else None
+        place = f"{obj.address if obj else 'объект'} · {unit.number if unit else 'помещение'}"
+        notify_user(
+            session,
+            lease.user_id,
+            "Аренда за новый месяц",
+            f"Счёт №{invoice.id} снова не оплачен — {invoice.amount} ₽ за {period}. {place}.",
+        )
+        if tenant:
+            notify_tenant_users_by_inn(
+                session,
+                tenant.inn,
+                "Оплатите аренду за новый месяц",
+                f"Счёт №{invoice.id} на {invoice.amount} ₽ за {period} снова не оплачен. {place}. Оплатите в разделе «Счета».",
+            )
+    return invoice
+
+
+def _notify_new_rent_invoice(session: Session, lease: Lease, invoice: Invoice) -> None:
+    tenant = session.get(Tenant, lease.tenant_id)
+    unit = session.get(Unit, lease.unit_id)
+    obj = session.get(Object, unit.object_id) if unit else None
+    place = f"{obj.address if obj else 'объект'} · {unit.number if unit else 'помещение'}"
+    amount = f"{invoice.amount}"
+    notify_user(
+        session,
+        lease.user_id,
+        "Выставлен счёт на аренду",
+        f"Счёт №{invoice.id} на {amount} ₽ за {invoice.period}. {place}.",
+    )
+    if tenant:
+        notify_tenant_users_by_inn(
+            session,
+            tenant.inn,
+            "Новый счёт на аренду",
+            f"Выставлен счёт №{invoice.id} на {amount} ₽ за {invoice.period}. {place}. Оплатите в разделе «Счета».",
+        )
 
 
 def list_invoice_files(session: Session, invoice_id: int) -> List[FileOut]:
@@ -88,64 +174,57 @@ def ensure_rent_invoice_for_lease(
         return None
 
     today = on_date or today_moscow()
-    if not force and not is_rent_billing_day(lease, today):
+    if not force and not lease_is_active_on(lease, today):
         return None
-
-    start = lease.start_date or today
-    if lease.end_date < today or start > today:
-        if not force:
-            return None
-        month_start, month_end = parse_period(current_period_for_date(today))
+    if force and not lease_is_active_on(lease, today):
+        period = current_period_for_date(today)
+        month_start, month_end = parse_period(period)
         if lease.end_date < month_start:
             return None
         if lease.start_date and lease.start_date > month_end:
             return None
 
     period = current_period_for_date(today)
-    existing = session.exec(
-        select(Invoice).where(
-            Invoice.user_id == lease.user_id,
-            Invoice.tenant_id == lease.tenant_id,
-            Invoice.unit_id == lease.unit_id,
-            Invoice.kind == InvoiceKind.rent.value,
-            Invoice.period == period,
+    existing = get_latest_rent_invoice(session, lease)
+
+    if existing is None:
+        invoice = Invoice(
+            user_id=lease.user_id,
+            tenant_id=lease.tenant_id,
+            unit_id=lease.unit_id,
+            kind=InvoiceKind.rent.value,
+            period=period,
+            amount=lease.rent_monthly,
+            due_date=due_date_for_period(period),
+            status=InvoiceStatus.pending.value,
         )
-    ).first()
-    if existing:
+        session.add(invoice)
+        session.flush()
+        _notify_new_rent_invoice(session, lease, invoice)
+        return invoice
+
+    if existing.period == period:
+        if existing.status in (
+            InvoiceStatus.pending.value,
+            InvoiceStatus.overdue.value,
+        ) and existing.amount != lease.rent_monthly:
+            existing.amount = lease.rent_monthly
+            existing.due_date = due_date_for_period(period)
+            session.add(existing)
         return existing
 
-    invoice = Invoice(
-        user_id=lease.user_id,
-        tenant_id=lease.tenant_id,
-        unit_id=lease.unit_id,
-        kind=InvoiceKind.rent.value,
-        period=period,
-        amount=lease.rent_monthly,
-        due_date=due_date_for_period(period, lease.invoice_day or 1),
-        status=InvoiceStatus.pending.value,
-    )
-    session.add(invoice)
-    session.flush()
+    if existing.status == InvoiceStatus.awaiting_confirmation.value:
+        return existing
 
-    tenant = session.get(Tenant, lease.tenant_id)
-    unit = session.get(Unit, lease.unit_id)
-    obj = session.get(Object, unit.object_id) if unit else None
-    place = f"{obj.address if obj else 'объект'} · {unit.number if unit else 'помещение'}"
-    amount = f"{invoice.amount}"
-    notify_user(
-        session,
-        lease.user_id,
-        "Выставлен счёт на аренду",
-        f"Счёт №{invoice.id} на {amount} ₽ за {period}. {place}.",
-    )
-    if tenant:
-        notify_tenant_users_by_inn(
-            session,
-            tenant.inn,
-            "Новый счёт на аренду",
-            f"Выставлен счёт №{invoice.id} на {amount} ₽ за {period}. {place}. Оплатите в разделе «Счета».",
-        )
-    return invoice
+    if existing.status == InvoiceStatus.paid.value:
+        return _reset_rent_invoice(session, existing, lease, period, notify=True)
+
+    existing.period = period
+    existing.amount = lease.rent_monthly
+    existing.due_date = due_date_for_period(period)
+    existing.status = InvoiceStatus.pending.value
+    session.add(existing)
+    return existing
 
 
 def _create_rent_income_transaction(session: Session, invoice: Invoice) -> Transaction:
@@ -282,28 +361,16 @@ def landlord_confirm_payment(session: Session, invoice: Invoice) -> Invoice:
 
 def generate_scheduled_rent_invoices(session: Session) -> int:
     today = today_moscow()
-    period = current_period_for_date(today)
     leases = session.exec(select(Lease).where(Lease.end_date >= today)).all()
-    created = 0
+    processed = 0
 
     for lease in leases:
-        existing = session.exec(
-            select(Invoice.id).where(
-                Invoice.user_id == lease.user_id,
-                Invoice.tenant_id == lease.tenant_id,
-                Invoice.unit_id == lease.unit_id,
-                Invoice.kind == InvoiceKind.rent.value,
-                Invoice.period == period,
-            )
-        ).first()
-        if existing:
-            continue
         invoice = ensure_rent_invoice_for_lease(session, lease, on_date=today)
         if invoice:
-            created += 1
+            processed += 1
 
     session.commit()
-    return created
+    return processed
 
 
 def run_rent_invoices_job() -> dict:

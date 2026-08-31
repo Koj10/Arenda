@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import update
 from sqlmodel import Session, select
 
-from app.enums import FileLinkedType, InvoiceKind, InvoiceStatus
+from app.enums import FileLinkedType, InvoiceStatus
 from app.models import File, Invoice, Lease, Object, Tenant, Unit, UtilityBill
 from app.schemas.files import FileOut
 from app.schemas.invoices import (
@@ -19,7 +19,7 @@ from app.services.files import link_files_by_ids
 from app.services.realestate import get_user_unit
 from app.services.tenants import get_user_tenant
 from app.services.invoice_payments import ensure_rent_invoice_for_lease
-from app.utils.period import clamp_day, parse_period, validate_period_format
+from app.utils.period import parse_period, validate_period_format
 
 
 def computed_invoice_status(invoice: Invoice) -> str:
@@ -306,27 +306,13 @@ def generate_rent_invoices(
         if lease.rent_monthly <= 0:
             continue
 
-        existing = session.exec(
-            select(Invoice.id).where(
-                Invoice.user_id == user_id,
-                Invoice.tenant_id == lease.tenant_id,
-                Invoice.unit_id == lease.unit_id,
-                Invoice.kind == InvoiceKind.rent.value,
-                Invoice.period == period,
-            )
-        ).first()
-
-        if existing:
-            continue
-
-        billing_date = clamp_day(month_start.year, month_start.month, lease.invoice_day or 1)
         invoice = ensure_rent_invoice_for_lease(
             session,
             lease,
-            on_date=billing_date,
+            on_date=min(date.today(), month_end),
             force=True,
         )
-        if invoice:
+        if invoice and invoice.period == period:
             created.append(invoice)
 
     if created:

@@ -67,10 +67,7 @@ export interface Tenant {
   contract: string
   status: TenantStatus
   leaseId?: number
-  invoiceDay: number
 }
-
-export const INVOICE_DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
 
 export interface AttachedDocument {
   id: number
@@ -238,7 +235,6 @@ export interface TenantFormData {
   rent: number
   contract: string
   documents: PendingDocument[]
-  invoiceDay: number
 }
 
 export interface SpaceUpdateData {
@@ -258,7 +254,6 @@ export interface TenantUpdateData {
   inn: string
   rent: number
   contract: string
-  invoiceDay: number
 }
 
 export interface SpaceFormData {

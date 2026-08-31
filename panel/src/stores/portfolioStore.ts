@@ -454,7 +454,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               rent: 0,
               contract: '',
               status: 'active',
-              invoiceDay: 1,
             })
             continue
           }
@@ -470,7 +469,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               contract: lease.end_date,
               status: getTenantStatus(lease.end_date),
               leaseId: lease.id,
-              invoiceDay: lease.invoice_day || 1,
             })
           }
         }
@@ -642,7 +640,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         start_date: endDate < today ? endDate : today,
         end_date: endDate,
         file_ids: fileIds.length ? fileIds : undefined,
-        invoice_day: data.invoiceDay || 1,
       })
       addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenant.id, 'lease'))
       await loadFromApi()
@@ -861,14 +858,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         await landlordApi.updateLease(tenant.leaseId, {
           rent_monthly: data.rent,
           end_date: data.contract,
-          invoice_day: data.invoiceDay,
         })
       }
       tenant.company = data.company.trim()
       tenant.inn = data.inn.trim()
       tenant.rent = data.rent
       tenant.contract = data.contract
-      tenant.invoiceDay = data.invoiceDay
       tenant.status = getTenantStatus(data.contract)
       syncPropertyStats(tenant.propertyId)
       return true

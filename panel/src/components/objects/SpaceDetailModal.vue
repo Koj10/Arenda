@@ -16,7 +16,6 @@ import {
   PROPERTY_TYPE_LABELS,
   RENOVATION_LABELS,
   SPACE_STATUS_LABELS,
-  INVOICE_DAYS,
   formatAreaShare,
 } from '@/types/portfolio'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
@@ -57,7 +56,6 @@ const dealForm = ref<TenantUpdateData>({
   inn: '',
   rent: 0,
   contract: '',
-  invoiceDay: 1,
 })
 
 const MAIN_TABS: { id: MainTab; label: string }[] = [
@@ -224,7 +222,6 @@ function fillDealForm() {
     inn: tenant.value.inn,
     rent: tenant.value.rent,
     contract: tenant.value.contract,
-    invoiceDay: tenant.value.invoiceDay || 1,
   }
 }
 
@@ -285,9 +282,6 @@ function validateDeal() {
   if (!/^\d{10}$|^\d{12}$/.test(dealForm.value.inn)) dealErrors.value.inn = 'ИНН: 10 или 12 цифр'
   if (dealForm.value.rent <= 0) dealErrors.value.rent = 'Укажите сумму аренды'
   if (!dealForm.value.contract) dealErrors.value.contract = 'Укажите дату окончания'
-  if (dealForm.value.invoiceDay < 1 || dealForm.value.invoiceDay > 31) {
-    dealErrors.value.invoiceDay = 'День от 1 до 31'
-  }
   return Object.keys(dealErrors.value).length === 0
 }
 
@@ -299,38 +293,6 @@ async function saveDeal() {
     return
   }
   editingDeal.value = false
-}
-
-const ratesSaving = ref(false)
-const ratesError = ref<string | null>(null)
-const ratesInvoiceDay = ref(1)
-
-watch(
-  tenant,
-  (value) => {
-    ratesInvoiceDay.value = value?.invoiceDay || 1
-    ratesError.value = null
-  },
-  { immediate: true },
-)
-
-async function saveRatesSchedule() {
-  if (!tenant.value) return
-  ratesSaving.value = true
-  ratesError.value = null
-  const ok = await store.updateTenant(
-    tenant.value.id,
-    {
-      company: tenant.value.company,
-      inn: tenant.value.inn,
-      rent: tenant.value.rent,
-      contract: tenant.value.contract,
-      invoiceDay: ratesInvoiceDay.value,
-    },
-    tenant.value.leaseId,
-  )
-  ratesSaving.value = false
-  if (!ok) ratesError.value = store.lastError || 'Не удалось сохранить график'
 }
 
 watch(
@@ -592,13 +554,6 @@ watch(
                     <input v-model="dealForm.contract" type="date" :class="[INPUT_CLASS, { 'border-red-500': dealErrors.contract }]" />
                     <p v-if="dealErrors.contract" class="text-xs text-red-400 mt-1">{{ dealErrors.contract }}</p>
                   </div>
-                  <div class="sm:col-span-2">
-                    <label class="block text-xs text-slate-500 mb-1">Счёт за аренду</label>
-                    <select v-model.number="dealForm.invoiceDay" :class="[INPUT_CLASS, { 'border-red-500': dealErrors.invoiceDay }]">
-                      <option v-for="day in INVOICE_DAYS" :key="day" :value="day">{{ day }}-е число каждого месяца</option>
-                    </select>
-                    <p v-if="dealErrors.invoiceDay" class="text-xs text-red-400 mt-1">{{ dealErrors.invoiceDay }}</p>
-                  </div>
                 </div>
               </div>
               <div v-else-if="tenant" class="space-y-4">
@@ -625,10 +580,6 @@ watch(
                   <div>
                     <p class="text-xs text-slate-500 mb-1">Договор до</p>
                     <p class="text-sm font-mono text-slate-200">{{ store.formatDate(tenant.contract) }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-slate-500 mb-1">Счёт за аренду</p>
-                    <p class="text-sm text-slate-200">{{ tenant.invoiceDay || 1 }}-е число каждого месяца</p>
                   </div>
                   <div>
                     <p class="text-xs text-slate-500 mb-1">Статус</p>
@@ -668,30 +619,7 @@ watch(
                   <p class="text-lg font-mono text-slate-200">{{ store.formatMoney(space.monthlyRate) }}</p>
                 </div>
               </div>
-              <div v-if="tenant" class="mt-4 rounded-lg border border-border bg-panel p-4">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">График выставления счёта</p>
-                <div class="flex flex-col sm:flex-row sm:items-end gap-3">
-                  <div class="flex-1">
-                    <label class="block text-xs text-slate-500 mb-1.5">День месяца</label>
-                    <select v-model.number="ratesInvoiceDay" class="panel-input">
-                      <option v-for="day in INVOICE_DAYS" :key="day" :value="day">{{ day }}-е число каждого месяца</option>
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    class="panel-btn-primary"
-                    :disabled="ratesSaving || ratesInvoiceDay === tenant.invoiceDay"
-                    @click="saveRatesSchedule"
-                  >
-                    {{ ratesSaving ? 'Сохранение…' : 'Сохранить' }}
-                  </button>
-                </div>
-                <p class="text-xs text-slate-500 mt-2">
-                  В этот день каждый месяц арендатору приходит счёт за аренду. Если в месяце меньше дней — в последний день месяца.
-                </p>
-                <p v-if="ratesError" class="text-xs text-red-400 mt-2">{{ ratesError }}</p>
-              </div>
-              <p v-else class="text-xs text-slate-500 mt-4">Добавьте арендатора, чтобы задать график выставления счёта</p>
+              <p class="text-xs text-slate-500 mt-4">График изменения ставок будет доступен после подключения к договору</p>
             </template>
 
             <template v-else-if="dealTab === 'extra'">
