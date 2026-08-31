@@ -81,6 +81,10 @@ export async function updateCadastre(cadastreId: number, body: {
   return apiRequest<CadastreOut>(`/landlord/cadastre/${cadastreId}`, { method: 'PATCH', body })
 }
 
+export async function deleteCadastre(cadastreId: number) {
+  return apiRequest<void>(`/landlord/cadastre/${cadastreId}`, { method: 'DELETE' })
+}
+
 export async function listTenants(q?: string) {
   const query = q ? `?q=${encodeURIComponent(q)}` : ''
   return apiRequest<TenantOut[]>(`/landlord/tenants${query}`)

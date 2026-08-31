@@ -757,6 +757,24 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  async function removeCadastralParcel(id: number) {
+    const parcel = getCadastralParcelById(id)
+    if (!parcel) return false
+    lastError.value = null
+    try {
+      await landlordApi.deleteCadastre(id)
+      for (const space of spaces.value) {
+        if (space.cadastralParcelId === id) space.cadastralParcelId = undefined
+      }
+      cadastralParcels.value = cadastralParcels.value.filter((p) => p.id !== id)
+      if (cadastralEditId.value === id) closeCadastralModal()
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось удалить кадастр')
+      return false
+    }
+  }
+
   function openCadastralModal(propertyId: number, parcelId?: number) {
     cadastralModalPropertyId.value = propertyId
     cadastralEditId.value = parcelId ?? null
@@ -958,6 +976,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     updateTenant,
     addCadastralParcel,
     updateCadastralParcel,
+    removeCadastralParcel,
     splitCadastralParcel,
     loadFromApi,
     openCadastralModal,

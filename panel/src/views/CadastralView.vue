@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import CadastralParcelModal from '@/components/objects/CadastralParcelModal.vue'
 import SplitCadastralModal from '@/components/objects/SplitCadastralModal.vue'
-import { Building2, GripVertical, Pencil, Plus, Scissors, Search } from '@lucide/vue'
+import { Building2, GripVertical, Pencil, Plus, Scissors, Search, Trash2 } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import type { Space } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
@@ -18,6 +18,7 @@ const selectedPropertyId = ref<number | null>(null)
 const draggingSpaceId = ref<number | null>(null)
 const dropTarget = ref<'unassigned' | number | null>(null)
 const assignError = ref<string | null>(null)
+const deletingParcelId = ref<number | null>(null)
 
 const filteredProperties = computed(() => {
   if (!search.value) return store.properties
@@ -76,6 +77,21 @@ function onEditParcel(parcelId: number) {
 
 function onSplitParcel(parcelId: number) {
   store.openSplitCadastralModal(parcelId)
+}
+
+async function onDeleteParcel(parcelId: number) {
+  const parcel = store.getCadastralParcelById(parcelId)
+  if (!parcel || deletingParcelId.value) return
+  const spacesCount = store.getSpacesForParcel(parcelId).length
+  const spacesNote = spacesCount
+    ? `\n\nПомещения (${spacesCount}) останутся на объекте, но будут без кадастра.`
+    : ''
+  if (!confirm(`Удалить кадастровый номер ${parcel.cadastralNumber}?${spacesNote}`)) return
+  deletingParcelId.value = parcelId
+  assignError.value = null
+  const ok = await store.removeCadastralParcel(parcelId)
+  deletingParcelId.value = null
+  if (!ok) assignError.value = store.lastError || 'Не удалось удалить кадастр'
 }
 
 function onDragStart(spaceId: number, e: DragEvent) {
@@ -282,6 +298,15 @@ function chipClass(spaceId: number) {
                         @click="onEditParcel(parcel.id)"
                       >
                         <Pencil class="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-40"
+                        :disabled="deletingParcelId === parcel.id"
+                        title="Удалить кадастровый номер"
+                        @click="onDeleteParcel(parcel.id)"
+                      >
+                        <Trash2 class="w-4 h-4" />
                       </button>
                     </div>
                   </div>

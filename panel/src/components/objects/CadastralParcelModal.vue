@@ -8,6 +8,7 @@ const store = usePortfolioStore()
 
 const form = ref(createEmptyCadastralParcelFormData())
 const errors = ref<Record<string, string>>({})
+const deleting = ref(false)
 
 const inputClass = 'panel-input'
 
@@ -39,6 +40,7 @@ watch(
       form.value = createEmptyCadastralParcelFormData()
     }
     errors.value = {}
+    deleting.value = false
   },
 )
 
@@ -64,6 +66,21 @@ async function submit() {
     : await store.addCadastralParcel(property.value.id, payload)
   if (!ok) {
     errors.value.cadastralNumber = store.lastError || 'Не удалось сохранить — проверьте данные'
+  }
+}
+
+async function onDelete() {
+  if (!editingParcel.value || deleting.value) return
+  const spacesCount = store.getSpacesForParcel(editingParcel.value.id).length
+  const spacesNote = spacesCount
+    ? `\n\nПомещения (${spacesCount}) останутся на объекте, но будут без кадастра.`
+    : ''
+  if (!confirm(`Удалить кадастровый номер ${editingParcel.value.cadastralNumber}?${spacesNote}`)) return
+  deleting.value = true
+  const ok = await store.removeCadastralParcel(editingParcel.value.id)
+  deleting.value = false
+  if (!ok) {
+    errors.value.cadastralNumber = store.lastError || 'Не удалось удалить кадастр'
   }
 }
 
@@ -141,6 +158,15 @@ function onClose() {
     </div>
 
     <template #footer>
+      <button
+        v-if="isEdit"
+        type="button"
+        class="mr-auto text-sm text-rose-400 hover:text-rose-300 disabled:opacity-40"
+        :disabled="deleting"
+        @click="onDelete"
+      >
+        {{ deleting ? 'Удаление...' : 'Удалить' }}
+      </button>
       <button type="button" class="panel-btn-secondary" @click="onClose">Отмена</button>
       <button type="button" class="panel-btn-primary" @click="submit">Сохранить</button>
     </template>
