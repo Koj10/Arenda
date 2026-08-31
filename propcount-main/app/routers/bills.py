@@ -12,7 +12,9 @@ from app.schemas.bills import (
     UtilityBillDetailOut,
     UtilityBillListItem,
 )
+from app.schemas.meters import MeterReadingOut, MeterReadingUpsert, ObjectMetersOut
 from app.services import bills as bills_service
+from app.services import meters as meters_service
 
 router = APIRouter(prefix="/landlord")
 
@@ -66,6 +68,33 @@ def create_bill(
     session: Session = Depends(get_session),
 ):
     return bills_service.create_utility_bill(session, auth.user.id, payload)
+
+
+@router.get(
+    "/objects/{object_id}/meters",
+    summary="Показания счётчиков объекта",
+    response_model=ObjectMetersOut,
+)
+def object_meters(
+    object_id: int,
+    period: str,
+    auth: AuthContext = Depends(require_landlord),
+    session: Session = Depends(get_session),
+):
+    return meters_service.list_object_meters(session, auth.user.id, object_id, period)
+
+
+@router.put(
+    "/meters",
+    summary="Сохранить показания счётчика",
+    response_model=MeterReadingOut,
+)
+def upsert_meter(
+    payload: MeterReadingUpsert,
+    auth: AuthContext = Depends(require_landlord),
+    session: Session = Depends(get_session),
+):
+    return meters_service.upsert_landlord_meter(session, auth.user.id, payload)
 
 
 @router.get(

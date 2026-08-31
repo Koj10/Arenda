@@ -41,6 +41,7 @@ class UtilityBillListItem(BaseModel):
     period: str
     pay_by: date
     total: Decimal
+    landlord_loss: Decimal = Decimal("0")
     created_at: datetime
 
 
@@ -86,6 +87,16 @@ class UtilityBillCreate(BaseModel):
         return self
 
 
+class BillAllocationOut(BaseModel):
+    unit_id: int
+    unit_number: str
+    criterion: str
+    amount: Decimal
+    destination: str
+    tenant_id: Optional[int] = None
+    tenant_name: Optional[str] = None
+
+
 class UtilityBillOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -98,6 +109,8 @@ class UtilityBillOut(BaseModel):
     pay_by: date
     amounts: dict
     total: Decimal
+    landlord_loss: Decimal = Decimal("0")
+    allocations: list = []
     created_at: datetime
 
 
@@ -114,3 +127,4 @@ class BillInvoiceOut(BaseModel):
 class UtilityBillDetailOut(UtilityBillOut):
     object_address: str
     invoices: List[BillInvoiceOut] = []
+    allocation_rows: List[BillAllocationOut] = []

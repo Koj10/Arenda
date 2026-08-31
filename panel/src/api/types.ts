@@ -148,7 +148,36 @@ export interface UtilityBillListItem {
   period: string
   pay_by: string
   total: string
+  landlord_loss?: string
   created_at: string
+}
+
+export interface MeterReadingOut {
+  id: number
+  object_id: number
+  unit_id: number
+  unit_number: string
+  criterion: string
+  period: string
+  previous_value: string
+  current_value: string
+  consumption: string
+  submitted_by_role: string
+  updated_at: string
+}
+
+export interface ObjectMetersOut {
+  object_id: number
+  period: string
+  criteria: string[]
+  readings: MeterReadingOut[]
+}
+
+export interface TenantMetersOut {
+  period: string
+  criteria: string[]
+  readings: MeterReadingOut[]
+  units: { unit_id: number; unit_number: string; object_id: number; object_address: string }[]
 }
 
 export interface LandlordSubscriptionResponse {

@@ -129,7 +129,8 @@ function confidenceClass(c: ParsedInvoiceAmount['confidence']) {
     <div v-if="property" class="space-y-5">
       <p class="text-sm text-slate-500 rounded-lg border border-border bg-panel/30 px-3 py-2">
         Счёт на весь адрес: <span class="text-slate-300">{{ property.address }}</span>.
-        Укажите суммы по каждому критерию — система распределит их между вами и арендаторами по настройкам помещений.
+        Укажите суммы по критериям. Вода, электричество, газ и канализация делятся по показаниям счётчиков за этот период.
+        УК, тепло, мусор и уборка — по доле площади помещения от площади объекта. Ваши критерии уходят в потери.
       </p>
 
       <div>

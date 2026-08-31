@@ -6,9 +6,10 @@ from typing import Dict, List, Optional, Set
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
-from app.enums import UTILITY_CRITERIA, InvoiceKind, InvoiceStatus, Payer
+from app.enums import METERED_CRITERIA, UTILITY_CRITERIA, InvoiceKind, InvoiceStatus, Payer
 from app.models import File, Invoice, Lease, Object, Tenant, Unit, UtilityBill
 from app.schemas.bills import (
+    BillAllocationOut,
     BillInvoiceOut,
     BillObjectOut,
     PayersMatrixOut,
@@ -17,6 +18,7 @@ from app.schemas.bills import (
     UtilityBillDetailOut,
     UtilityBillListItem,
 )
+from app.services.meters import get_consumption_map
 from app.services.realestate import get_user_object
 
 
@@ -162,6 +164,8 @@ def create_utility_bill(
         pay_by=payload.pay_by,
         amounts=stored_amounts,
         total=total,
+        landlord_loss=Decimal("0"),
+        allocations=[],
     )
 
     session.add(bill)
@@ -189,35 +193,89 @@ def create_utility_bill(
 
     tenant_shares: Dict[int, Decimal] = defaultdict(lambda: Decimal("0"))
     tenant_units: Dict[int, Set[int]] = defaultdict(set)
+    landlord_loss = Decimal("0")
+    allocation_records: List[dict] = []
+    object_area = obj.total_area if obj.total_area and obj.total_area > 0 else Decimal("0")
+
+    def destination_for(unit: Unit, criterion: str) -> tuple[str, Optional[int]]:
+        payers = dict(unit.utility_payers or {})
+        payer = payers.get(criterion, Payer.tenant.value)
+        lease = active_lease_by_unit.get(unit.id)
+        if payer == Payer.tenant.value and lease:
+            return "tenant", lease.tenant_id
+        return "loss", None
+
+    def apply_share(unit: Unit, criterion: str, share: Decimal) -> None:
+        nonlocal landlord_loss
+        if share <= 0:
+            return
+        dest, tenant_id = destination_for(unit, criterion)
+        allocation_records.append(
+            {
+                "unit_id": unit.id,
+                "unit_number": unit.number,
+                "criterion": criterion,
+                "amount": str(share),
+                "destination": dest,
+                "tenant_id": tenant_id,
+            }
+        )
+        if dest == "tenant" and tenant_id is not None:
+            tenant_shares[tenant_id] += share
+            tenant_units[tenant_id].add(unit.id)
+        else:
+            landlord_loss += share
+
+    def split_by_weights(
+        amount: Decimal,
+        weights: List[tuple[Unit, Decimal]],
+    ) -> List[tuple[Unit, Decimal]]:
+        positive = [(unit, weight) for unit, weight in weights if weight > 0]
+        total_w = sum((weight for _, weight in positive), Decimal("0"))
+        if total_w <= 0:
+            return []
+        result: List[tuple[Unit, Decimal]] = []
+        allocated = Decimal("0")
+        for index, (unit, weight) in enumerate(positive):
+            if index == len(positive) - 1:
+                share = quantize_money(amount - allocated)
+            else:
+                share = quantize_money(amount * weight / total_w)
+                allocated += share
+            if share > 0:
+                result.append((unit, share))
+        return result
 
     for criterion, amount in normalized_amounts.items():
         if amount <= 0:
             continue
 
-        eligible_units: List[Unit] = []
+        used_metered = False
+        if criterion in METERED_CRITERIA:
+            consumption = get_consumption_map(session, obj.id, bill.period, criterion)
+            weights = [(unit, consumption.get(unit.id, Decimal("0"))) for unit in units]
+            shares = split_by_weights(amount, weights)
+            if shares:
+                used_metered = True
+                for unit, share in shares:
+                    apply_share(unit, criterion, share)
 
-        for unit in units:
-            payers = dict(unit.utility_payers or {})
-            payer = payers.get(criterion, Payer.tenant.value)
-
-            if payer == Payer.tenant.value and unit.area > 0:
-                eligible_units.append(unit)
-
-        total_area = sum((unit.area for unit in eligible_units), Decimal("0"))
-
-        if total_area <= 0:
-            continue
-
-        for unit in eligible_units:
-            lease = active_lease_by_unit.get(unit.id)
-
-            if not lease:
+        if not used_metered:
+            if object_area <= 0 or not units:
+                landlord_loss += amount
                 continue
+            allocated = Decimal("0")
+            for unit in units:
+                share = quantize_money(amount * unit.area / object_area)
+                allocated += share
+                apply_share(unit, criterion, share)
+            remainder = quantize_money(amount - allocated)
+            if remainder > 0:
+                landlord_loss += remainder
 
-            share = quantize_money(amount * unit.area / total_area)
-
-            tenant_shares[lease.tenant_id] += share
-            tenant_units[lease.tenant_id].add(unit.id)
+    bill.landlord_loss = quantize_money(landlord_loss)
+    bill.allocations = allocation_records
+    session.add(bill)
 
     invoices: List[Invoice] = []
 
@@ -287,6 +345,23 @@ def get_bill_detail(
             )
         )
 
+    tenant_names = {row.tenant_id: row.tenant_name for row in invoices_out}
+    raw_allocations = bill.allocations or []
+    allocation_rows: List[BillAllocationOut] = []
+    for item in raw_allocations:
+        tenant_id = item.get("tenant_id")
+        allocation_rows.append(
+            BillAllocationOut(
+                unit_id=item.get("unit_id"),
+                unit_number=item.get("unit_number") or "",
+                criterion=item.get("criterion") or "",
+                amount=Decimal(str(item.get("amount") or "0")),
+                destination=item.get("destination") or "loss",
+                tenant_id=tenant_id,
+                tenant_name=tenant_names.get(tenant_id) if tenant_id else None,
+            )
+        )
+
     return UtilityBillDetailOut(
         id=bill.id,
         user_id=bill.user_id,
@@ -297,7 +372,10 @@ def get_bill_detail(
         pay_by=bill.pay_by,
         amounts=bill.amounts,
         total=bill.total,
+        landlord_loss=bill.landlord_loss or Decimal("0"),
+        allocations=raw_allocations,
         created_at=bill.created_at,
         object_address=obj.address if obj else "",
         invoices=invoices_out,
+        allocation_rows=allocation_rows,
     )

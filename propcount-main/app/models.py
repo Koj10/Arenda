@@ -189,10 +189,33 @@ class UtilityBill(SQLModel, table=True):
     pay_by: date
     amounts: dict = Field(sa_type=JSONB)
     total: Decimal = Field(sa_type=Numeric(12, 2))
+    landlord_loss: Decimal = Field(default=Decimal("0"), sa_type=Numeric(12, 2))
+    allocations: list = Field(default_factory=list, sa_type=JSONB)
     created_at: datetime = Field(default_factory=utcnow)
 
     linked_object: Optional[Object] = Relationship(back_populates="utility_bills")
     invoices: List["Invoice"] = Relationship(back_populates="source_bill")
+
+
+class MeterReading(SQLModel, table=True):
+    __tablename__ = "meter_readings"
+    __table_args__ = (
+        UniqueConstraint(
+            "unit_id", "criterion", "period", name="uq_meter_readings_unit_criterion_period"
+        ),
+        Index("ix_meter_readings_object_period", "object_id", "period"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    object_id: int = Field(foreign_key="objects.id", index=True)
+    unit_id: int = Field(foreign_key="units.id", index=True)
+    criterion: str = Field(index=True)
+    period: str = Field(index=True)
+    previous_value: Decimal = Field(sa_type=Numeric(14, 4))
+    current_value: Decimal = Field(sa_type=Numeric(14, 4))
+    submitted_by_role: str
+    submitted_by_user_id: int = Field(foreign_key="users.id")
+    updated_at: datetime = Field(default_factory=utcnow)
 
 
 class Invoice(SQLModel, table=True):

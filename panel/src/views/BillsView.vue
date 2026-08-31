@@ -3,18 +3,19 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AddPropertyBillModal from '@/components/bills/AddPropertyBillModal.vue'
-import { Building2, FileUp, Search, Settings2 } from '@lucide/vue'
+import { Building2, FileUp, Gauge, Search, Settings2 } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useUtilityBillsStore } from '@/stores/utilityBillsStore'
 import {
   UTILITY_CRITERIA,
   UTILITY_CRITERION_LABELS,
   BILL_PAYER_LABELS,
+  METERED_CRITERIA,
 } from '@/types/utilityBills'
 import type { BillPayer, UtilityCriterion } from '@/types/utilityBills'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
 
-type BillsTab = 'settings' | 'bills'
+type BillsTab = 'settings' | 'meters' | 'bills'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,6 +25,13 @@ const utilityBills = useUtilityBillsStore()
 const search = ref('')
 const selectedPropertyId = ref<number | null>(null)
 const activeTab = ref<BillsTab>('settings')
+const metersPeriod = ref(currentPeriod())
+const metersSaving = ref(false)
+
+function currentPeriod() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 const filteredProperties = computed(() => {
   if (!search.value) return portfolio.properties
@@ -65,6 +73,13 @@ watch(selectedPropertyId, (id) => {
   }
 })
 
+watch(
+  [selectedPropertyId, metersPeriod, activeTab],
+  ([id, period, tab]) => {
+    if (id && tab === 'meters') void utilityBills.loadMeters(id, period)
+  },
+)
+
 function selectProperty(id: number) {
   selectedPropertyId.value = id
   utilityBills.ensureSettingsForProperty(id)
@@ -74,6 +89,14 @@ function selectProperty(id: number) {
 function onAddBill() {
   if (!selectedProperty.value) return
   utilityBills.openAddBillModal(selectedProperty.value.id)
+}
+
+async function saveMeters() {
+  if (!selectedProperty.value) return
+  metersSaving.value = true
+  const ok = await utilityBills.saveMeters(metersPeriod.value, spaces.value, METERED_CRITERIA)
+  metersSaving.value = false
+  if (ok) await utilityBills.loadMeters(selectedProperty.value.id, metersPeriod.value)
 }
 
 function togglePayer(spaceId: number, criterion: UtilityCriterion) {
@@ -100,9 +123,10 @@ function tenantName(spaceName: string) {
       <div class="panel-card p-5 border-emerald-brand/20 bg-emerald-brand/5">
         <h2 class="text-sm font-semibold text-white mb-2">Как работают счета</h2>
         <ol class="space-y-1.5 text-sm text-slate-400 list-decimal list-inside">
-          <li>Для каждого помещения настройте, <span class="text-slate-300">кто платит</span> за каждый из 8 критериев.</li>
-          <li>Загрузите <span class="text-slate-300">счёт на весь объект</span> с суммами по критериям.</li>
-          <li>Система распределит суммы пропорционально площади помещений и выставит счета арендаторам.</li>
+          <li>Настройте, <span class="text-slate-300">кто платит</span> за каждый критерий в помещении.</li>
+          <li>Внесите <span class="text-slate-300">показания счётчиков</span> (вода, электричество, газ, канализация) — арендатор может вписать те же цифры у себя, они общие.</li>
+          <li>Загрузите <span class="text-slate-300">общий счёт на объект</span>. Счётчики делятся по потреблению, УК и тепло — по доле площади от объекта.</li>
+          <li>Доли помещений, где платите вы (или нет арендатора), складываются в <span class="text-slate-300">потери</span>.</li>
         </ol>
       </div>
 
@@ -168,6 +192,14 @@ function tenantName(spaceName: string) {
               </button>
               <button
                 type="button"
+                :class="['panel-tab', activeTab === 'meters' && 'panel-tab-active']"
+                @click="activeTab = 'meters'"
+              >
+                <Gauge class="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                Показания
+              </button>
+              <button
+                type="button"
                 :class="['panel-tab', activeTab === 'bills' && 'panel-tab-active']"
                 @click="activeTab = 'bills'"
               >
@@ -227,8 +259,80 @@ function tenantName(spaceName: string) {
                 </table>
               </div>
               <p class="text-xs text-slate-500 mt-3">
-                Нажмите на ячейку, чтобы переключить между «Я» и «Арендатор»
+                Нажмите на ячейку, чтобы переключить между «Я» и «Арендатор».
+                Доля УК / тепла считается от площади объекта: 35 м² из 100 м² = 35% счёта.
               </p>
+            </div>
+
+            <div v-else-if="activeTab === 'meters'">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <p class="text-xs text-slate-500 max-w-xl">
+                  Предыдущие и текущие показания. Если арендатор уже внёс их — подставятся автоматически.
+                  Без показаний вода и электричество распределяются по площади, как УК.
+                </p>
+                <div class="flex items-center gap-2">
+                  <input v-model="metersPeriod" type="month" class="panel-input font-mono text-xs py-1.5 w-40" />
+                  <button type="button" class="panel-btn-primary text-xs" :disabled="metersSaving" @click="saveMeters">
+                    {{ metersSaving ? 'Сохранение...' : 'Сохранить' }}
+                  </button>
+                </div>
+              </div>
+              <p v-if="utilityBills.metersError" class="text-sm text-rose-400 mb-3">{{ utilityBills.metersError }}</p>
+              <p v-if="spaces.length === 0" class="text-sm text-slate-500 text-center py-8">
+                Сначала добавьте помещения
+              </p>
+              <div v-else class="overflow-x-auto -mx-1 px-1">
+                <table class="w-full text-xs min-w-[640px]">
+                  <thead>
+                    <tr class="border-b border-border">
+                      <th class="text-left py-2 pr-3 font-medium text-slate-500">Помещение</th>
+                      <th
+                        v-for="criterion in METERED_CRITERIA"
+                        :key="criterion"
+                        class="text-center py-2 px-1 font-medium text-slate-500"
+                      >
+                        {{ UTILITY_CRITERION_LABELS[criterion] }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="space in spaces" :key="space.id" class="border-b border-border/50">
+                      <td class="py-2.5 pr-3">
+                        <p class="font-mono text-white">№{{ space.name }}</p>
+                        <p class="text-slate-500">{{ space.area }} м²</p>
+                      </td>
+                      <td v-for="criterion in METERED_CRITERIA" :key="criterion" class="py-2 px-1 align-top">
+                        <div class="flex flex-col gap-1 min-w-[110px]">
+                          <input
+                            :value="utilityBills.getMeterDraft(space.id, criterion).previous"
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            placeholder="было"
+                            class="panel-input font-mono text-[11px] py-1"
+                            @input="utilityBills.getMeterDraft(space.id, criterion).previous = ($event.target as HTMLInputElement).value"
+                          />
+                          <input
+                            :value="utilityBills.getMeterDraft(space.id, criterion).current"
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            placeholder="стало"
+                            class="panel-input font-mono text-[11px] py-1"
+                            @input="utilityBills.getMeterDraft(space.id, criterion).current = ($event.target as HTMLInputElement).value"
+                          />
+                          <p
+                            v-if="utilityBills.meterMeta[`${space.id}:${criterion}`]"
+                            class="text-[10px] text-slate-600 text-center"
+                          >
+                            {{ utilityBills.meterMeta[`${space.id}:${criterion}`] === 'tenant' ? 'арендатор' : 'вы' }}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <!-- Список счетов -->
@@ -248,6 +352,9 @@ function tenantName(spaceName: string) {
                   </div>
                   <div class="text-right">
                     <p class="font-mono text-emerald-brand">{{ utilityBills.formatMoney(bill.totalAmount) }}</p>
+                    <p v-if="bill.landlordLoss > 0" class="text-xs text-rose-400 font-mono">
+                      потери {{ utilityBills.formatMoney(bill.landlordLoss) }}
+                    </p>
                     <p class="text-xs text-slate-500">{{ bill.lines.length }} критериев</p>
                   </div>
                 </div>

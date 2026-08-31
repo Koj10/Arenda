@@ -7,12 +7,14 @@ from sqlmodel import Session
 from app.api.deps import AuthContext, require_tenant
 from app.db import get_session
 from app.enums import Plan, Role
+from app.schemas.meters import MeterReadingOut, MeterReadingUpsert, TenantMetersOut
 from app.schemas.tenant_panel import (
     TenantInvoicesResponse,
     TenantReportResponse,
     TenantSpacesResponse,
     TenantSubscriptionResponse,
 )
+from app.services import meters as meters_service
 from app.services import tenant_panel as tenant_panel_service
 from app.services.users import get_or_create_subscription
 
@@ -108,6 +110,32 @@ def tenant_reports_export(
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+
+@router.get(
+    "/meters",
+    summary="Показания счётчиков",
+    response_model=TenantMetersOut,
+)
+def tenant_meters(
+    period: str,
+    auth: AuthContext = Depends(require_tenant),
+    session: Session = Depends(get_session),
+):
+    return meters_service.list_tenant_meters(session, auth.user.id, period)
+
+
+@router.put(
+    "/meters",
+    summary="Сохранить показания счётчика",
+    response_model=MeterReadingOut,
+)
+def tenant_upsert_meter(
+    payload: MeterReadingUpsert,
+    auth: AuthContext = Depends(require_tenant),
+    session: Session = Depends(get_session),
+):
+    return meters_service.upsert_tenant_meter(session, auth.user.id, payload)
 
 
 @router.get(

@@ -10,13 +10,15 @@ import type {
 import {
   createDefaultSpaceUtilityPayers,
 } from '@/types/utilityBills'
-import { getAccessToken } from '@/api/http'
+import { getAccessToken, formatApiError } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
 import {
   createUtilityBill,
   getObjectPayers,
   listObjectBills,
+  listObjectMeters,
   updateUnitPayer,
+  upsertMeter,
 } from '@/api/landlord'
 import { num } from '@/api/types'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -90,6 +92,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
           period: bill.period,
           title: bill.title,
           totalAmount: num(bill.total),
+          landlordLoss: num(bill.landlord_loss),
           dueDate: bill.pay_by,
           issuedAt: bill.created_at.slice(0, 10),
           status: 'distributed' as const,
@@ -145,7 +148,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       if (data.document?.dataUrl) {
         const uploaded = await uploadFileApi(
           dataUrlToBlob(data.document.dataUrl, data.document.mimeType),
-          { filename: data.document.name, kind: 'supporting', linked_type: 'bill' },
+          { filename: data.document.name, kind: 'supporting' },
         )
         fileId = uploaded.id
       }
@@ -170,6 +173,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         period: data.period,
         title: data.title.trim(),
         totalAmount: created.total ? num(created.total) : totalAmount,
+        landlordLoss: num((created as { landlord_loss?: string }).landlord_loss),
         dueDate: data.dueDate,
         issuedAt: created.created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
         status: 'distributed',
@@ -179,6 +183,72 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       closeAddBillModal()
       return true
     } catch {
+      return false
+    }
+  }
+
+  function meterKey(unitId: number, criterion: string) {
+    return `${unitId}:${criterion}`
+  }
+
+  const meterDrafts = ref<Record<string, { previous: string; current: string }>>({})
+  const meterMeta = ref<Record<string, string>>({})
+  const metersError = ref<string | null>(null)
+
+  function getMeterDraft(unitId: number, criterion: string) {
+    const key = meterKey(unitId, criterion)
+    if (!meterDrafts.value[key]) meterDrafts.value[key] = { previous: '', current: '' }
+    return meterDrafts.value[key]!
+  }
+
+  async function loadMeters(propertyId: number, period: string) {
+    metersError.value = null
+    try {
+      const data = await listObjectMeters(propertyId, period)
+      const next: Record<string, { previous: string; current: string }> = {}
+      const meta: Record<string, string> = {}
+      for (const row of data.readings) {
+        const key = meterKey(row.unit_id, row.criterion)
+        next[key] = {
+          previous: String(num(row.previous_value)),
+          current: String(num(row.current_value)),
+        }
+        meta[key] = row.submitted_by_role
+      }
+      meterDrafts.value = next
+      meterMeta.value = meta
+    } catch (err) {
+      metersError.value = formatApiError(err, 'Не удалось загрузить показания')
+    }
+  }
+
+  async function saveMeters(
+    period: string,
+    spaces: { id: number }[],
+    criteria: string[],
+  ): Promise<boolean> {
+    metersError.value = null
+    try {
+      for (const space of spaces) {
+        for (const criterion of criteria) {
+          const draft = meterDrafts.value[meterKey(space.id, criterion)]
+          if (!draft) continue
+          const previous = Number(String(draft.previous).replace(',', '.'))
+          const current = Number(String(draft.current).replace(',', '.'))
+          if (!Number.isFinite(previous) || !Number.isFinite(current)) continue
+          if (previous === 0 && current === 0) continue
+          await upsertMeter({
+            unit_id: space.id,
+            period,
+            criterion,
+            previous_value: previous,
+            current_value: current,
+          })
+        }
+      }
+      return true
+    } catch (err) {
+      metersError.value = formatApiError(err, 'Не удалось сохранить показания')
       return false
     }
   }
@@ -214,6 +284,12 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     openAddBillModal,
     closeAddBillModal,
     addPropertyBill,
+    meterDrafts,
+    meterMeta,
+    metersError,
+    getMeterDraft,
+    loadMeters,
+    saveMeters,
     formatMoney,
     formatPeriod,
     formatDate,

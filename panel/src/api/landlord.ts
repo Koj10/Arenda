@@ -150,6 +150,22 @@ export async function createUtilityBill(body: {
   return apiRequest('/landlord/bills', { method: 'POST', body })
 }
 
+export async function listObjectMeters(objectId: number, period: string) {
+  return apiRequest<import('@/api/types').ObjectMetersOut>(
+    `/landlord/objects/${objectId}/meters?period=${encodeURIComponent(period)}`,
+  )
+}
+
+export async function upsertMeter(body: {
+  unit_id: number
+  period: string
+  criterion: string
+  previous_value: number
+  current_value: number
+}) {
+  return apiRequest('/landlord/meters', { method: 'PUT', body })
+}
+
 export async function getSubscription() {
   return apiRequest('/landlord/subscription')
 }

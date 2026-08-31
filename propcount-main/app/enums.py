@@ -45,6 +45,22 @@ UTILITY_CRITERIA = [
     "cleaning",
 ]
 
+# Услуги с показаниями счётчиков — делятся по потреблению
+METERED_CRITERIA = [
+    "electricity",
+    "water",
+    "gas",
+    "sewerage",
+]
+
+# Без показаний — доля площади помещения от площади объекта
+AREA_CRITERIA = [
+    "heating",
+    "management",
+    "garbage",
+    "cleaning",
+]
+
 
 class Payer(str, Enum):
     landlord = "landlord"

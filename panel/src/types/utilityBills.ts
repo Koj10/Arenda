@@ -24,6 +24,24 @@ export const UTILITY_CRITERIA: UtilityCriterion[] = [
   'cleaning',
 ]
 
+export const AREA_CRITERIA: UtilityCriterion[] = [
+  'heating',
+  'management',
+  'garbage',
+  'cleaning',
+]
+
+export const METERED_CRITERIA: UtilityCriterion[] = [
+  'electricity',
+  'water',
+  'gas',
+  'sewerage',
+]
+
+export function isMeteredCriterion(criterion: UtilityCriterion): boolean {
+  return (METERED_CRITERIA as string[]).includes(criterion)
+}
+
 export const UTILITY_CRITERION_LABELS: Record<UtilityCriterion, string> = {
   electricity: 'Электроэнергия',
   water: 'Вода Гор/Хол',
@@ -72,6 +90,7 @@ export interface PropertyBill {
   period: string
   title: string
   totalAmount: number
+  landlordLoss: number
   dueDate: string
   issuedAt: string
   status: 'distributed' | 'paid'
