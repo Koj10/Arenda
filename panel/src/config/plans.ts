@@ -9,7 +9,7 @@ export const PLAN_CATALOG: Record<PlanId, PlanDefinition> = {
     description: 'До 3 помещений, базовый учёт',
     limits: {
       maxObjects: 10,
-      maxSpaces: 50,
+      maxSpaces: 3,
       maxTenants: 5,
       maxUsers: 1,
       storageMb: 500,
@@ -23,7 +23,7 @@ export const PLAN_CATALOG: Record<PlanId, PlanDefinition> = {
     description: 'До 30 помещений, полный функционал',
     limits: {
       maxObjects: 30,
-      maxSpaces: 200,
+      maxSpaces: 30,
       maxTenants: 60,
       maxUsers: 3,
       storageMb: 10_240,

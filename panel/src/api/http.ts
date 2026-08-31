@@ -45,8 +45,21 @@ export class ApiError extends Error {
   }
 }
 
+export function isPaymentRequired(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 402
+}
+
 export function formatApiError(err: unknown, fallback = 'Ошибка запроса'): string {
   if (err instanceof ApiError) {
+    if (err.status === 402) {
+      const body = err.body as { detail?: unknown; message?: string } | string | null
+      if (typeof body === 'string' && body.trim()) return body
+      if (body && typeof body === 'object') {
+        if (typeof body.detail === 'string' && body.detail.trim()) return body.detail
+        if (body.message) return body.message
+      }
+      return 'Лимит тарифа исчерпан. Перейдите на платный план, чтобы добавить больше.'
+    }
     const body = err.body as { detail?: unknown; message?: string } | string | null
     if (typeof body === 'string' && body.trim()) return body
     if (body && typeof body === 'object') {

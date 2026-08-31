@@ -78,9 +78,17 @@ export const usePlanStore = defineStore('plan', () => {
 
   function setUsage(partial: Partial<PlanUsage>) {
     if (!entitlements.value) return
+    const current = entitlements.value.usage
     entitlements.value = {
       ...entitlements.value,
-      usage: { ...entitlements.value.usage, ...partial },
+      usage: {
+        objects: current?.objects ?? 0,
+        spaces: current?.spaces ?? 0,
+        tenants: current?.tenants ?? 0,
+        users: current?.users ?? 1,
+        storageMb: current?.storageMb ?? 0,
+        ...partial,
+      },
     }
     persist()
   }

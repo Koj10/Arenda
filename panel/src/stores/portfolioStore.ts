@@ -24,7 +24,7 @@ import type {
   TenantUpdateData,
 } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
-import { formatApiError, getAccessToken } from '@/api/http'
+import { formatApiError, getAccessToken, isPaymentRequired } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
 import * as landlordApi from '@/api/landlord'
 import { num } from '@/api/types'
@@ -469,6 +469,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         for (const property of properties.value) {
           syncPropertyStats(property.id)
         }
+        syncPlanUsage()
       } catch (err) {
         lastError.value = formatApiError(err, 'Не удалось загрузить объекты')
       } finally {
@@ -480,6 +481,24 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     } finally {
       loadInFlight = null
     }
+  }
+
+  function syncPlanUsage() {
+    void import('@/stores/planStore').then(({ usePlanStore }) => {
+      usePlanStore().setUsage({
+        objects: properties.value.length,
+        spaces: spaces.value.length,
+        tenants: tenants.value.length,
+      })
+    })
+  }
+
+  function onPaymentRequired(err: unknown, fallback: string) {
+    lastError.value = formatApiError(err, fallback)
+    if (!isPaymentRequired(err)) return
+    void import('@/stores/planStore').then(({ usePlanStore }) => {
+      usePlanStore().openUpgrade({ reason: lastError.value ?? fallback })
+    })
   }
 
   function syncPropertyStats(propertyId: number) {
@@ -511,9 +530,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         ...attachPendingDocuments(data.serviceDocuments, 'property', created.id, 'service'),
       ])
       propertyModalOpen.value = false
+      syncPlanUsage()
       return true
     } catch (err) {
-      lastError.value = formatApiError(err, 'Не удалось создать объект')
+      onPaymentRequired(err, 'Не удалось создать объект')
       return false
     }
   }
@@ -537,6 +557,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       void import('@/stores/utilityBillsStore').then(({ useUtilityBillsStore }) => {
         useUtilityBillsStore().removeForProperty(id)
       })
+      syncPlanUsage()
       return true
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось удалить объект')
@@ -560,10 +581,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       const detail = await landlordApi.getObject(propertyId)
       applyObjectDetail(detail)
       syncPropertyStats(propertyId)
+      syncPlanUsage()
       spaceModalOpen.value = false
       return true
     } catch (err) {
-      lastError.value = formatApiError(err, 'Не удалось добавить помещение')
+      onPaymentRequired(err, 'Не удалось добавить помещение')
       return false
     }
   }
@@ -594,7 +616,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       tenantModalPrefill.value = null
       return true
     } catch (err) {
-      lastError.value = formatApiError(err, 'Не удалось добавить арендатора')
+      onPaymentRequired(err, 'Не удалось добавить арендатора')
       return false
     }
   }
@@ -656,6 +678,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       void import('@/stores/utilityBillsStore').then(({ useUtilityBillsStore }) => {
         useUtilityBillsStore().removeSettingsForSpace(id)
       })
+      syncPlanUsage()
       return true
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось удалить помещение')
