@@ -93,10 +93,25 @@ function parseApiError(payload, fallback) {
   return payload.message || fallback
 }
 
-async function apiPost(path, body) {
+async function apiPost(path, body, token) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
   const res = await fetch(`${apiBase()}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
+    body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(parseApiError(data, `Ошибка ${res.status}`))
+  return data
+}
+
+async function apiPatch(path, body, token) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: 'PATCH',
+    headers,
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => null)
@@ -143,12 +158,49 @@ function redirectToPanel(session, options = {}) {
   window.location.href = panelUrl
 }
 
-function afterAuth(session, mode) {
-  const hasRole = session.current_role === 'landlord' || session.current_role === 'tenant'
-  redirectToPanel(session, {
-    chooseRole: !hasRole,
-    mode,
+function selectedRole(form) {
+  return form.querySelector('input[name="role"]:checked')?.value || ''
+}
+
+function setRoleError(form, message) {
+  const el = form.querySelector('[data-role-error]')
+  if (el) el.textContent = message || ''
+}
+
+function isValidInn(value) {
+  return /^\d{10}$|^\d{12}$/.test(value)
+}
+
+async function afterAuth(session, mode, role, inn) {
+  let next = session
+  if (role === 'landlord' || role === 'tenant') {
+    next = await apiPost('/me/select-role', { role }, session.access_token)
+    if (role === 'tenant' && inn) {
+      await apiPatch(
+        '/me/tenant-profile',
+        { company_name: session.user?.name || '', inn },
+        next.access_token,
+      )
+    }
+    redirectToPanel(next, { chooseRole: false, mode })
+    return
+  }
+  redirectToPanel(next, { chooseRole: true, mode })
+}
+
+function initRoleInnToggle(form) {
+  const group = form.querySelector('#tenant-inn-group')
+  if (!group) return
+  const update = () => {
+    const tenant = selectedRole(form) === 'tenant'
+    group.hidden = !tenant
+    const inn = form.querySelector('#inn')
+    if (inn) inn.required = tenant
+  }
+  form.querySelectorAll('input[name="role"]').forEach((input) => {
+    input.addEventListener('change', update)
   })
+  update()
 }
 
 function initLoginForm() {
@@ -160,9 +212,16 @@ function initLoginForm() {
     let valid = true
     const email = form.querySelector('#email')
     const password = form.querySelector('#password')
+    const role = selectedRole(form)
     showFormError(form, '')
+    setRoleError(form, '')
     clearFieldError(email)
     clearFieldError(password)
+
+    if (!role) {
+      setRoleError(form, 'Выберите: арендодатель или арендатор')
+      valid = false
+    }
 
     if (!validateEmail(email.value)) {
       showFieldError(email, 'Введите корректный email')
@@ -181,7 +240,7 @@ function initLoginForm() {
         email: email.value.trim(),
         password: password.value,
       })
-      afterAuth(session, 'login')
+      await afterAuth(session, 'login', role)
     } catch (err) {
       showFormError(form, err.message || 'Не удалось войти')
       setButtonLoading(btn, false)
@@ -194,6 +253,7 @@ function initRegisterForm() {
   if (!form) return
 
   initPasswordStrength()
+  initRoleInnToggle(form)
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -203,9 +263,25 @@ function initRegisterForm() {
     const password = form.querySelector('#password')
     const confirm = form.querySelector('#password-confirm')
     const terms = form.querySelector('#terms')
+    const inn = form.querySelector('#inn')
+    const role = selectedRole(form)
     showFormError(form, '')
+    setRoleError(form, '')
 
     ;[name, email, password, confirm].forEach(clearFieldError)
+    if (inn) clearFieldError(inn)
+
+    if (!role) {
+      setRoleError(form, 'Выберите: арендодатель или арендатор')
+      valid = false
+    }
+    if (role === 'tenant') {
+      const innValue = inn?.value?.trim() || ''
+      if (!isValidInn(innValue)) {
+        if (inn) showFieldError(inn, 'ИНН: 10 или 12 цифр')
+        valid = false
+      }
+    }
 
     if (name.value.trim().length < 2) {
       showFieldError(name, 'Введите полное имя')
@@ -239,7 +315,7 @@ function initRegisterForm() {
         password_confirm: confirm.value,
         terms: true,
       })
-      afterAuth(session, 'register')
+      await afterAuth(session, 'register', role, role === 'tenant' ? inn?.value?.trim() : undefined)
     } catch (err) {
       showFormError(form, err.message || 'Не удалось зарегистрироваться')
       setButtonLoading(btn, false)

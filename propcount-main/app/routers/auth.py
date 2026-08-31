@@ -48,23 +48,31 @@ def build_auth_response(
     session: Session,
     user: User,
     role: str | None = None,
+    *,
+    assign_missing_role: bool = True,
 ) -> AuthResponse:
     roles = get_roles(session, user.id)
 
-    if not roles:
+    if not roles and assign_missing_role:
         ensure_role(session, user, Role.landlord.value)
         roles = get_roles(session, user.id)
 
-    role = role or default_role(roles)
-
-    if role not in roles:
+    if role and role not in roles and assign_missing_role:
         ensure_role(session, user, role)
         roles = get_roles(session, user.id)
 
-    get_or_create_subscription(session, user.id, role)
+    if role and role in roles:
+        chosen = role
+    elif roles:
+        chosen = default_role(roles)
+    else:
+        chosen = ""
 
-    access_token = create_access_token(user.id, role)
-    refresh_token = create_refresh_token(user.id, role)
+    if chosen:
+        get_or_create_subscription(session, user.id, chosen)
+
+    access_token = create_access_token(user.id, chosen)
+    refresh_token = create_refresh_token(user.id, chosen)
 
     return AuthResponse(
         access_token=access_token,
@@ -72,7 +80,7 @@ def build_auth_response(
         token_type="bearer",
         user=UserPublic.model_validate(user),
         roles=roles,
-        current_role=role,
+        current_role=chosen,
     )
 
 
@@ -108,9 +116,7 @@ def register(
     session.commit()
     session.refresh(user)
 
-    ensure_role(session, user, Role.landlord.value)
-
-    return build_auth_response(session, user, Role.landlord.value)
+    return build_auth_response(session, user, assign_missing_role=False)
 
 
 @router.post(

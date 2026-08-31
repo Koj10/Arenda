@@ -20,9 +20,23 @@
 
     <div class="auth-card">
       <h1 class="auth-title">Добро пожаловать обратно</h1>
-      <p class="auth-subtitle">Войдите и выберите панель: арендодатель или арендатор</p>
+      <p class="auth-subtitle">Выберите панель: арендодатель или арендатор</p>
 
       <form id="login-form" novalidate class="auth-form">
+        <fieldset class="role-pick">
+          <legend class="role-pick-legend">Кто вы</legend>
+          <label class="role-pick-card">
+            <input type="radio" name="role" value="landlord" required />
+            <span class="role-pick-title">Арендодатель</span>
+            <span class="role-pick-desc">Объекты, арендаторы, счета и аналитика</span>
+          </label>
+          <label class="role-pick-card">
+            <input type="radio" name="role" value="tenant" />
+            <span class="role-pick-title">Арендатор</span>
+            <span class="role-pick-desc">Помещения, входящие счета и отчёты</span>
+          </label>
+        </fieldset>
+        <p class="field-error" data-role-error></p>
         <div class="field-group">
           <div class="field-control">
             <i data-feather="mail" class="field-icon"></i>
