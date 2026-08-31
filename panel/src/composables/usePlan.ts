@@ -37,9 +37,18 @@ export function usePlan() {
     return false
   }
 
-  function requireCanAddSpace(reason = 'Лимит помещений на текущем тарифе исчерпан'): boolean {
-    if (store.canAddSpace()) return true
-    store.openUpgrade({ reason })
+  function requireCanAddSpace(
+    propertyId?: number,
+    reason = 'На тарифе Start в одном объекте можно не больше 4 помещений',
+  ): boolean {
+    if (store.canAddSpace(propertyId)) return true
+    const per = store.limits.maxSpacesPerObject
+    store.openUpgrade({
+      reason:
+        per != null
+          ? `В одном объекте на текущем тарифе не больше ${per} помещений`
+          : reason,
+    })
     return false
   }
 

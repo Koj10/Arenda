@@ -97,7 +97,7 @@ async function onDeleteProperty() {
 
 function onAddSpace() {
   if (!property.value) return
-  if (!requireCanAddSpace()) return
+  if (!requireCanAddSpace(property.value.id)) return
   store.openSpaceModal(property.value.id)
 }
 
@@ -208,7 +208,7 @@ function occupancyClass(occupied: boolean) {
           <button
             type="button"
             class="inline-flex items-center gap-1.5 text-xs text-emerald-brand hover:underline shrink-0"
-            :class="{ 'opacity-60': !canAddSpace() }"
+            :class="{ 'opacity-60': !canAddSpace(property.id) }"
             @click="onAddSpace"
           >
             <Plus class="w-3.5 h-3.5" />

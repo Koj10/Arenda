@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { createCheckoutSession, fetchEntitlements } from '@/api/plan'
 import { PLAN_CATALOG, PLAN_UPGRADE_TARGET } from '@/config/plans'
 import type { LimitKey, PlanEntitlements, PlanFeature, PlanId, PlanUsage } from '@/types/plan'
+import { usePortfolioStore } from '@/stores/portfolioStore'
 
 const STORAGE_KEY = 'propcount-plan'
 
@@ -16,7 +17,10 @@ export const usePlanStore = defineStore('plan', () => {
 
   const planId = computed<PlanId>(() => entitlements.value?.planId ?? 'start')
   const plan = computed(() => PLAN_CATALOG[planId.value])
-  const limits = computed(() => entitlements.value?.limits ?? PLAN_CATALOG.start.limits)
+  const limits = computed(() => ({
+    ...PLAN_CATALOG[planId.value].limits,
+    ...entitlements.value?.limits,
+  }))
   const usage = computed(() => entitlements.value?.usage)
   const features = computed(() => entitlements.value?.features ?? [])
   const status = computed(() => entitlements.value?.status ?? 'active')
@@ -47,9 +51,10 @@ export const usePlanStore = defineStore('plan', () => {
 
   /** null limit = безлимит */
   function isAtLimit(key: LimitKey): boolean {
+    if (key === 'maxSpacesPerObject') return false
     const max = limitOf(key)
     if (max === null) return false
-    const map: Record<LimitKey, keyof PlanUsage> = {
+    const map: Record<Exclude<LimitKey, 'maxSpacesPerObject'>, keyof PlanUsage> = {
       maxObjects: 'objects',
       maxSpaces: 'spaces',
       maxTenants: 'tenants',
@@ -63,8 +68,13 @@ export const usePlanStore = defineStore('plan', () => {
     return !isAtLimit('maxObjects')
   }
 
-  function canAddSpace(): boolean {
-    return !isAtLimit('maxSpaces')
+  function canAddSpace(propertyId?: number): boolean {
+    if (isAtLimit('maxSpaces')) return false
+    const perObject = limits.value.maxSpacesPerObject
+    if (perObject == null) return true
+    if (propertyId == null) return true
+    const count = usePortfolioStore().getSpacesForProperty(propertyId).length
+    return count < perObject
   }
 
   function canAddTenant(): boolean {

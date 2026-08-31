@@ -45,6 +45,7 @@ function stubEntitlements(input: {
       limits: {
         maxObjects: null,
         maxSpaces: null,
+        maxSpacesPerObject: null,
         maxTenants: null,
         maxUsers: 1,
         storageMb: null,
@@ -90,11 +91,9 @@ export async function fetchEntitlements(params: {
       renewsAt: sub.expires_at ?? null,
       status: sub.status === 'active' ? 'active' : 'active',
       limits: {
-        maxObjects: sub.objects?.limit ?? def.limits.maxObjects,
-        maxSpaces: sub.units?.limit ?? def.limits.maxSpaces,
+        ...def.limits,
+        maxObjects: def.limits.maxObjects,
         maxTenants: sub.tenants?.limit ?? def.limits.maxTenants,
-        maxUsers: def.limits.maxUsers,
-        storageMb: def.limits.storageMb,
       },
       usage: {
         objects: sub.objects?.occupied ?? 0,

@@ -17,7 +17,10 @@ export type PlanFeature =
 
 export interface PlanLimits {
   maxObjects: number | null
+  /** Общий лимит помещений по аккаунту; null = без лимита */
   maxSpaces: number | null
+  /** Лимит помещений в одном объекте; null = без лимита */
+  maxSpacesPerObject: number | null
   maxTenants: number | null
   maxUsers: number | null
   storageMb: number | null

@@ -3,8 +3,10 @@ import { ref, computed } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { createEmptySpaceFormData } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
+import { usePlan } from '@/composables/usePlan'
 
 const store = usePortfolioStore()
+const { requireCanAddSpace } = usePlan()
 
 const form = ref(createEmptySpaceFormData())
 const errors = ref<Record<string, string>>({})
@@ -46,6 +48,7 @@ function validate() {
 
 async function submit() {
   if (!validate() || !currentProperty.value) return
+  if (!requireCanAddSpace(currentProperty.value.id)) return
   const ok = await store.addSpace(currentProperty.value.id, { ...form.value })
   if (!ok) {
     errors.value.area = store.lastError || `Нельзя выделить больше ${availableArea.value} м²`

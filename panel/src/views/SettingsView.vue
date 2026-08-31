@@ -66,6 +66,12 @@ function goPricing() {
           {{ plan.name }}
           <span class="text-slate-500 font-normal">
             · {{ usage?.objects ?? 0 }}{{ limits.maxObjects != null ? ` / ${limits.maxObjects}` : '' }} объектов
+            <template v-if="limits.maxSpacesPerObject != null">
+              · до {{ limits.maxSpacesPerObject }} помещений в объекте
+            </template>
+            <template v-else-if="limits.maxSpaces == null">
+              · помещения без лимита
+            </template>
           </span>
         </p>
         <p class="text-xs text-slate-400 mb-4">{{ plan.description }}</p>
