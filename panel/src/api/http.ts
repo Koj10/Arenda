@@ -1,14 +1,15 @@
-/** База live API. Переопределяется через VITE_API_URL. */
-export const DEFAULT_API_BASE = 'https://prop.gamesense-club.ru'
-
+/**
+ * Префикс /__api на этом же сайте. Nginx/Vite отдают его на
+ * https://api.propcount.ru (иначе браузер режет CORS).
+ */
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_API_URL as string | undefined
-  if (raw && raw.trim()) return raw.replace(/\/$/, '')
-  return DEFAULT_API_BASE
+  if (raw != null && raw.trim()) return raw.trim().replace(/\/$/, '')
+  return '/__api'
 }
 
 export function isApiConfigured(): boolean {
-  return Boolean(getApiBaseUrl())
+  return true
 }
 
 const ACCESS_KEY = 'propcount-access-token'

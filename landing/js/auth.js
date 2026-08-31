@@ -77,7 +77,9 @@ function initPasswordStrength() {
 }
 
 function apiBase() {
-  return window.PROPCOUNT_API || 'https://prop.gamesense-club.ru'
+  const raw = window.PROPCOUNT_API
+  if (raw == null || raw === '') return ''
+  return String(raw).replace(/\/$/, '')
 }
 
 function parseApiError(payload, fallback) {

@@ -10,6 +10,8 @@ FROM nginx:1.27-alpine
 
 COPY deploy/propcount.http.conf /etc/nginx/templates/propcount.http.conf
 COPY deploy/propcount.conf /etc/nginx/templates/propcount.conf
+COPY deploy/api-proxy.conf /etc/nginx/snippets/api-proxy.conf
+COPY deploy/api-locations.conf /etc/nginx/snippets/api-locations.conf
 COPY deploy/docker-entrypoint.sh /docker-entrypoint-custom.sh
 RUN chmod +x /docker-entrypoint-custom.sh
 

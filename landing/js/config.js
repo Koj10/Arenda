@@ -1,2 +1,2 @@
-/** Live PropCount API */
-window.PROPCOUNT_API = 'https://prop.gamesense-club.ru'
+/** Все запросы: этот сайт /__api → https://api.propcount.ru */
+window.PROPCOUNT_API = '/__api'
