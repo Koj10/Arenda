@@ -24,7 +24,7 @@ import type {
   TenantUpdateData,
 } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
-import { formatApiError, getAccessToken, isPaymentRequired } from '@/api/http'
+import { ApiError, formatApiError, getAccessToken, isPaymentRequired } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
 import * as landlordApi from '@/api/landlord'
 import { num } from '@/api/types'
@@ -397,8 +397,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       const uploaded = await uploadFileApi(blob, {
         filename: doc.name,
         kind,
-        linked_type: linkedType,
-        linked_id: linkedId,
+        ...(linkedId != null && linkedType
+          ? { linked_type: linkedType, linked_id: linkedId }
+          : {}),
       })
       ids.push(uploaded.id)
     }
@@ -598,16 +599,36 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (!space) return false
     lastError.value = null
     try {
-      const tenant = await landlordApi.createTenant({
-        name: data.company.trim(),
-        inn: data.inn.trim(),
-      })
-      const fileIds = await uploadPending(data.documents, 'contract', 'lease')
+      const inn = data.inn.trim()
+      let tenant
+      try {
+        tenant = await landlordApi.createTenant({
+          name: data.company.trim(),
+          inn,
+        })
+      } catch (err) {
+        if (!(err instanceof ApiError) || err.status !== 409) throw err
+        const list = await landlordApi.listTenants(inn)
+        const existingTenant = list.find((row) => row.inn === inn)
+        if (!existingTenant) throw err
+        tenant = existingTenant
+      }
+
+      const fileIds = await uploadPending(data.documents, 'contract')
+      const today = new Date().toISOString().slice(0, 10)
+      const endDate = data.contract
+      const rent = Number(data.rent)
+      if (!Number.isFinite(rent) || rent < 0) {
+        lastError.value = 'Некорректная сумма аренды'
+        return false
+      }
+
       await landlordApi.createLease({
         tenant_id: tenant.id,
         unit_id: space.id,
-        rent_monthly: data.rent,
-        end_date: data.contract,
+        rent_monthly: rent,
+        start_date: endDate < today ? endDate : today,
+        end_date: endDate,
         file_ids: fileIds.length ? fileIds : undefined,
       })
       addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenant.id, 'lease'))
