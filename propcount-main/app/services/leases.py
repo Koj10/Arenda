@@ -207,8 +207,14 @@ def delete_lease(session: Session, user_id: int, lease_id: int) -> None:
 
 def terminate_lease(session: Session, user_id: int, lease_id: int) -> LeaseDetailOut:
     lease = get_user_lease(session, user_id, lease_id)
-    today = date.today()
+    from app.services.invoice_payments import (
+        cancel_pending_rent_invoices_for_lease,
+        notify_tenant_users_by_inn,
+        notify_user,
+        today_moscow,
+    )
 
+    today = today_moscow()
     if lease.end_date < today:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -221,13 +227,6 @@ def terminate_lease(session: Session, user_id: int, lease_id: int) -> LeaseDetai
 
     lease.end_date = new_end
     session.add(lease)
-
-    from app.services.invoice_payments import (
-        cancel_pending_rent_invoices_for_lease,
-        notify_tenant_users_by_inn,
-        notify_user,
-    )
-
     cancel_pending_rent_invoices_for_lease(session, lease)
 
     tenant = session.get(Tenant, lease.tenant_id)

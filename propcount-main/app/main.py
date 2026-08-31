@@ -3,9 +3,12 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from scalar_fastapi import get_scalar_api_reference
+from sqlalchemy import text
 
 from app.core.config import settings
+from app.db import engine
 from app.routers import (
     analytics,
     auth,
@@ -86,4 +89,9 @@ app.include_router(tenant.router, tags=["Арендатор"])
 
 @app.get("/health", summary="Проверка состояния сервиса")
 def health() -> dict:
-    return {"status": "ok"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "ok"}
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "degraded", "db": "error"})

@@ -1,0 +1,23 @@
+# systemd для API, если крутите uvicorn на хосте (не в Docker).
+# Подставьте пути и пользователя.
+#
+#   sudo cp deploy/propcount-api.service /etc/systemd/system/propcount-api.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now propcount-api
+
+[Unit]
+Description=PropCount FastAPI
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/arenda/propcount-main
+Environment=PYTHONPATH=/opt/arenda/propcount-main
+EnvironmentFile=/opt/arenda/.env
+ExecStart=/opt/arenda/propcount-main/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 3001
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

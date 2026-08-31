@@ -92,11 +92,11 @@ jobs:
             ${{ steps.image.outputs.web }}:${{ needs.check-tags.outputs.tag }}
             ${{ steps.image.outputs.web }}:latest
 
-      - name: Сборка api
+      - name: Сборка api (FastAPI / propcount-main)
         uses: docker/build-push-action@v5
         with:
-          context: ./api
-          file: ./api/Dockerfile
+          context: ./propcount-main
+          file: ./propcount-main/Dockerfile
           push: true
           tags: |
             ${{ steps.image.outputs.api }}:${{ needs.check-tags.outputs.tag }}

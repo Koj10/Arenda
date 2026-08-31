@@ -4,6 +4,8 @@ import { URL } from 'node:url'
 const PORT = Number(process.env.PORT || 3000)
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3001'
 
+// Не прод. Рабочий API — FastAPI в ../propcount-main (образ ghcr.io/koj10/arenda-api).
+
 function send(res, status, body) {
   const payload = JSON.stringify(body)
   res.writeHead(status, {

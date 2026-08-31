@@ -171,13 +171,13 @@ def refresh_tokens(
             detail="User not found",
         )
 
-    role = token_payload.get("role")
+    role = token_payload.get("role") or None
     roles = get_roles(session, user.id)
 
-    if role not in roles:
-        role = default_role(roles)
+    if role and role not in roles:
+        role = None
 
-    return build_auth_response(session, user, role)
+    return build_auth_response(session, user, role, assign_missing_role=False)
 
 
 @router.post(
@@ -204,14 +204,14 @@ def forgot_password(
 
     if not user:
         return ForgotPasswordResponse(
-            detail="If this email exists, a reset token was generated",
+            detail="If this email exists, a reset link was sent",
             reset_token=None,
         )
 
-    reset_token = create_password_reset_token(user.id)
+    reset_token = create_password_reset_token(user.id) if settings.is_debug else None
 
     return ForgotPasswordResponse(
-        detail="Dev mode: reset token returned directly",
+        detail="If this email exists, a reset link was sent",
         reset_token=reset_token,
     )
 

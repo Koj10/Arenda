@@ -1,41 +1,35 @@
+# PropCount API (FastAPI)
+
+Рабочий бэкенд. Папка `../api` — старая Node-заглушка, в проде не используется.
+
+## Локально
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+pip install -r requirements.txt
+cp ../.env.example .env   # DATABASE_URL, JWT_SECRET
+alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-```yml
-services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-      POSTGRES_DB: app
-    ports:
-      - "5432:5432"
-    volumes:
-      - /data/databases/falbue/test/postgres:/var/lib/postgres
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d app"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  api:
-    image: ghcr.io/falbue-work/propcount:latest
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - storage_data:/app/storage
-    env_file:
-      - .env
-    ports:
-      - "3006:8000"
-    environment:
-      - IN_DOCKER=1
-
-volumes:
-  pgdata:
-  storage_data:
-
 ```
+
+Документация: http://127.0.0.1:8000  
+Health: http://127.0.0.1:8000/health
+
+Docker только API + Postgres:
+
+```bash
+docker compose up --build
+```
+
+## Продакшен (сервер 94.228.166.142)
+
+Сайт уже в корневом `docker-compose.yml` (:3005). API — отдельно на **:3001**, снаружи **https://api.propcount.ru**.
+
+1. Образ: `ghcr.io/koj10/arenda-api:latest` (собирается из этой папки в GitHub Actions).
+2. В корне репозитория `.env` с `DATABASE_URL` и `JWT_SECRET`.
+3. `docker compose -f docker-compose.api.yml up -d`
+4. Nginx: `deploy/host-nginx-api.conf` → `api.propcount.ru` на `127.0.0.1:3001`.
+5. После выката миграции применяются сами (`scripts/entrypoint.sh`).
+
+Либо uvicorn на хосте: `deploy/propcount-api.service`.
