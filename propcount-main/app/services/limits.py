@@ -43,7 +43,18 @@ def get_counts(session: Session, user_id: int) -> dict:
     }
 
 
-def build_limit_item(limit: int, occupied: int) -> LimitItem:
+def count_units_for_object(session: Session, object_id: int) -> int:
+    return (
+        session.exec(
+            select(func.count(Unit.id)).where(Unit.object_id == object_id)
+        ).first()
+        or 0
+    )
+
+
+def build_limit_item(limit: int | None, occupied: int) -> LimitItem:
+    if limit is None:
+        return LimitItem(limit=-1, occupied=occupied, display=f"{occupied}/∞")
     return LimitItem(
         limit=limit,
         occupied=occupied,
@@ -64,6 +75,10 @@ def get_landlord_subscription_response(
     limits = get_plan_limits(subscription.plan)
     counts = get_counts(session, user_id)
 
+    unit_cap = limits.get("units_per_object")
+    if unit_cap is None:
+        unit_cap = limits.get("units")
+
     return LandlordSubscriptionResponse(
         plan=subscription.plan,
         status=subscription.status,
@@ -71,7 +86,7 @@ def get_landlord_subscription_response(
         expires_at=subscription.expires_at,
         objects=build_limit_item(limits["objects"], counts["objects"]),
         tenants=build_limit_item(limits["tenants"], counts["tenants"]),
-        units=build_limit_item(limits["units"], counts["units"]),
+        units=build_limit_item(unit_cap, counts["units"]),
     )
 
 
@@ -84,11 +99,12 @@ def ensure_object_limit(session: Session, user_id: int) -> None:
 
     limits = get_plan_limits(subscription.plan)
     counts = get_counts(session, user_id)
+    cap = limits["objects"]
 
-    if counts["objects"] >= limits["objects"]:
+    if cap is not None and counts["objects"] >= cap:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Object limit reached. Please upgrade subscription.",
+            detail="Лимит объектов на текущем тарифе исчерпан. Перейдите на Profi.",
         )
 
 
@@ -101,15 +117,16 @@ def ensure_tenant_limit(session: Session, user_id: int) -> None:
 
     limits = get_plan_limits(subscription.plan)
     counts = get_counts(session, user_id)
+    cap = limits["tenants"]
 
-    if counts["tenants"] >= limits["tenants"]:
+    if cap is not None and counts["tenants"] >= cap:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Tenant limit reached. Please upgrade subscription.",
+            detail="Лимит арендаторов на текущем тарифе исчерпан. Перейдите на Profi.",
         )
 
 
-def ensure_unit_limit(session: Session, user_id: int) -> None:
+def ensure_unit_limit(session: Session, user_id: int, object_id: int) -> None:
     subscription = get_or_create_subscription(
         session=session,
         user_id=user_id,
@@ -117,16 +134,21 @@ def ensure_unit_limit(session: Session, user_id: int) -> None:
     )
 
     limits = get_plan_limits(subscription.plan)
-    counts = get_counts(session, user_id)
+    per_object = limits.get("units_per_object")
 
-    if limits["units"] <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Unit creation requires profi subscription.",
-        )
+    if per_object is not None:
+        occupied = count_units_for_object(session, object_id)
+        if occupied >= per_object:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=f"На тарифе Start в одном объекте не больше {per_object} помещений.",
+            )
 
-    if counts["units"] >= limits["units"]:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Unit limit reached. Please upgrade subscription.",
-        )
+    global_cap = limits.get("units")
+    if global_cap is not None:
+        counts = get_counts(session, user_id)
+        if counts["units"] >= global_cap:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Лимит помещений исчерпан. Перейдите на Profi.",
+            )

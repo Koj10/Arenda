@@ -15,14 +15,14 @@ deploy/    — nginx для Docker
 | | |
 |--|--|
 | Домен | **https://propcount.ru** |
-| IP | 77.91.100.153 |
+| IP | 94.228.166.142 |
 | Порты | **80**, **443** |
 | Лендинг | `/` |
 | Панель | `/panel/` |
 | API | `/api/` |
 
 ```bash
-# 1) DNS: propcount.ru и www → 77.91.100.153
+# 1) DNS: propcount.ru и www → 94.228.166.142
 # 2) Открыть firewall: 80, 443
 cp .env.example .env   # пароли БД
 chmod +x deploy/issue-certs.sh

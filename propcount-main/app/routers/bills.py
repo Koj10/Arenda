@@ -1,4 +1,3 @@
-from this import s
 from typing import List
 
 from fastapi import APIRouter, Depends, status

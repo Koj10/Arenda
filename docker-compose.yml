@@ -1,9 +1,10 @@
 name: PropCount
 
-# Прод на сервере: контейнер на :3001, снаружи HTTPS делает хостовый nginx.
+# Сайт в Docker на :3005. :3001 на сервере занят API (uvicorn).
+# Снаружи HTTPS — хостовый nginx (deploy/host-nginx-proxy.conf).
 services:
   app:
     image: ghcr.io/koj10/arenda:${TAG:-latest}
     ports:
-      - "3001:80"
+      - "3005:80"
     restart: unless-stopped

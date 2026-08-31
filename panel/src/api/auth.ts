@@ -45,11 +45,13 @@ export async function fetchMe(): Promise<MeResponse> {
   return apiRequest<MeResponse>('/me')
 }
 
-export async function selectRoleApi(role: 'landlord' | 'tenant'): Promise<MeResponse> {
-  return apiRequest<MeResponse>('/me/select-role', {
+export async function selectRoleApi(role: 'landlord' | 'tenant'): Promise<AuthResponse> {
+  const session = await apiRequest<AuthResponse>('/me/select-role', {
     method: 'POST',
     body: { role },
   })
+  persistAuth(session)
+  return session
 }
 
 export async function updateTenantProfileApi(data: {

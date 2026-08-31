@@ -453,7 +453,7 @@ def create_unit(
 ) -> UnitOut:
     obj = get_user_object(session, user_id, object_id)
 
-    ensure_unit_limit(session, user_id)
+    ensure_unit_limit(session, user_id, obj.id)
 
     cadastre_id = payload.cadastre_id
 

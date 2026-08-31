@@ -5,6 +5,7 @@
   "scripts": {
     "dev:landing": "npm exec --prefix panel -- vite --config ../landing/vite.config.ts",
     "dev:panel": "npm run dev --prefix panel",
+    "dev:api": "docker compose -f propcount-main/docker-compose.yml up --build",
     "dev": "npm run dev:panel",
     "build:panel": "npm run build --prefix panel",
     "build:landing": "echo Landing is static — no build needed"

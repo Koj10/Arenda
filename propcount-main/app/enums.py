@@ -18,30 +18,31 @@ class TransactionType(str, Enum):
 
 
 EXPENSE_CATEGORIES = [
-    "коммунальные",
-    "ремонт и обслуживание",
-    "налоги и сборы",
-    "страхование",
-    "прочее",
+    "utilities",
+    "maintenance",
+    "tax",
+    "insurance",
+    "management",
+    "other",
 ]
 
 INCOME_CATEGORIES = [
-    "аренда",
-    "прочее",
+    "rent",
+    "other",
 ]
 
 ALL_TRANSACTION_CATEGORIES = EXPENSE_CATEGORIES + INCOME_CATEGORIES
 
 
 UTILITY_CRITERIA = [
-    "электроэнергия",
-    "вода гор/хол",
-    "теплофикация",
-    "управляющая компания",
-    "вывоз мусора",
-    "газ",
-    "канализация",
-    "уборка рядом",
+    "electricity",
+    "water",
+    "heating",
+    "management",
+    "garbage",
+    "gas",
+    "sewerage",
+    "cleaning",
 ]
 
 
@@ -91,29 +92,35 @@ class InvoiceStatus(str, Enum):
     paid = "paid"
 
 
-OBJECT_LIMIT_START = 10
-TENANT_LIMIT_START = 10
-UNIT_LIMIT_PROFI = 30
+OBJECT_LIMIT_START = 3
+OBJECT_LIMIT_PROFI = 30
+TENANT_LIMIT_START = 5
+TENANT_LIMIT_PROFI = 60
+UNIT_LIMIT_PER_OBJECT_START = 4
 
 PLAN_LIMITS = {
     Plan.start.value: {
         "objects": OBJECT_LIMIT_START,
         "tenants": TENANT_LIMIT_START,
-        "units": 0,
+        "units": None,
+        "units_per_object": UNIT_LIMIT_PER_OBJECT_START,
     },
     Plan.profi.value: {
-        "objects": OBJECT_LIMIT_START,
-        "tenants": TENANT_LIMIT_START,
-        "units": UNIT_LIMIT_PROFI,
+        "objects": OBJECT_LIMIT_PROFI,
+        "tenants": TENANT_LIMIT_PROFI,
+        "units": None,
+        "units_per_object": None,
     },
     Plan.tenant_free.value: {
         "objects": 0,
         "tenants": 0,
         "units": 0,
+        "units_per_object": 0,
     },
     Plan.tenant_reports.value: {
         "objects": 0,
         "tenants": 0,
         "units": 0,
+        "units_per_object": 0,
     },
 }

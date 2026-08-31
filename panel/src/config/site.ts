@@ -1,7 +1,7 @@
 /** Site URLs for production deploy */
 export const SITE = {
   domain: 'propcount.ru',
-  ip: '77.91.100.153',
+  ip: '94.228.166.142',
   url: 'https://propcount.ru',
   origins: [
     'https://propcount.ru',
