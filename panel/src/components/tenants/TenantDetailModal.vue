@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Building2, MapPin, User } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
@@ -7,6 +7,8 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { PROPERTY_TYPE_LABELS, TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
 
 const store = usePortfolioStore()
+const terminating = ref(false)
+const terminateError = ref<string | null>(null)
 
 const tenant = computed(() => {
   if (store.tenantDetailLeaseId) {
@@ -24,6 +26,10 @@ const space = computed(() => {
   return store.getSpacesForProperty(property.value.id).find((s) => s.name === tenant.value!.space) ?? null
 })
 
+const canTerminate = computed(() =>
+  Boolean(tenant.value?.leaseId && tenant.value.status !== 'overdue'),
+)
+
 function statusLabel(status: string) {
   const map: Record<string, string> = { active: 'Активен', expiring: 'Истекает', overdue: 'Просрочен' }
   return map[status] ?? status
@@ -39,6 +45,7 @@ function statusClass(status: string) {
 }
 
 function onClose() {
+  terminateError.value = null
   store.closeTenantDetail()
 }
 
@@ -46,6 +53,19 @@ function openProperty() {
   if (!tenant.value) return
   store.closeTenantDetail()
   store.openPropertyDetail(tenant.value.propertyId)
+}
+
+async function terminateLease() {
+  if (!tenant.value?.leaseId || terminating.value) return
+  const place = tenant.value.space ? ` по помещению ${tenant.value.space}` : ''
+  if (!confirm(
+    `Досрочно завершить договор с ${tenant.value.company}${place}?\n\nПомещение сразу станет свободным. Неоплаченный счёт за аренду будет снят. Если арендатор уже отправил оплату, её всё ещё можно подтвердить.`,
+  )) return
+  terminating.value = true
+  terminateError.value = null
+  const ok = await store.terminateLease(tenant.value.leaseId)
+  terminating.value = false
+  if (!ok) terminateError.value = store.lastError || 'Не удалось завершить договор'
 }
 </script>
 
@@ -110,10 +130,21 @@ function openProperty() {
         Если оплата не в приложении, вам нужно подтвердить её в разделе «Счета». В следующем месяце счёт снова станет неоплаченным.
       </p>
 
+      <p v-if="terminateError" class="text-xs text-red-400 mb-4">{{ terminateError }}</p>
+
       <FileAttachments entity-type="tenant" :entity-id="tenant.id" category="lease" :label="TENANT_DOCUMENT_LABEL" />
     </template>
 
     <template #footer>
+      <button
+        v-if="canTerminate"
+        type="button"
+        class="panel-btn-danger mr-auto"
+        :disabled="terminating"
+        @click="terminateLease"
+      >
+        {{ terminating ? 'Завершение…' : 'Завершить договор' }}
+      </button>
       <button type="button" class="panel-btn-secondary" @click="onClose">
         Закрыть
       </button>

@@ -38,6 +38,7 @@ const infoErrors = ref<Partial<Record<keyof SpaceUpdateData, string>>>({})
 const dealErrors = ref<Partial<Record<keyof TenantUpdateData, string>>>({})
 const deleting = ref(false)
 const deleteError = ref<string | null>(null)
+const terminating = ref(false)
 
 const infoForm = ref<SpaceUpdateData>({
   name: '',
@@ -187,6 +188,18 @@ function statusClass(status: string) {
 function addTenant() {
   if (!property.value || !space.value) return
   store.openTenantModal({ propertyId: property.value.id, space: space.value.name })
+}
+
+async function terminateLease() {
+  if (!tenant.value?.leaseId || terminating.value) return
+  if (!confirm(
+    `Досрочно завершить договор с ${tenant.value.company}?\n\nПомещение сразу станет свободным. Неоплаченный счёт за аренду будет снят.`,
+  )) return
+  terminating.value = true
+  deleteError.value = null
+  const ok = await store.terminateLease(tenant.value.leaseId)
+  terminating.value = false
+  if (!ok) deleteError.value = store.lastError || 'Не удалось завершить договор'
 }
 
 function openTenantDetail() {
@@ -592,6 +605,14 @@ watch(
                     <p class="text-sm text-slate-200">{{ PROPERTY_TYPE_LABELS[property.type] }}</p>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  class="panel-btn-danger"
+                  :disabled="terminating || !tenant.leaseId"
+                  @click="terminateLease"
+                >
+                  {{ terminating ? 'Завершение…' : 'Завершить договор досрочно' }}
+                </button>
               </div>
               <div v-else class="text-center py-8">
                 <User class="w-8 h-8 text-slate-600 mx-auto mb-3" />

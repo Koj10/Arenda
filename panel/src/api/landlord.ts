@@ -124,6 +124,10 @@ export async function updateLease(
   return apiRequest(`/landlord/leases/${leaseId}`, { method: 'PATCH', body })
 }
 
+export async function terminateLease(leaseId: number) {
+  return apiRequest(`/landlord/leases/${leaseId}/terminate`, { method: 'POST' })
+}
+
 export async function updateTenant(tenantId: number, body: { name?: string; inn?: string }) {
   return apiRequest<TenantOut>(`/landlord/tenants/${tenantId}`, { method: 'PATCH', body })
 }

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import update
@@ -203,3 +203,52 @@ def delete_lease(session: Session, user_id: int, lease_id: int) -> None:
 
     session.delete(lease)
     session.commit()
+
+
+def terminate_lease(session: Session, user_id: int, lease_id: int) -> LeaseDetailOut:
+    lease = get_user_lease(session, user_id, lease_id)
+    today = date.today()
+
+    if lease.end_date < today:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Договор уже завершён",
+        )
+
+    new_end = today - timedelta(days=1)
+    if lease.start_date and new_end < lease.start_date:
+        lease.start_date = new_end
+
+    lease.end_date = new_end
+    session.add(lease)
+
+    from app.services.invoice_payments import (
+        cancel_pending_rent_invoices_for_lease,
+        notify_tenant_users_by_inn,
+        notify_user,
+    )
+
+    cancel_pending_rent_invoices_for_lease(session, lease)
+
+    tenant = session.get(Tenant, lease.tenant_id)
+    unit = session.get(Unit, lease.unit_id)
+    obj = session.get(Object, unit.object_id) if unit else None
+    place = f"{obj.address if obj else 'объект'} · {unit.number if unit else 'помещение'}"
+    notify_user(
+        session,
+        user_id,
+        "Договор досрочно завершён",
+        f"Договор с {tenant.name if tenant else 'арендатором'} по {place} завершён. Помещение свободно.",
+    )
+    if tenant:
+        notify_tenant_users_by_inn(
+            session,
+            tenant.inn,
+            "Договор досрочно завершён",
+            f"Арендодатель завершил договор по {place}. Неоплаченный счёт за аренду снят. "
+            "Если вы уже отправили оплату, она останется на подтверждении.",
+        )
+
+    session.commit()
+    session.refresh(lease)
+    return build_lease_detail(session, lease)

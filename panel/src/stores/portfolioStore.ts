@@ -31,12 +31,13 @@ import { num } from '@/api/types'
 import type { ObjectDetailOut } from '@/api/types'
 
 function recalcPropertyStats(property: Property, propertyTenants: Tenant[]) {
-  const occupiedSpaces = new Set(propertyTenants.map((t) => t.space))
+  const occupying = propertyTenants.filter((t) => t.status !== 'overdue')
+  const occupiedSpaces = new Set(occupying.map((t) => t.space))
   property.spacesOccupied = occupiedSpaces.size
   property.occupancy = property.spacesTotal > 0
     ? Math.round((property.spacesOccupied / property.spacesTotal) * 100)
     : 0
-  property.income = propertyTenants.reduce((sum, t) => sum + t.rent, 0)
+  property.income = occupying.reduce((sum, t) => sum + t.rent, 0)
 }
 
 function attachPendingDocuments(
@@ -263,7 +264,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   function getTenantForSpace(propertyId: number, spaceName: string) {
-    return tenants.value.find((t) => t.propertyId === propertyId && t.space === spaceName) ?? null
+    return tenants.value.find(
+      (t) => t.propertyId === propertyId && t.space === spaceName && t.status !== 'overdue',
+    ) ?? null
   }
 
   function getTenantsByInn(inn: string) {
@@ -873,6 +876,21 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  async function terminateLease(leaseId: number) {
+    lastError.value = null
+    try {
+      await landlordApi.terminateLease(leaseId)
+      await loadFromApi()
+      tenantDetailOpen.value = false
+      tenantDetailId.value = null
+      tenantDetailLeaseId.value = null
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось завершить договор')
+      return false
+    }
+  }
+
   function openPropertyModal() {
     propertyModalOpen.value = true
   }
@@ -1003,6 +1021,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     addTenant,
     updateSpace,
     updateTenant,
+    terminateLease,
     addCadastralParcel,
     updateCadastralParcel,
     removeCadastralParcel,

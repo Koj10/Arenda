@@ -49,3 +49,16 @@ def delete_lease(
 ):
     leases_service.delete_lease(session, auth.user.id, lease_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/leases/{lease_id}/terminate",
+    summary="Досрочное завершение договора",
+    response_model=LeaseDetailOut,
+)
+def terminate_lease(
+    lease_id: int,
+    auth: AuthContext = Depends(require_landlord),
+    session: Session = Depends(get_session),
+):
+    return leases_service.terminate_lease(session, auth.user.id, lease_id)

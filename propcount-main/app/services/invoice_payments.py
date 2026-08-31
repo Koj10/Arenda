@@ -359,6 +359,25 @@ def landlord_confirm_payment(session: Session, invoice: Invoice) -> Invoice:
     return invoice
 
 
+def cancel_pending_rent_invoices_for_lease(session: Session, lease: Lease) -> int:
+    invoices = session.exec(
+        select(Invoice).where(
+            Invoice.user_id == lease.user_id,
+            Invoice.tenant_id == lease.tenant_id,
+            Invoice.unit_id == lease.unit_id,
+            Invoice.kind == InvoiceKind.rent.value,
+            Invoice.status == InvoiceStatus.pending.value,
+        )
+    ).all()
+    removed = 0
+    for invoice in invoices:
+        if invoice.id is not None:
+            _unlink_invoice_files(session, invoice.id)
+        session.delete(invoice)
+        removed += 1
+    return removed
+
+
 def generate_scheduled_rent_invoices(session: Session) -> int:
     today = today_moscow()
     leases = session.exec(select(Lease).where(Lease.end_date >= today)).all()
