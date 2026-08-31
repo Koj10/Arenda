@@ -83,6 +83,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   const spaceDetailId = ref<number | null>(null)
   const tenantDetailOpen = ref(false)
   const tenantDetailId = ref<number | null>(null)
+  const tenantDetailLeaseId = ref<number | null>(null)
 
   const reportRows = computed<ReportRow[]>(() =>
     properties.value.map((p) => {
@@ -134,6 +135,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
 
   function getTenantById(id: number) {
     return tenants.value.find((t) => t.id === id)
+  }
+
+  function getTenantByLeaseId(leaseId: number) {
+    return tenants.value.find((t) => t.leaseId === leaseId)
   }
 
   function getSpaceById(id: number) {
@@ -449,6 +454,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               rent: 0,
               contract: '',
               status: 'active',
+              invoiceDay: 1,
             })
             continue
           }
@@ -463,6 +469,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               rent: num(lease.rent_monthly),
               contract: lease.end_date,
               status: getTenantStatus(lease.end_date),
+              leaseId: lease.id,
+              invoiceDay: lease.invoice_day || 1,
             })
           }
         }
@@ -634,6 +642,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         start_date: endDate < today ? endDate : today,
         end_date: endDate,
         file_ids: fileIds.length ? fileIds : undefined,
+        invoice_day: data.invoiceDay || 1,
       })
       addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenant.id, 'lease'))
       await loadFromApi()
@@ -839,17 +848,34 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
-  function updateTenant(id: number, data: TenantUpdateData) {
-    const tenant = getTenantById(id)
+  async function updateTenant(id: number, data: TenantUpdateData, leaseId?: number) {
+    const tenant = leaseId ? getTenantByLeaseId(leaseId) ?? getTenantById(id) : getTenantById(id)
     if (!tenant) return false
-
-    tenant.company = data.company.trim()
-    tenant.inn = data.inn.trim()
-    tenant.rent = data.rent
-    tenant.contract = data.contract
-    tenant.status = getTenantStatus(data.contract)
-    syncPropertyStats(tenant.propertyId)
-    return true
+    lastError.value = null
+    try {
+      await landlordApi.updateTenant(tenant.id, {
+        name: data.company.trim(),
+        inn: data.inn.trim(),
+      })
+      if (tenant.leaseId) {
+        await landlordApi.updateLease(tenant.leaseId, {
+          rent_monthly: data.rent,
+          end_date: data.contract,
+          invoice_day: data.invoiceDay,
+        })
+      }
+      tenant.company = data.company.trim()
+      tenant.inn = data.inn.trim()
+      tenant.rent = data.rent
+      tenant.contract = data.contract
+      tenant.invoiceDay = data.invoiceDay
+      tenant.status = getTenantStatus(data.contract)
+      syncPropertyStats(tenant.propertyId)
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось сохранить арендатора')
+      return false
+    }
   }
 
   function openPropertyModal() {
@@ -900,14 +926,16 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     spaceDetailId.value = null
   }
 
-  function openTenantDetail(tenantId: number) {
+  function openTenantDetail(tenantId: number, leaseId?: number) {
     tenantDetailId.value = tenantId
+    tenantDetailLeaseId.value = leaseId ?? null
     tenantDetailOpen.value = true
   }
 
   function closeTenantDetail() {
     tenantDetailOpen.value = false
     tenantDetailId.value = null
+    tenantDetailLeaseId.value = null
   }
 
   return {
@@ -934,11 +962,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     spaceDetailId,
     tenantDetailOpen,
     tenantDetailId,
+    tenantDetailLeaseId,
     reportRows,
     getSpaceReportRows,
     buildSpaceReportRow,
     getPropertyById,
     getTenantById,
+    getTenantByLeaseId,
     getTenantsByInn,
     getLeasesByInn,
     getSpaceById,

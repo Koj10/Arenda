@@ -1,5 +1,6 @@
 from datetime import date, datetime, timezone
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
@@ -14,17 +15,33 @@ from app.enums import (
 from app.models import Invoice, Lease, Notification, Object, Tenant, TenantProfile, Transaction, Unit
 from app.schemas.files import FileOut
 from app.utils.inn import normalize_inn
-from app.utils.period import parse_period
+from app.utils.period import clamp_day, parse_period
+
+MOSCOW_TZ = ZoneInfo("Europe/Moscow")
+
+
+def today_moscow() -> date:
+    try:
+        return datetime.now(MOSCOW_TZ).date()
+    except Exception:
+        return date.today()
 
 
 def current_period_for_date(value: date) -> str:
     return f"{value.year}-{value.month:02d}"
 
 
-def due_date_for_period(period: str) -> date:
-    month_start, month_end = parse_period(period)
-    proposed = date(month_start.year, month_start.month, 10)
-    return min(proposed, month_end)
+def due_date_for_period(period: str, invoice_day: int = 1) -> date:
+    month_start, _month_end = parse_period(period)
+    return clamp_day(month_start.year, month_start.month, invoice_day)
+
+
+def is_rent_billing_day(lease: Lease, on_date: date) -> bool:
+    start = lease.start_date or on_date
+    if lease.end_date < on_date or start > on_date:
+        return False
+    billing = clamp_day(on_date.year, on_date.month, lease.invoice_day or 1)
+    return on_date == billing
 
 
 def list_invoice_files(session: Session, invoice_id: int) -> List[FileOut]:
@@ -60,17 +77,31 @@ def notify_tenant_users_by_inn(session: Session, inn: str, title: str, body: str
             notify_user(session, profile.user_id, title, body)
 
 
-def ensure_rent_invoice_for_lease(session: Session, lease: Lease) -> Optional[Invoice]:
+def ensure_rent_invoice_for_lease(
+    session: Session,
+    lease: Lease,
+    *,
+    on_date: Optional[date] = None,
+    force: bool = False,
+) -> Optional[Invoice]:
     if lease.rent_monthly is None or lease.rent_monthly <= 0:
         return None
 
-    today = date.today()
-    start = lease.start_date or today
-    ref = start if start > today else today
-    if lease.end_date < ref:
+    today = on_date or today_moscow()
+    if not force and not is_rent_billing_day(lease, today):
         return None
 
-    period = current_period_for_date(ref)
+    start = lease.start_date or today
+    if lease.end_date < today or start > today:
+        if not force:
+            return None
+        month_start, month_end = parse_period(current_period_for_date(today))
+        if lease.end_date < month_start:
+            return None
+        if lease.start_date and lease.start_date > month_end:
+            return None
+
+    period = current_period_for_date(today)
     existing = session.exec(
         select(Invoice).where(
             Invoice.user_id == lease.user_id,
@@ -90,7 +121,7 @@ def ensure_rent_invoice_for_lease(session: Session, lease: Lease) -> Optional[In
         kind=InvoiceKind.rent.value,
         period=period,
         amount=lease.rent_monthly,
-        due_date=due_date_for_period(period),
+        due_date=due_date_for_period(period, lease.invoice_day or 1),
         status=InvoiceStatus.pending.value,
     )
     session.add(invoice)
@@ -247,3 +278,37 @@ def landlord_confirm_payment(session: Session, invoice: Invoice) -> Invoice:
     session.commit()
     session.refresh(invoice)
     return invoice
+
+
+def generate_scheduled_rent_invoices(session: Session) -> int:
+    today = today_moscow()
+    period = current_period_for_date(today)
+    leases = session.exec(select(Lease).where(Lease.end_date >= today)).all()
+    created = 0
+
+    for lease in leases:
+        existing = session.exec(
+            select(Invoice.id).where(
+                Invoice.user_id == lease.user_id,
+                Invoice.tenant_id == lease.tenant_id,
+                Invoice.unit_id == lease.unit_id,
+                Invoice.kind == InvoiceKind.rent.value,
+                Invoice.period == period,
+            )
+        ).first()
+        if existing:
+            continue
+        invoice = ensure_rent_invoice_for_lease(session, lease, on_date=today)
+        if invoice:
+            created += 1
+
+    session.commit()
+    return created
+
+
+def run_rent_invoices_job() -> dict:
+    from app.db import engine
+
+    with Session(engine) as session:
+        created = generate_scheduled_rent_invoices(session)
+        return {"rent_invoices_created": created}

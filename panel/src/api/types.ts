@@ -100,6 +100,7 @@ export interface LeaseInTenantDetail {
   start_date?: string | null
   end_date: string
   status: string
+  invoice_day?: number
 }
 
 export interface TenantDetailOut extends TenantOut {

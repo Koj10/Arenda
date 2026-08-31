@@ -18,7 +18,8 @@ from app.schemas.invoices import (
 from app.services.files import link_files_by_ids
 from app.services.realestate import get_user_unit
 from app.services.tenants import get_user_tenant
-from app.utils.period import parse_period, validate_period_format
+from app.services.invoice_payments import ensure_rent_invoice_for_lease
+from app.utils.period import clamp_day, parse_period, validate_period_format
 
 
 def computed_invoice_status(invoice: Invoice) -> str:
@@ -318,20 +319,15 @@ def generate_rent_invoices(
         if existing:
             continue
 
-        invoice = Invoice(
-            user_id=user_id,
-            tenant_id=lease.tenant_id,
-            unit_id=lease.unit_id,
-            kind=InvoiceKind.rent.value,
-            source_bill_id=None,
-            period=period,
-            amount=lease.rent_monthly,
-            due_date=month_start,
-            status=InvoiceStatus.pending.value,
+        billing_date = clamp_day(month_start.year, month_start.month, lease.invoice_day or 1)
+        invoice = ensure_rent_invoice_for_lease(
+            session,
+            lease,
+            on_date=billing_date,
+            force=True,
         )
-
-        session.add(invoice)
-        created.append(invoice)
+        if invoice:
+            created.append(invoice)
 
     if created:
         session.flush()

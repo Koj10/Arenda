@@ -106,9 +106,26 @@ export async function createLease(body: {
   rent_monthly: number
   start_date?: string
   end_date: string
+  invoice_day?: number
   file_ids?: number[]
 }) {
   return apiRequest('/landlord/leases', { method: 'POST', body })
+}
+
+export async function updateLease(
+  leaseId: number,
+  body: {
+    rent_monthly?: number
+    start_date?: string | null
+    end_date?: string
+    invoice_day?: number
+  },
+) {
+  return apiRequest(`/landlord/leases/${leaseId}`, { method: 'PATCH', body })
+}
+
+export async function updateTenant(tenantId: number, body: { name?: string; inn?: string }) {
+  return apiRequest<TenantOut>(`/landlord/tenants/${tenantId}`, { method: 'PATCH', body })
 }
 
 export async function listTransactions(params: Record<string, string | number | undefined> = {}) {

@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import type { TenantFormData } from '@/types/portfolio'
-import { TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
+import { INVOICE_DAYS, TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 
@@ -16,6 +16,7 @@ const form = ref<TenantFormData>({
   rent: 0,
   contract: '',
   documents: [],
+  invoiceDay: 1,
 })
 
 const errors = ref<Partial<Record<string, string>>>({})
@@ -30,7 +31,7 @@ const spaceOptions = computed(() => {
 })
 
 function resetForm() {
-  form.value = { company: '', inn: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
+  form.value = { company: '', inn: '', propertyId: null, space: '', rent: 0, contract: '', documents: [], invoiceDay: 1 }
   errors.value = {}
 }
 
@@ -84,6 +85,7 @@ function validate() {
   if (!form.value.space.trim()) errors.value.space = 'Укажите помещение'
   if (form.value.rent <= 0) errors.value.rent = 'Укажите сумму аренды'
   if (!form.value.contract) errors.value.contract = 'Укажите дату окончания'
+  if (form.value.invoiceDay < 1 || form.value.invoiceDay > 31) errors.value.invoiceDay = 'День от 1 до 31'
   return Object.keys(errors.value).length === 0
 }
 
@@ -169,10 +171,20 @@ function onClose() {
         </div>
       </div>
 
-      <div>
-        <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Договор до</label>
-        <input v-model="form.contract" type="date" class="panel-input" :class="{ 'border-red-500': errors.contract }" />
-        <p v-if="errors.contract" class="text-xs text-red-400 mt-1">{{ errors.contract }}</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Договор до</label>
+          <input v-model="form.contract" type="date" class="panel-input" :class="{ 'border-red-500': errors.contract }" />
+          <p v-if="errors.contract" class="text-xs text-red-400 mt-1">{{ errors.contract }}</p>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Счёт за аренду</label>
+          <select v-model.number="form.invoiceDay" class="panel-input" :class="{ 'border-red-500': errors.invoiceDay }">
+            <option v-for="day in INVOICE_DAYS" :key="day" :value="day">{{ day }}-е число каждого месяца</option>
+          </select>
+          <p v-if="errors.invoiceDay" class="text-xs text-red-400 mt-1">{{ errors.invoiceDay }}</p>
+          <p v-else class="text-xs text-slate-500 mt-1">В этот день арендатору приходит счёт. Если в месяце меньше дней — в последний день.</p>
+        </div>
       </div>
 
       <FileAttachments v-model="form.documents" entity-type="tenant" category="lease" :label="TENANT_DOCUMENT_LABEL" compact />

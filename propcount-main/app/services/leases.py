@@ -68,6 +68,7 @@ def build_lease_detail(session: Session, lease: Lease) -> LeaseDetailOut:
         start_date=lease.start_date,
         end_date=lease.end_date,
         created_at=lease.created_at,
+        invoice_day=lease.invoice_day or 1,
         tenant_name=tenant.name if tenant else "",
         tenant_inn=tenant.inn if tenant else "",
         unit_number=unit.number if unit else "",
@@ -94,6 +95,7 @@ def create_lease(
         rent_monthly=payload.rent_monthly,
         start_date=payload.start_date,
         end_date=payload.end_date,
+        invoice_day=payload.invoice_day,
     )
 
     session.add(lease)
@@ -167,6 +169,9 @@ def update_lease(
 
     if payload.rent_monthly is not None:
         lease.rent_monthly = payload.rent_monthly
+
+    if payload.invoice_day is not None:
+        lease.invoice_day = payload.invoice_day
 
     session.add(lease)
     session.commit()

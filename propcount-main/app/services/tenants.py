@@ -140,6 +140,7 @@ def get_tenant_detail(
                 start_date=lease.start_date,
                 end_date=lease.end_date,
                 status=get_lease_status(lease.end_date),
+                invoice_day=lease.invoice_day or 1,
             )
         )
 

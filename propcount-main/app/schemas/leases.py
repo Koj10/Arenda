@@ -11,6 +11,7 @@ class LeaseCreate(BaseModel):
     rent_monthly: Decimal = Field(ge=0)
     start_date: Optional[date] = None
     end_date: date
+    invoice_day: int = Field(default=1, ge=1, le=31)
     file_ids: List[int] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -27,6 +28,7 @@ class LeaseUpdate(BaseModel):
     rent_monthly: Optional[Decimal] = Field(default=None, ge=0)
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    invoice_day: Optional[int] = Field(default=None, ge=1, le=31)
     file_ids: Optional[List[int]] = None
 
     @model_validator(mode="after")
@@ -47,6 +49,7 @@ class LeaseOut(BaseModel):
     rent_monthly: Decimal
     start_date: Optional[date] = None
     end_date: date
+    invoice_day: int = 1
     created_at: datetime
 
 

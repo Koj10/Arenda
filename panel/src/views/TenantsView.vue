@@ -86,9 +86,9 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
             <tbody>
               <tr
                 v-for="t in filtered"
-                :key="t.id"
+                :key="t.leaseId ?? t.id"
                 class="panel-table-row cursor-pointer"
-                @click="store.openTenantDetail(t.id)"
+                @click="store.openTenantDetail(t.id, t.leaseId)"
               >
                 <td class="px-5 py-3.5">
                   <div class="flex items-center gap-2 min-w-0">

@@ -154,6 +154,7 @@ class Lease(SQLModel, table=True):
     rent_monthly: Decimal = Field(sa_type=Numeric(12, 2))
     start_date: Optional[date] = Field(default=None)
     end_date: date
+    invoice_day: int = Field(default=1)
     created_at: datetime = Field(default_factory=utcnow)
 
     tenant: Optional[Tenant] = Relationship(back_populates="leases")

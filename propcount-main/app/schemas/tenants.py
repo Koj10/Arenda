@@ -38,6 +38,7 @@ class LeaseInTenantDetail(BaseModel):
     start_date: Optional[date] = None
     end_date: date
     status: str
+    invoice_day: int = 1
 
 
 class TenantDetailOut(TenantOut):

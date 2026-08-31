@@ -30,3 +30,8 @@ def parse_period(period: str) -> tuple[date, date]:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+def clamp_day(year: int, month: int, day: int) -> date:
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, min(max(int(day), 1), last_day))
