@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Building2, UserRound, ArrowLeft, Check } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { defaultHomeForRole, isValidInn } from '@/types/auth'
 import type { UserRole } from '@/types/auth'
+import { fetchTenantProfileApi } from '@/api/auth'
 import PropCountLogo from '@/components/ui/PropCountLogo.vue'
 import { redirectToLandingAuth } from '@/utils/authRedirect'
 
@@ -27,8 +28,8 @@ const title = computed(() =>
 
 const subtitle = computed(() =>
   isLogin.value
-    ? 'Войдите как арендодатель или арендатор — откроется нужная панель.'
-    : 'Аккаунт создан. Выберите роль и при необходимости укажите ИНН.',
+    ? 'Выберите, кем вы входите. Арендатору нужен ИНН — по нему откроется кабинет арендатора.'
+    : 'Аккаунт создан. Выберите роль: арендатору обязательно указать ИНН.',
 )
 
 const roles: {
@@ -61,7 +62,7 @@ async function confirm() {
     return
   }
 
-  if (selected.value === 'tenant' && isRegister.value) {
+  if (selected.value === 'tenant') {
     const inn = tenantInn.value.trim()
     if (!inn) {
       error.value = 'Укажите ИНН компании'
@@ -76,7 +77,7 @@ async function confirm() {
   loading.value = true
   const result = await auth.completeRoleChoice(
     selected.value,
-    selected.value === 'tenant' && isRegister.value ? tenantInn.value.trim() : undefined,
+    selected.value === 'tenant' ? tenantInn.value.trim() : undefined,
   )
   loading.value = false
 
@@ -92,6 +93,15 @@ function goBack() {
   auth.clearPendingRoleChoice()
   redirectToLandingAuth(mode)
 }
+
+onMounted(async () => {
+  try {
+    const profile = await fetchTenantProfileApi()
+    if (profile.inn && !tenantInn.value) tenantInn.value = profile.inn
+  } catch {
+    /* ИНН ещё не задан */
+  }
+})
 </script>
 
 <template>
@@ -150,7 +160,7 @@ function goBack() {
       </div>
 
       <div
-        v-if="selected === 'tenant' && isRegister"
+        v-if="selected === 'tenant'"
         class="mb-6 rounded-2xl border border-border bg-card p-5"
       >
         <label class="panel-label">ИНН компании <span class="text-red-400">*</span></label>
@@ -164,16 +174,9 @@ function goBack() {
           required
         />
         <p class="text-xs text-slate-500 mt-2">
-          Обязательно при регистрации арендатора. По ИНН аккаунт свяжется с договорами в системе.
+          Обязательно для арендатора. По ИНН откроется кабинет и связь с договорами.
         </p>
       </div>
-
-      <p
-        v-else-if="selected === 'tenant' && isLogin"
-        class="mb-6 rounded-2xl border border-border bg-panel/40 px-4 py-3 text-xs text-slate-400"
-      >
-        ИНН подтянется из вашей учётной записи автоматически.
-      </p>
 
       <p v-if="error" class="text-sm text-red-400 text-center mb-4">{{ error }}</p>
 

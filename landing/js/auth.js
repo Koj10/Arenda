@@ -146,9 +146,8 @@ function redirectToPanel(session, options = {}) {
   if (user.name) params.set('name', user.name)
   if (session.access_token) params.set('access_token', session.access_token)
   if (session.refresh_token) params.set('refresh_token', session.refresh_token)
-  if (options.chooseRole) params.set('chooseRole', '1')
+  params.set('chooseRole', '1')
   if (options.mode) params.set('mode', options.mode)
-  if (session.current_role) params.set('role', session.current_role)
 
   const { protocol, hostname, port } = window.location
   const panelUrl = port === '3000'
@@ -158,49 +157,8 @@ function redirectToPanel(session, options = {}) {
   window.location.href = panelUrl
 }
 
-function selectedRole(form) {
-  return form.querySelector('input[name="role"]:checked')?.value || ''
-}
-
-function setRoleError(form, message) {
-  const el = form.querySelector('[data-role-error]')
-  if (el) el.textContent = message || ''
-}
-
-function isValidInn(value) {
-  return /^\d{10}$|^\d{12}$/.test(value)
-}
-
-async function afterAuth(session, mode, role, inn) {
-  let next = session
-  if (role === 'landlord' || role === 'tenant') {
-    next = await apiPost('/me/select-role', { role }, session.access_token)
-    if (role === 'tenant' && inn) {
-      await apiPatch(
-        '/me/tenant-profile',
-        { company_name: session.user?.name || '', inn },
-        next.access_token,
-      )
-    }
-    redirectToPanel(next, { chooseRole: false, mode })
-    return
-  }
-  redirectToPanel(next, { chooseRole: true, mode })
-}
-
-function initRoleInnToggle(form) {
-  const group = form.querySelector('#tenant-inn-group')
-  if (!group) return
-  const update = () => {
-    const tenant = selectedRole(form) === 'tenant'
-    group.hidden = !tenant
-    const inn = form.querySelector('#inn')
-    if (inn) inn.required = tenant
-  }
-  form.querySelectorAll('input[name="role"]').forEach((input) => {
-    input.addEventListener('change', update)
-  })
-  update()
+function afterAuth(session, mode) {
+  redirectToPanel(session, { mode })
 }
 
 function initLoginForm() {
@@ -212,16 +170,9 @@ function initLoginForm() {
     let valid = true
     const email = form.querySelector('#email')
     const password = form.querySelector('#password')
-    const role = selectedRole(form)
     showFormError(form, '')
-    setRoleError(form, '')
     clearFieldError(email)
     clearFieldError(password)
-
-    if (!role) {
-      setRoleError(form, 'Выберите: арендодатель или арендатор')
-      valid = false
-    }
 
     if (!validateEmail(email.value)) {
       showFieldError(email, 'Введите корректный email')
@@ -240,7 +191,7 @@ function initLoginForm() {
         email: email.value.trim(),
         password: password.value,
       })
-      await afterAuth(session, 'login', role)
+      afterAuth(session, 'login')
     } catch (err) {
       showFormError(form, err.message || 'Не удалось войти')
       setButtonLoading(btn, false)
@@ -253,7 +204,6 @@ function initRegisterForm() {
   if (!form) return
 
   initPasswordStrength()
-  initRoleInnToggle(form)
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -263,25 +213,9 @@ function initRegisterForm() {
     const password = form.querySelector('#password')
     const confirm = form.querySelector('#password-confirm')
     const terms = form.querySelector('#terms')
-    const inn = form.querySelector('#inn')
-    const role = selectedRole(form)
     showFormError(form, '')
-    setRoleError(form, '')
 
     ;[name, email, password, confirm].forEach(clearFieldError)
-    if (inn) clearFieldError(inn)
-
-    if (!role) {
-      setRoleError(form, 'Выберите: арендодатель или арендатор')
-      valid = false
-    }
-    if (role === 'tenant') {
-      const innValue = inn?.value?.trim() || ''
-      if (!isValidInn(innValue)) {
-        if (inn) showFieldError(inn, 'ИНН: 10 или 12 цифр')
-        valid = false
-      }
-    }
 
     if (name.value.trim().length < 2) {
       showFieldError(name, 'Введите полное имя')
@@ -315,7 +249,7 @@ function initRegisterForm() {
         password_confirm: confirm.value,
         terms: true,
       })
-      await afterAuth(session, 'register', role, role === 'tenant' ? inn?.value?.trim() : undefined)
+      afterAuth(session, 'register')
     } catch (err) {
       showFormError(form, err.message || 'Не удалось зарегистрироваться')
       setButtonLoading(btn, false)

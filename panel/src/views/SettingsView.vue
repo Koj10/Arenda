@@ -15,12 +15,22 @@ const { plan, nextPlan, startCheckout, usage, limits } = usePlan()
 const Layout = computed(() => (auth.isTenant ? TenantLayout : AppLayout))
 
 const name = ref(auth.user?.name ?? '')
+const inn = ref(auth.user?.inn ?? '')
+const profileError = ref('')
 const emailNotify = ref(true)
 const pushNotify = ref(true)
 const saved = ref(false)
 
-function saveProfile() {
-  auth.updateProfile({ name: name.value.trim() || auth.user?.name })
+async function saveProfile() {
+  profileError.value = ''
+  const result = await auth.saveProfile({
+    name: name.value.trim() || auth.user?.name,
+    inn: inn.value.trim(),
+  })
+  if (!result.ok) {
+    profileError.value = result.error
+    return
+  }
   saved.value = true
   setTimeout(() => {
     saved.value = false
@@ -49,7 +59,20 @@ function goPricing() {
             <span class="text-xs text-slate-500 mb-1.5 block">Email</span>
             <input :value="auth.user?.email" type="email" class="panel-input opacity-70" disabled />
           </label>
-          <p v-if="auth.tenantInn" class="text-xs text-slate-500 font-mono">ИНН {{ auth.tenantInn }}</p>
+          <label class="block">
+            <span class="text-xs text-slate-500 mb-1.5 block">ИНН</span>
+            <input
+              v-model="inn"
+              type="text"
+              inputmode="numeric"
+              placeholder="Необязательно для арендодателя"
+              class="panel-input font-mono"
+            />
+            <span class="text-[11px] text-slate-600 mt-1.5 block">
+              Можно указать после входа. Для арендатора ИНН задаётся при выборе роли.
+            </span>
+          </label>
+          <p v-if="profileError" class="text-xs text-red-400">{{ profileError }}</p>
           <div class="flex items-center gap-3">
             <button type="button" class="panel-btn-primary" @click="saveProfile">Сохранить</button>
             <span v-if="saved" class="text-xs text-emerald-brand">Сохранено</span>

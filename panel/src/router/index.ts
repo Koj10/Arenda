@@ -142,25 +142,24 @@ router.beforeEach((to) => {
     const chooseRole = to.query.chooseRole === '1'
     const mode = to.query.mode === 'login' ? 'login' : 'register'
     const role = to.query.role === 'tenant' ? 'tenant' : to.query.role === 'landlord' ? 'landlord' : undefined
+    const inn = to.query.inn ? String(to.query.inn) : undefined
 
     if (chooseRole) {
       auth.beginRoleChoice(email, name ?? email.split('@')[0] ?? 'User', mode)
       return { path: '/choose-role', replace: true }
     }
 
-    auth.login(email, name, { role })
+    auth.login(email, name, { role, inn })
     return { path: defaultHomeForRole(auth.user!.role), replace: true }
   }
 
   if (to.meta.chooseRole) {
+    if (auth.pendingRoleChoice) return true
     if (auth.isAuthenticated) {
       return { path: defaultHomeForRole(auth.user!.role) }
     }
-    if (!auth.pendingRoleChoice) {
-      redirectToLandingLogin()
-      return false
-    }
-    return true
+    redirectToLandingLogin()
+    return false
   }
 
   if (auth.needsRoleChoice && to.path !== '/choose-role') {

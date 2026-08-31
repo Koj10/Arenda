@@ -20,31 +20,9 @@
 
     <div class="auth-card">
       <h1 class="auth-title">Создайте аккаунт</h1>
-      <p class="auth-subtitle">Выберите роль — арендодатель или арендатор</p>
+      <p class="auth-subtitle">Роль выберете после регистрации. ИНН можно указать в настройках или при входе как арендатор.</p>
 
       <form id="register-form" novalidate class="auth-form">
-        <fieldset class="role-pick">
-          <legend class="role-pick-legend">Кто вы</legend>
-          <label class="role-pick-card">
-            <input type="radio" name="role" value="landlord" required />
-            <span class="role-pick-title">Арендодатель</span>
-            <span class="role-pick-desc">Учёт объектов, договоров и платежей</span>
-          </label>
-          <label class="role-pick-card">
-            <input type="radio" name="role" value="tenant" />
-            <span class="role-pick-title">Арендатор</span>
-            <span class="role-pick-desc">Кабинет по помещениям и счетам</span>
-          </label>
-        </fieldset>
-        <p class="field-error" data-role-error></p>
-
-        <div class="field-group" id="tenant-inn-group" hidden>
-          <div class="field-control">
-            <i data-feather="hash" class="field-icon"></i>
-            <input id="inn" type="text" class="field-input" placeholder="ИНН компании" inputmode="numeric" autocomplete="off" />
-          </div>
-          <p class="field-error"></p>
-        </div>
         <div class="field-group">
           <div class="field-control">
             <i data-feather="user" class="field-icon"></i>

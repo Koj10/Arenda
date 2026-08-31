@@ -119,7 +119,6 @@ def get_or_create_oauth_user(
             session.commit()
             session.refresh(user)
 
-        ensure_role(session, user, Role.landlord.value)
         return user
 
     user = User(
@@ -132,7 +131,5 @@ def get_or_create_oauth_user(
     session.add(user)
     session.commit()
     session.refresh(user)
-
-    ensure_role(session, user, Role.landlord.value)
 
     return user

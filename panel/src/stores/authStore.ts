@@ -7,7 +7,6 @@ import { formatApiError, getAccessToken, setTokens } from '@/api/http'
 import type { AuthResponse } from '@/api/types'
 import {
   fetchMe,
-  fetchTenantProfileApi,
   logoutApi,
   selectRoleApi,
   updateTenantProfileApi,
@@ -89,6 +88,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function applyUser(next: AuthUser) {
+    const prevRole = user.value?.role
+    if (prevRole && prevRole !== next.role) {
+      remoteLoadsStarted = false
+      usePlanStore().clear()
+      void import('@/stores/portfolioStore').then(({ usePortfolioStore }) => {
+        usePortfolioStore().reset()
+        void usePortfolioStore().loadFromApi()
+      })
+    }
     user.value = next
     persistUser()
     clearPendingRoleChoice()
@@ -140,7 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
     const pending = pendingRoleChoice.value
     if (!pending) return { ok: false, error: 'Сессия выбора роли истекла' }
 
-    if (role === 'tenant' && pending.mode === 'register') {
+    if (role === 'tenant') {
       const value = inn?.trim() ?? ''
       if (!value) return { ok: false, error: 'Укажите ИНН компании' }
       if (!isValidInn(value)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
@@ -149,21 +157,12 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await selectRoleApi(role)
       let tenantInnValue = inn?.trim()
-      if (role === 'tenant') {
-        if (pending.mode === 'register' && tenantInnValue) {
-          const profile = await updateTenantProfileApi({
-            company_name: pending.name,
-            inn: tenantInnValue,
-          })
-          tenantInnValue = profile.inn
-        } else {
-          try {
-            const profile = await fetchTenantProfileApi()
-            tenantInnValue = profile.inn
-          } catch {
-            /* optional */
-          }
-        }
+      if (role === 'tenant' && tenantInnValue) {
+        const profile = await updateTenantProfileApi({
+          company_name: pending.name,
+          inn: tenantInnValue,
+        })
+        tenantInnValue = profile.inn
       }
 
       login(pending.email, pending.name, {
@@ -214,6 +213,26 @@ export const useAuthStore = defineStore('auth', () => {
     persistUser()
   }
 
+  async function saveProfile(patch: Partial<Pick<AuthUser, 'name' | 'inn'>>): Promise<CompleteRoleResult> {
+    if (!user.value) return { ok: false, error: 'Нет сессии' }
+    const inn = patch.inn?.trim()
+    if (inn) {
+      if (!isValidInn(inn)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
+      try {
+        const profile = await updateTenantProfileApi({
+          company_name: (patch.name ?? user.value.name).trim() || user.value.name,
+          inn,
+        })
+        updateProfile({ name: patch.name ?? user.value.name, inn: profile.inn })
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: formatApiError(err, 'Не удалось сохранить ИНН') }
+      }
+    }
+    updateProfile({ name: patch.name ?? user.value.name })
+    return { ok: true }
+  }
+
   async function hydrateFromApi() {
     if (!getAccessToken()) return
     try {
@@ -249,6 +268,11 @@ export const useAuthStore = defineStore('auth', () => {
         sessionStorage.removeItem(PENDING_KEY)
         sessionStorage.removeItem('propcount-pending-reg')
       }
+    }
+
+    if (pendingRoleChoice.value) {
+      user.value = null
+      return
     }
 
     if (user.value) {
@@ -291,6 +315,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearPendingRegistration,
     logout,
     updateProfile,
+    saveProfile,
     hydrate,
     hydrateFromApi,
   }

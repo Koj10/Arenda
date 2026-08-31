@@ -141,7 +141,7 @@ def login(
             detail="Invalid email or password",
         )
 
-    return build_auth_response(session, user)
+    return build_auth_response(session, user, assign_missing_role=False)
 
 
 @router.post(
@@ -349,7 +349,7 @@ def google_callback(
         name=name,
     )
 
-    return build_auth_response(session, user)
+    return build_auth_response(session, user, assign_missing_role=False)
 
 
 @router.get("/apple")
@@ -517,4 +517,4 @@ async def apple_callback(
         name=name,
     )
 
-    return build_auth_response(session, user)
+    return build_auth_response(session, user, assign_missing_role=False)

@@ -67,12 +67,10 @@ def get_current_auth(
 
     valid_roles = [Role.landlord.value, Role.tenant.value]
 
-    if role not in valid_roles:
+    if not roles:
+        role = ""
+    elif role not in valid_roles or role not in roles:
         role = default_role(roles)
-    elif roles and role not in roles:
-        role = default_role(roles)
-    elif not roles:
-        role = Role.landlord.value
 
     return AuthContext(user=user, role=role)
 
