@@ -1,10 +1,17 @@
 name: PropCount
 
-# Сайт в Docker на :3005. :3001 на сервере занят API (uvicorn).
-# Снаружи HTTPS — хостовый nginx (deploy/host-nginx-proxy.conf).
 services:
   app:
     image: ghcr.io/koj10/arenda:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3005:80"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
