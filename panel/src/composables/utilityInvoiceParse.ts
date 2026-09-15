@@ -105,18 +105,68 @@ const SELLER_DEFAULT: { re: RegExp; criterion: UtilityCriterion; short: string }
   { re: /центр коммунального сервиса|\bцкс\b/i, criterion: 'garbage', short: 'ЦКС' },
   { re: /электротепловые сети|\bэтс\b/i, criterion: 'water', short: 'ЭТС' },
   { re: /тепловодосет/i, criterion: 'heating', short: 'Тепловодосети' },
+  { re: /\bмэк\b|межрегионал[\s\S]{0,30}распред/i, criterion: 'electricity', short: 'МЭК' },
+  { re: /россети|сетев[\s\S]{0,10}компан/i, criterion: 'electricity', short: 'Россети' },
+  { re: /газпром|межрегионгаз/i, criterion: 'gas', short: 'Газпром' },
+  { re: /жилищник|\bжэк\b|\bук\b|управл[\s\S]{0,10}дом|тсж| homeowners/i, criterion: 'management', short: 'УК / ТСЖ' },
 ]
 
 export function parseRuNumber(raw: string): number | null {
-  const cleaned = raw.replace(/\u00a0/g, ' ').replace(/\s/g, '').replace(',', '.')
-  const value = Number.parseFloat(cleaned)
+  if (!raw) return null
+  const cleaned = String(raw)
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s/g, '')
+  if (!cleaned) return null
+  let normalized = cleaned
+  const hasComma = cleaned.includes(',')
+  const hasDot = cleaned.includes('.')
+  if (hasComma && hasDot) {
+    const commaPos = cleaned.lastIndexOf(',')
+    const dotPos = cleaned.lastIndexOf('.')
+    if (commaPos > dotPos) {
+      normalized = cleaned.replace(/\./g, '').replace(',', '.')
+    } else {
+      normalized = cleaned.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    normalized = cleaned.replace(',', '.')
+  } else if (hasDot) {
+    const lastDot = cleaned.lastIndexOf('.')
+    const afterDot = cleaned.length - lastDot - 1
+    const dots = [...cleaned].filter((c) => c === '.').length
+    if (dots === 1 && (afterDot === 3 && !/^\d{1,3}$/.test(cleaned.slice(0, lastDot)) || afterDot !== 3 || afterDot >= 4)) {
+      normalized = cleaned
+    } else if (dots > 1) {
+      normalized = cleaned.slice(0, lastDot).replace(/\./g, '') + '.' + cleaned.slice(lastDot + 1)
+    }
+  }
+  const value = Number.parseFloat(normalized)
   if (!Number.isFinite(value) || value <= 0 || value > 99_999_999) return null
-  return Math.round(value * 100) / 100
+  return Math.round(value * 100000) / 100000
 }
 
 function collectMoney(text: string): number[] {
-  const matches = [...text.matchAll(/(\d{1,3}(?:\s\d{3})+|\d+)[.,]\d{2}/g)]
-  return matches.map((m) => parseRuNumber(m[0]!)).filter((n): n is number => n != null)
+  const patterns: RegExp[] = [
+    /(\d{1,3}(?:[\s\u00a0]\d{3})+|\d+)[.,]\d{2}(?!\d)/g,
+    /(\d{1,3}(?:[\s\u00a0]\d{3})+|\d+)[.,]\d{3,5}(?!\d)/g,
+    /(\d+)\s*(?:руб(?:\.|ля)?|₽|коп(?:\.|ейки)?)/gi,
+  ]
+  const out: number[] = []
+  const seen = new Set<number>()
+  for (const re of patterns) {
+    for (const m of text.matchAll(re)) {
+      const raw = m[1] ?? m[0]
+      const n = parseRuNumber(raw)
+      if (n != null) {
+        const key = Math.round(n * 100)
+        if (!seen.has(key)) {
+          seen.add(key)
+          out.push(n)
+        }
+      }
+    }
+  }
+  return out
 }
 
 function lastMoney(text: string): number | null {
@@ -155,11 +205,26 @@ function parseDateRu(value: string): { iso: string; period: string } | null {
 }
 
 function normalize(text: string): string {
-  return text
+  let t = text
     .replace(/\u00a0/g, ' ')
     .replace(/ё/gi, 'е')
-    .replace(/[ \t]+/g, ' ')
     .replace(/\r/g, '')
+  t = t
+    .replace(/\n[\s\u00a0]*\n/g, '\n\n')
+    .replace(/\n/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+  t = t
+    .replace(/Ц\s*е\s*н\s*а/gi, 'Цена')
+    .replace(/Т\s*а\s*р\s*и\s*ф/gi, 'тариф')
+    .replace(/з\s*а\s*е\s*д\s*и\s*н\s*и\s*ц/gi, 'за единиц')
+    .replace(/и\s*з\s*м\s*е\s*р\s*е\s*н/gi, 'измерен')
+    .replace(/С\s*т\s*о\s*и\s*м\s*о\s*с\s*т\s*ь/gi, 'Стоимость')
+    .replace(/т\s*о\s*в\s*а\s*р\s*о\s*в/gi, 'товаров')
+    .replace(/у\s*с\s*л\s*у\s*г/gi, 'услуг')
+    .replace(/н\s*а\s*л\s*о\s*г/gi, 'налог')
+    .replace(/в\s*с\s*е\s*г\s*о/gi, 'всего')
+    .replace(/М\s*Э\s*К/gi, 'МЭК')
+  return t
 }
 
 function mentionedCriteria(text: string): UtilityCriterion[] {
@@ -171,14 +236,30 @@ function mentionedCriteria(text: string): UtilityCriterion[] {
 }
 
 function extractTariff(text: string): { unitPrice: number | null; vatRate: number } {
-  const vatRate = /20\s*%/.test(text) ? 0.20 : /22\s*%/.test(text) ? 0.22 : VAT_RATE
+  const has20 = /20\s*%/.test(text) || /стоимость.*(?:товар|работ|услуг|имуществ).*налог.*всего/i.test(text)
+  const has22 = /22\s*%/.test(text)
+  const vatRate = has20 ? 0.20 : has22 ? 0.22 : VAT_RATE
   const candidates: number[] = []
+
+  const unitPriceHeaderRe =
+    /(?:Цена\s*\(тариф\)\s*за\s*единиц\s*у?\s*измерен|Цена\s+за\s+единиц|тариф\s+за\s+единиц|Ставка\s+за\s+единиц)[\s\S]{0,300}?/gi
+  for (const headerMatch of text.matchAll(unitPriceHeaderRe)) {
+    const startIdx = (headerMatch.index ?? 0) + headerMatch[0]!.length
+    const tail = text.slice(startIdx, startIdx + 1500)
+    const priceMatches = [
+      ...tail.matchAll(/(\d{1,3}(?:\s\d{3})*[.,]\d{2,5}|\d+[.,]\d{2,5})/g),
+    ]
+    for (const pm of priceMatches) {
+      const p = parseRuNumber(pm[1]!)
+      if (p && p > 0.0001 && p < 100000) candidates.push(p)
+    }
+  }
 
   const triplePatterns = [
     /([\d\s]+[.,]\d+)\s+[×xх*]\s+([\d\s]+[.,]\d+)\s*[=:]\s*([\d\s]+[.,]\d{2})/gi,
     /([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d{2})\s+Без акциза/gi,
     /([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d{2})(?:\s|$)/g,
-    /(\d[\d\s]*[.,]\d+)\s{1,5}(\d[\d\s]*[.,]\d+)\s{1,5}(\d[\d\s]*[.,]\d{2})/g,
+    /(\d[\d\s]*[.,]\d+)\s{1,5}(\d[\d\s]*[.,]\d+)\s{1,5}(\d[\d\s]*[.,]\d{2,5})/g,
   ]
   for (const re of triplePatterns) {
     for (const m of text.matchAll(re)) {
@@ -187,7 +268,7 @@ function extractTariff(text: string): { unitPrice: number | null; vatRate: numbe
       const net = parseRuNumber(m[3]!)
       if (qty && price && net && qty > 0 && price > 0 && net > 0) {
         const ratio = qty * price / net
-        if (ratio > 0.9 && ratio < 1.1) {
+        if (ratio > 0.85 && ratio < 1.25) {
           candidates.push(price)
         }
       }
@@ -195,9 +276,9 @@ function extractTariff(text: string): { unitPrice: number | null; vatRate: numbe
   }
 
   const tariffKeywordPatterns = [
-    /(?:тариф|ставка|цена\s+за\s+единиц|цена\s+за\s+1|стоимость\s+единиц)[\s\S]{0,40}?(\d[\d\s]*[.,]\d{2,5})/gi,
-    /(?:тариф|ставка)[^\d]{0,20}(\d[\d\s]*[.,]\d{2,5})/gi,
-    /(\d[\d\s]*[.,]\d{2,5})[\s\S]{0,20}?(?:руб\.?|коп\.?|₽)\s*(?:за|в|на)?[\s\S]{0,20}?(?:кВт|квт|м3|м³|Гкал|куб|единиц)/gi,
+    /(?:тариф|ставка|цена\s+за\s+единиц|цена\s+за\s+1|стоимость\s+единиц)[\s\S]{0,80}?(\d[\d\s]*[.,]\d{2,5})/gi,
+    /(?:тариф|ставка|цена)[^\d]{0,30}(\d[\d\s]*[.,]\d{2,5})/gi,
+    /(\d[\d\s]*[.,]\d{2,5})[\s\S]{0,30}?(?:руб\.?|коп\.?|₽)\s*(?:за|в|на)?[\s\S]{0,30}?(?:кВт|квт|м3|м³|Гкал|куб|единиц|штук)/gi,
   ]
   for (const re of tariffKeywordPatterns) {
     for (const m of text.matchAll(re)) {
@@ -209,7 +290,7 @@ function extractTariff(text: string): { unitPrice: number | null; vatRate: numbe
   }
 
   const unitPatterns = [
-    /(\d[\d\s]*[.,]\d{2,5})\s*(?:руб\.?|₽)?\s*(?:за|в)\s*(?:1\s*)?(?:кВт|квт·ч|кВтч|квт|м3|м³|Гкал|куб\.?\s*м|кубометр)/gi,
+    /(\d[\d\s]*[.,]\d{2,5})\s*(?:руб\.?|₽)?\s*(?:за|в|на)\s*(?:1\s*)?(?:кВт|квт·ч|кВтч|квт|м3|м³|Гкал|куб\.?\s*м|кубометр|единиц)/gi,
   ]
   for (const re of unitPatterns) {
     for (const m of text.matchAll(re)) {
@@ -227,27 +308,33 @@ function extractTariff(text: string): { unitPrice: number | null; vatRate: numbe
     for (const net of allNets.slice(0, 5)) {
       if (qty && qty > 0 && net > 0) {
         const price = net / qty
-        if (price > 0.001 && price < 100000) {
+        if (price > 0.0001 && price < 100000) {
           candidates.push(Math.round(price * 100000) / 100000)
         }
       }
     }
   }
 
-  const qtyMatch = text.match(/([\d\s]+[.,]\d+)\s*(?:кВт|квт|м3|м³|Гкал)/i)
+  const qtyMatch = text.match(/([\d\s]+[.,]\d+|\d+)\s*(?:кВт|квт|м3|м³|Гкал)/i)
   const netMatch = text.match(/([\d\s]+[.,]\d{2})\s+Без акциза/i)
   if (qtyMatch && netMatch) {
-    const qty = parseRuNumber(qtyMatch[1]!)
+    const qty = parseRuNumber(qtyMatch[1]!) ?? Number(qtyMatch[1]!)
     const net = parseRuNumber(netMatch[1]!)
     if (qty && net) candidates.push(Math.round((net / qty) * 100000) / 100000)
   }
 
+  const precisionPrices = collectMoney(text).filter((n) => {
+    const str = n.toFixed(5)
+    return /\.\d{3,5}/.test(str) || (n > 0 && n < 1000 && !Number.isInteger(n))
+  })
+  for (const p of precisionPrices) candidates.push(p)
+
   if (candidates.length) {
-    const filtered = candidates.filter((c) => c > 0.01 && c < 100000)
+    const filtered = candidates.filter((c) => c > 0.0001 && c < 100000)
     if (filtered.length) {
       filtered.sort((a, b) => {
-        const ca = candidates.filter((x) => Math.abs(x - a) / a < 0.1).length
-        const cb = candidates.filter((x) => Math.abs(x - b) / b < 0.1).length
+        const ca = candidates.filter((x) => Math.abs(x - a) / (a || 1) < 0.1).length
+        const cb = candidates.filter((x) => Math.abs(x - b) / (b || 1) < 0.1).length
         return cb - ca
       })
       return { unitPrice: filtered[0]!, vatRate }
@@ -306,11 +393,14 @@ function extractDocumentTotals(text: string): { amount: number; before: string }
     /(?:итого|всего)(?:\s*по\s*счету)?(?:\s*\(?\s*с?\s*н?д?с?\s*\)?)?\s*[:.\s]+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
     /(?:к\s*оплате|сумма\s*к\s*оплате|общая\s*сумма)(?:\s*\(с\s*ндс\))?\s*[:.\s]+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
     /(?:общая\s*стоимость|стоимость\s*услуг)\s*[:.\s]+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
+    /стоимость[\s\S]{0,40}(?:товар|работ|услуг|имуществ)[\s\S]{0,40}(?:с\s*налог|без\s*налог|ндс)[\s\S]{0,40}всего[\s\S]{0,80}?(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
+    /(?:стоимость|сумма)[\s\S]{0,60}(?:всего|итого)[\s\S]{0,60}?(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
+    /в том числе[\s\S]{0,20}ндс[\s\S]{0,60}?(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
   ]
   for (const re of patterns) {
     for (const m of text.matchAll(re)) {
       const chunk = (m[1] ?? '') as string
-      const fallback = lastMoney(text.slice(m.index ?? 0, (m.index ?? 0) + 120))
+      const fallback = lastMoney(text.slice(m.index ?? 0, (m.index ?? 0) + 200))
       const amount = parseRuNumber(chunk) ?? fallback
       if (amount == null) continue
       const start = Math.max(0, (m.index ?? 0) - 900)
@@ -318,13 +408,32 @@ function extractDocumentTotals(text: string): { amount: number; before: string }
     }
   }
 
-  const lastLines = text.split('\n').slice(-20).join('\n')
-  const finalMoney = collectMoney(lastLines)
-  if (finalMoney.length) {
-    const biggest = Math.max(...finalMoney)
-    if (!results.some((r) => Math.abs(r.amount - biggest) < 0.009)) {
-      const idx = text.lastIndexOf(String(Math.floor(biggest)))
-      results.push({ amount: biggest, before: text.slice(Math.max(0, idx - 900), idx) })
+  const sfHeader = /стоимость\s*\(?\s*товар|работ\s*,\s*услуг\s*\)|имущественн(?:ых)?\s*прав(?:\s*с\s*налогом)?\s*-\s*всего/i
+  if (sfHeader.test(text)) {
+    const idx = text.search(sfHeader)
+    const tail = text.slice(idx, idx + 4000)
+    const tailMoneys = collectMoney(tail).sort((a, b) => b - a)
+    for (const big of tailMoneys.slice(0, 3)) {
+      if (!results.some((r) => Math.abs(r.amount - big) < 0.009)) {
+        results.push({ amount: big, before: text.slice(Math.max(0, idx - 900), idx) })
+      }
+    }
+  }
+
+  const lastLines = text.split(/\n+/).slice(-30).join('\n')
+  const finalMoney = collectMoney(lastLines).sort((a, b) => b - a)
+  for (const big of finalMoney.slice(0, 3)) {
+    if (!results.some((r) => Math.abs(r.amount - big) < 0.009)) {
+      const idx = text.lastIndexOf(String(Math.floor(big)))
+      results.push({ amount: big, before: text.slice(Math.max(0, idx - 900), idx) })
+    }
+  }
+
+  const allMoneySorted = collectMoney(text).sort((a, b) => b - a)
+  for (const big of allMoneySorted.slice(0, 2)) {
+    if (!results.some((r) => Math.abs(r.amount - big) < 0.009)) {
+      const idx = text.search(new RegExp(String(Math.floor(big)).replace(/\D/g, '')))
+      results.push({ amount: big, before: text.slice(Math.max(0, idx - 900), idx) })
     }
   }
 
