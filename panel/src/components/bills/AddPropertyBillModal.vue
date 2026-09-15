@@ -224,7 +224,14 @@ function methodHint(criterion: UtilityCriterion) {
             </label>
           </div>
 
-          <div class="grid sm:grid-cols-3 gap-2">
+          <div
+            class="grid gap-2"
+            :class="
+              isMeteredCriterion(item.criterion) && item.unitPrice && item.unitPrice > 0
+                ? 'sm:grid-cols-2'
+                : 'sm:grid-cols-3'
+            "
+          >
             <template v-if="isMeteredCriterion(item.criterion)">
               <label class="block">
                 <span class="text-[11px] text-slate-500 mb-1 block">Цена за единицу без НДС</span>
@@ -243,7 +250,10 @@ function methodHint(criterion: UtilityCriterion) {
                 </p>
               </label>
             </template>
-            <label class="block">
+            <label
+              v-if="!isMeteredCriterion(item.criterion) || !item.unitPrice || item.unitPrice <= 0"
+              class="block"
+            >
               <span class="text-[11px] text-slate-500 mb-1 block">
                 {{ isMeteredCriterion(item.criterion) ? 'Итого в счёте (если нет тарифа)' : 'Сумма счёта' }}
               </span>

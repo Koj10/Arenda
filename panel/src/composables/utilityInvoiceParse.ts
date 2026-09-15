@@ -171,27 +171,87 @@ function mentionedCriteria(text: string): UtilityCriterion[] {
 }
 
 function extractTariff(text: string): { unitPrice: number | null; vatRate: number } {
-  const vatRate = /22\s*%/.test(text) ? 0.22 : VAT_RATE
-  const triples = [...text.matchAll(
-    /([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d{2})\s+Без акциза/gi,
-  )]
+  const vatRate = /20\s*%/.test(text) ? 0.20 : /22\s*%/.test(text) ? 0.22 : VAT_RATE
   const candidates: number[] = []
-  for (const m of triples) {
-    const qty = parseRuNumber(m[1]!)
-    const price = parseRuNumber(m[2]!)
-    const net = parseRuNumber(m[3]!)
-    if (qty && price && net && Math.abs(qty * price - net) / net < 0.05) {
-      candidates.push(price)
+
+  const triplePatterns = [
+    /([\d\s]+[.,]\d+)\s+[×xх*]\s+([\d\s]+[.,]\d+)\s*[=:]\s*([\d\s]+[.,]\d{2})/gi,
+    /([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d{2})\s+Без акциза/gi,
+    /([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d+)\s+([\d\s]+[.,]\d{2})(?:\s|$)/g,
+    /(\d[\d\s]*[.,]\d+)\s{1,5}(\d[\d\s]*[.,]\d+)\s{1,5}(\d[\d\s]*[.,]\d{2})/g,
+  ]
+  for (const re of triplePatterns) {
+    for (const m of text.matchAll(re)) {
+      const qty = parseRuNumber(m[1]!)
+      const price = parseRuNumber(m[2]!)
+      const net = parseRuNumber(m[3]!)
+      if (qty && price && net && qty > 0 && price > 0 && net > 0) {
+        const ratio = qty * price / net
+        if (ratio > 0.9 && ratio < 1.1) {
+          candidates.push(price)
+        }
+      }
     }
   }
-  if (candidates.length) return { unitPrice: candidates[0]!, vatRate }
+
+  const tariffKeywordPatterns = [
+    /(?:тариф|ставка|цена\s+за\s+единиц|цена\s+за\s+1|стоимость\s+единиц)[\s\S]{0,40}?(\d[\d\s]*[.,]\d{2,5})/gi,
+    /(?:тариф|ставка)[^\d]{0,20}(\d[\d\s]*[.,]\d{2,5})/gi,
+    /(\d[\d\s]*[.,]\d{2,5})[\s\S]{0,20}?(?:руб\.?|коп\.?|₽)\s*(?:за|в|на)?[\s\S]{0,20}?(?:кВт|квт|м3|м³|Гкал|куб|единиц)/gi,
+  ]
+  for (const re of tariffKeywordPatterns) {
+    for (const m of text.matchAll(re)) {
+      const price = parseRuNumber(m[1]!)
+      if (price && price > 0 && price < 100000) {
+        candidates.push(price)
+      }
+    }
+  }
+
+  const unitPatterns = [
+    /(\d[\d\s]*[.,]\d{2,5})\s*(?:руб\.?|₽)?\s*(?:за|в)\s*(?:1\s*)?(?:кВт|квт·ч|кВтч|квт|м3|м³|Гкал|куб\.?\s*м|кубометр)/gi,
+  ]
+  for (const re of unitPatterns) {
+    for (const m of text.matchAll(re)) {
+      const price = parseRuNumber(m[1]!)
+      if (price && price > 0 && price < 100000) {
+        candidates.push(price)
+      }
+    }
+  }
+
+  const qtyUnitMatch = text.match(/([\d\s]+[.,]\d+|\d+)\s*(?:кВт|квт·ч|кВтч|квт|м3|м³|Гкал|куб)/i)
+  const allNets = collectMoney(text).sort((a, b) => b - a)
+  if (qtyUnitMatch && allNets.length) {
+    const qty = parseRuNumber(qtyUnitMatch[1]!) ?? Number(qtyUnitMatch[1]!)
+    for (const net of allNets.slice(0, 5)) {
+      if (qty && qty > 0 && net > 0) {
+        const price = net / qty
+        if (price > 0.001 && price < 100000) {
+          candidates.push(Math.round(price * 100000) / 100000)
+        }
+      }
+    }
+  }
 
   const qtyMatch = text.match(/([\d\s]+[.,]\d+)\s*(?:кВт|квт|м3|м³|Гкал)/i)
   const netMatch = text.match(/([\d\s]+[.,]\d{2})\s+Без акциза/i)
   if (qtyMatch && netMatch) {
     const qty = parseRuNumber(qtyMatch[1]!)
     const net = parseRuNumber(netMatch[1]!)
-    if (qty && net) return { unitPrice: Math.round((net / qty) * 100000) / 100000, vatRate }
+    if (qty && net) candidates.push(Math.round((net / qty) * 100000) / 100000)
+  }
+
+  if (candidates.length) {
+    const filtered = candidates.filter((c) => c > 0.01 && c < 100000)
+    if (filtered.length) {
+      filtered.sort((a, b) => {
+        const ca = candidates.filter((x) => Math.abs(x - a) / a < 0.1).length
+        const cb = candidates.filter((x) => Math.abs(x - b) / b < 0.1).length
+        return cb - ca
+      })
+      return { unitPrice: filtered[0]!, vatRate }
+    }
   }
   return { unitPrice: null, vatRate }
 }
@@ -241,15 +301,33 @@ function extractPeriod(text: string, invoiceDate: ReturnType<typeof parseDateRu>
 
 function extractDocumentTotals(text: string): { amount: number; before: string }[] {
   const results: { amount: number; before: string }[] = []
-  const re =
-    /(?:всего\s*к\s*оплате|итого\s*к\s*оплате(?:\s*\(с\s*ндс\))?|bcero\s*k\s*onnare)\s*[:.(9)\s]*([\d\s.,xх]+)/gi
-  for (const m of text.matchAll(re)) {
-    const chunk = m[1] ?? ''
-    const amount = lastMoney(chunk) ?? lastMoney(text.slice(m.index ?? 0, (m.index ?? 0) + 80))
-    if (amount == null) continue
-    const start = Math.max(0, (m.index ?? 0) - 900)
-    results.push({ amount, before: text.slice(start, m.index) })
+  const patterns = [
+    /(?:всего\s*к\s*оплате|итого\s*к\s*оплате(?:\s*\(с\s*ндс\))?|bcero\s*k\s*onnare)\s*[:.(9)\s]*([\d\s.,xх]+)/gi,
+    /(?:итого|всего)(?:\s*по\s*счету)?(?:\s*\(?\s*с?\s*н?д?с?\s*\)?)?\s*[:.\s]+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
+    /(?:к\s*оплате|сумма\s*к\s*оплате|общая\s*сумма)(?:\s*\(с\s*ндс\))?\s*[:.\s]+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
+    /(?:общая\s*стоимость|стоимость\s*услуг)\s*[:.\s]+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/gi,
+  ]
+  for (const re of patterns) {
+    for (const m of text.matchAll(re)) {
+      const chunk = (m[1] ?? '') as string
+      const fallback = lastMoney(text.slice(m.index ?? 0, (m.index ?? 0) + 120))
+      const amount = parseRuNumber(chunk) ?? fallback
+      if (amount == null) continue
+      const start = Math.max(0, (m.index ?? 0) - 900)
+      results.push({ amount, before: text.slice(start, m.index) })
+    }
   }
+
+  const lastLines = text.split('\n').slice(-20).join('\n')
+  const finalMoney = collectMoney(lastLines)
+  if (finalMoney.length) {
+    const biggest = Math.max(...finalMoney)
+    if (!results.some((r) => Math.abs(r.amount - biggest) < 0.009)) {
+      const idx = text.lastIndexOf(String(Math.floor(biggest)))
+      results.push({ amount: biggest, before: text.slice(Math.max(0, idx - 900), idx) })
+    }
+  }
+
   const unique: { amount: number; before: string }[] = []
   for (const row of results) {
     if (!unique.some((u) => Math.abs(u.amount - row.amount) < 0.009)) unique.push(row)
@@ -259,18 +337,37 @@ function extractDocumentTotals(text: string): { amount: number; before: string }
 
 function amountNearKeywords(text: string, patterns: RegExp[]): number | null {
   for (const re of patterns) {
-    const m = re.exec(text)
-    if (!m || m.index == null) continue
-    const window = text.slice(m.index, m.index + 500)
-    const vat = window.match(/22%\s+[\d\s.,]+\s+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/)
-    if (vat) {
-      const n = parseRuNumber(vat[1]!)
-      if (n != null) return n
-    }
-    const noVat = window.match(/без\s*ндс[\s\S]{0,40}?(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/i)
-    if (noVat) {
-      const n = parseRuNumber(noVat[1]!)
-      if (n != null) return n
+    const matches = [...text.matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))]
+    for (const m of matches) {
+      if (m.index == null) continue
+      const window = text.slice(Math.max(0, m.index - 100), m.index + 800)
+      const vatPatterns = [
+        /22%\s+[\d\s.,]+\s+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/,
+        /20%\s+[\d\s.,]+\s+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/,
+        /ндс\s*\d*%?[\s\S]{0,30}?(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/i,
+        /(?:в том числе ндс|в т.ч. ндс)[\s\S]{0,30}?(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/i,
+      ]
+      for (const vatRe of vatPatterns) {
+        const v = window.match(vatRe)
+        if (v) {
+          const n = parseRuNumber(v[1]!)
+          if (n != null) return n
+        }
+      }
+      const noVatPatterns = [
+        /без\s*ндс[\s\S]{0,60}?(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/i,
+        /(?:сумма|стоимость|итого)\s*(?:без\s*ндс)?\s*[:.\s]+(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})/i,
+        /(\d{1,3}(?:\s\d{3})*[.,]\d{2}|\d+[.,]\d{2})\s*(?:руб\.?|₽)/i,
+      ]
+      for (const nvRe of noVatPatterns) {
+        const nv = window.match(nvRe)
+        if (nv) {
+          const n = parseRuNumber(nv[1]!)
+          if (n != null) return n
+        }
+      }
+      const nums = collectMoney(window)
+      if (nums.length) return Math.max(...nums)
     }
   }
   return null
@@ -323,9 +420,20 @@ export function parseUtilityInvoice(rawText: string): ParsedUtilityInvoice {
   const meta = extractInvoiceMeta(text)
   const period = extractPeriod(text, meta.date)
   const totals = extractDocumentTotals(text)
-  const total = totals.length ? totals.reduce((s, t) => s + t.amount, 0) : lastMoney(text.match(/итого[^\n]{0,40}/i)?.[0] ?? '')
-  const mentioned = mentionedCriteria(text)
 
+  let total: number | null = totals.length
+    ? totals.reduce((s, t) => s + t.amount, 0)
+    : lastMoney(text.match(/итого[^\n]{0,40}/i)?.[0] ?? '')
+
+  if (total == null) {
+    const allMoney = collectMoney(text)
+    if (allMoney.length) {
+      const sorted = [...allMoney].sort((a, b) => b - a)
+      total = sorted[0] ?? null
+    }
+  }
+
+  const mentioned = mentionedCriteria(text)
   let lines: ParsedUtilityLine[] = []
 
   if (totals.length > 1) {
@@ -355,9 +463,15 @@ export function parseUtilityInvoice(rawText: string): ParsedUtilityInvoice {
     } else if (!lines.length && total != null) {
       const primary = mentioned[0]!
       lines = [{ criterion: primary, amount: total, label: UTILITY_CRITERION_LABELS[primary] }]
+    } else if (lines.length > 1 && total != null && Math.abs(sum - total) > total * 0.3) {
+      const diff = total - sum
+      if (Math.abs(diff) > 1) {
+        const last = lines[lines.length - 1]!
+        last.amount = Math.round((last.amount + diff) * 100) / 100
+      }
     }
   } else if (total != null) {
-    const fallback = defaultCriterion(text, seller)
+    const fallback = defaultCriterion(text, seller) ?? mentioned[0]
     if (fallback) {
       lines = [{ criterion: fallback, amount: total, label: UTILITY_CRITERION_LABELS[fallback] }]
     }
@@ -366,8 +480,9 @@ export function parseUtilityInvoice(rawText: string): ParsedUtilityInvoice {
   lines = mergeLines(lines)
   const tariff = extractTariff(text)
   const sellerLabel = shortSeller(seller, text)
+  const finalTotal = total ?? (lines.length ? lines.reduce((s, l) => s + l.amount, 0) : null)
   const confidence: ParsedInvoiceAmount['confidence'] =
-    lines.length && total != null ? 'high' : lines.length ? 'medium' : total != null ? 'low' : 'none'
+    lines.length && finalTotal != null ? 'high' : lines.length ? 'medium' : finalTotal != null ? 'low' : 'none'
 
   return {
     title: buildTitle(sellerLabel, meta.number, period, lines),
@@ -375,7 +490,7 @@ export function parseUtilityInvoice(rawText: string): ParsedUtilityInvoice {
     invoiceNumber: meta.number,
     period,
     dueDate: period ? dueFromPeriod(period) : meta.date ? dueFromPeriod(meta.date.period) : null,
-    total: total ?? (lines.length ? lines.reduce((s, l) => s + l.amount, 0) : null),
+    total: finalTotal,
     unitPrice: tariff.unitPrice,
     vatRate: tariff.vatRate,
     lines,
