@@ -10,6 +10,7 @@ import { BILL_RECIPIENT_LABELS } from '@/types/billing'
 import type { ExpenseCategory } from '@/types/accounting'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
 import { parseInvoiceAmountFromFile, fileToInvoiceDocument } from '@/composables/useInvoiceParser'
+import { todayISODate } from '@/utils/dates'
 
 const billing = useBillingStore()
 const accounting = useAccountingStore()
@@ -20,7 +21,7 @@ const tenantInn = ref('')
 const tenantId = ref<number | null>(null)
 const title = ref('')
 const amount = ref(0)
-const dueDate = ref(new Date().toISOString().slice(0, 10))
+const dueDate = ref(todayISODate())
 const category = ref<ExpenseCategory>('utilities')
 const propertyId = ref<number | null>(null)
 const document = ref<InvoiceDocument | null>(null)
@@ -57,7 +58,7 @@ function resetForm() {
   tenantId.value = null
   title.value = ''
   amount.value = 0
-  dueDate.value = new Date().toISOString().slice(0, 10)
+  dueDate.value = todayISODate()
   category.value = 'utilities'
   propertyId.value = null
   document.value = null
@@ -125,7 +126,7 @@ async function submit() {
 
   if (recipientType.value === 'landlord') {
     await accounting.addExpense({
-      date: new Date().toISOString().slice(0, 10),
+      date: todayISODate(),
       amount: amount.value,
       category: category.value,
       title: title.value.trim(),

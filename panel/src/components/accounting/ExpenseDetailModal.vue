@@ -27,7 +27,7 @@ function onClose() {
 function onDelete() {
   if (!expense.value) return
   if (confirm('Удалить этот расход?')) {
-    accounting.removeExpense(expense.value.id)
+    void accounting.removeExpense(expense.value.id)
   }
 }
 

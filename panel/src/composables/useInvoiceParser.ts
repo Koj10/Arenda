@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import type { InvoiceDocument, ParsedInvoiceAmount } from '@/types/billing'
+import { parseUtilityInvoice, toParsedAmount } from '@/composables/utilityInvoiceParse'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -59,7 +60,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
   return parts.join('\n')
 }
 
-async function extractTextFromFile(file: File): Promise<string> {
+export async function extractTextFromFile(file: File): Promise<string> {
   if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
     return extractTextFromPdf(file)
   }
@@ -69,16 +70,32 @@ async function extractTextFromFile(file: File): Promise<string> {
   return ''
 }
 
-export async function parseInvoiceAmountFromFile(file: File): Promise<ParsedInvoiceAmount> {
+export async function parseUtilityInvoiceFromFile(file: File) {
   try {
     const text = await extractTextFromFile(file)
     if (!text.trim()) {
-      return { amount: null, confidence: 'none', source: 'Текст в файле не распознан — укажите сумму вручную' }
+      return parseUtilityInvoice('')
     }
-    return extractAmountFromText(text)
+    return parseUtilityInvoice(text)
   } catch {
-    return { amount: null, confidence: 'none', source: 'Не удалось прочитать файл — укажите сумму вручную' }
+    return parseUtilityInvoice('')
   }
+}
+
+export async function parseInvoiceAmountFromFile(file: File): Promise<ParsedInvoiceAmount> {
+  const parsed = await parseUtilityInvoiceFromFile(file)
+  if (!parsed.total && parsed.confidence === 'none') {
+    try {
+      const text = await extractTextFromFile(file)
+      if (!text.trim()) {
+        return { amount: null, confidence: 'none', source: 'Текст в файле не распознан — укажите сумму вручную' }
+      }
+      return extractAmountFromText(text)
+    } catch {
+      return { amount: null, confidence: 'none', source: 'Не удалось прочитать файл — укажите сумму вручную' }
+    }
+  }
+  return toParsedAmount(parsed)
 }
 
 export async function fileToInvoiceDocument(file: File): Promise<InvoiceDocument> {

@@ -1,4 +1,5 @@
 import type { PendingDocument } from '@/types/portfolio'
+import { todayISODate } from '@/utils/dates'
 
 export type ExpenseCategory =
   | 'utilities'
@@ -48,7 +49,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 }
 
 export function createEmptyExpenseForm(): ExpenseFormData {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISODate()
   return {
     date: today,
     amount: 0,

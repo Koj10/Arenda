@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AddPropertyBillModal from '@/components/bills/AddPropertyBillModal.vue'
+import UtilityStatementModal from '@/components/bills/UtilityStatementModal.vue'
 import RentInvoicesCard from '@/components/bills/RentInvoicesCard.vue'
 import { Building2, FileUp, Gauge, Search, Settings2 } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -125,10 +126,10 @@ function tenantName(spaceName: string) {
       <div class="panel-card p-5 border-emerald-brand/20 bg-emerald-brand/5">
         <h2 class="text-sm font-semibold text-white mb-2">Как работают счета</h2>
         <ol class="space-y-1.5 text-sm text-slate-400 list-decimal list-inside">
-          <li>Настройте, <span class="text-slate-300">кто платит</span> за каждый критерий в помещении.</li>
-          <li>Внесите <span class="text-slate-300">показания счётчиков</span> (вода, электричество, газ, канализация) — арендатор может вписать те же цифры у себя, они общие.</li>
-          <li>Загрузите <span class="text-slate-300">общий счёт на объект</span>. Счётчики делятся по потреблению, УК и тепло — по доле площади от объекта.</li>
-          <li>Доли помещений, где платите вы (или нет арендатора), складываются в <span class="text-slate-300">потери</span>.</li>
+          <li>Настройте, <span class="text-slate-300">кто платит</span> за каждый показатель в помещении.</li>
+          <li>Внесите <span class="text-slate-300">показания</span> (электричество, вода, газ, канализация).</li>
+          <li>Загрузите счета поставщиков. Для счётчиков: цена за единицу + НДС 22%, затем × показания помещения. УК, тепло и мусор делятся по доле площади. Септик перевыставляется на выбранное помещение.</li>
+          <li>Проверьте <span class="text-slate-300">выписку</span> и выставьте счета арендаторам по одному или сразу все. Доли «Я» и пустые помещения — это потери.</li>
         </ol>
       </div>
 
@@ -270,7 +271,7 @@ function tenantName(spaceName: string) {
               <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <p class="text-xs text-slate-500 max-w-xl">
                   Предыдущие и текущие показания. Если арендатор уже внёс их — подставятся автоматически.
-                  Без показаний вода и электричество распределяются по площади, как УК.
+                  Без показаний электричество, вода, газ и канализация на помещение не начисляются.
                 </p>
                 <div class="flex items-center gap-2">
                   <input v-model="metersPeriod" type="month" class="panel-input font-mono text-xs py-1.5 w-40" />
@@ -380,5 +381,6 @@ function tenantName(spaceName: string) {
     </div>
 
     <AddPropertyBillModal />
+    <UtilityStatementModal />
   </AppLayout>
 </template>

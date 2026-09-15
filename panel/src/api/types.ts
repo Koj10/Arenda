@@ -100,7 +100,7 @@ export interface LeaseInTenantDetail {
   start_date?: string | null
   end_date: string
   status: string
-  invoice_day?: number
+  terminated_at?: string | null
 }
 
 export interface TenantDetailOut extends TenantOut {
@@ -262,6 +262,46 @@ export interface NotificationOut {
   created_at?: string
   is_read?: boolean
   read?: boolean
+}
+
+export interface AnalyticsCardsOut {
+  income: string
+  expenses: string
+  profit: string
+  rent_accrued: string
+  utility_accrued: string
+  invoices_pending: string
+  invoices_overdue: string
+  occupancy_percent: number
+}
+
+export interface CashflowPointOut {
+  date: string
+  income: string
+  expense: string
+  profit: string
+}
+
+export interface ExpenseBreakdownItemOut {
+  category: string
+  amount: string
+}
+
+export interface RevenueComparisonOut {
+  current_period: string
+  previous_period: string
+  current: string
+  previous: string
+  difference: string
+  percent_change: number
+}
+
+export interface LandlordAnalyticsResponse {
+  period: string
+  cards: AnalyticsCardsOut
+  cashflow: CashflowPointOut[]
+  expense_breakdown: ExpenseBreakdownItemOut[]
+  revenue_comparison: RevenueComparisonOut
 }
 
 export function num(value: string | number | null | undefined, fallback = 0): number {

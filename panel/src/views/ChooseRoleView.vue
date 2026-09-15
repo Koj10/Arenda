@@ -19,7 +19,6 @@ const loading = ref(false)
 
 const pending = computed(() => auth.pendingRoleChoice)
 const isLogin = computed(() => pending.value?.mode === 'login')
-const isRegister = computed(() => pending.value?.mode === 'register')
 const greeting = computed(() => pending.value?.name?.split(' ')[0] || 'друг')
 
 const title = computed(() =>

@@ -21,9 +21,11 @@ const categoryFilter = ref<ExpenseCategory | 'all'>('all')
 
 const categories = Object.entries(EXPENSE_CATEGORY_LABELS) as [ExpenseCategory, string][]
 
-const totalIncome = computed(() => portfolio.properties.reduce((s, p) => s + p.income, 0))
-const totalExpenses = computed(() => portfolio.properties.reduce((s, p) => s + p.expense, 0))
-const netProfit = computed(() => totalIncome.value - totalExpenses.value)
+const cards = computed(() => accounting.analytics?.cards)
+const totalIncome = computed(() => cards.value?.income ?? 0)
+const totalExpenses = computed(() => cards.value?.expenses ?? 0)
+const netProfit = computed(() => cards.value?.profit ?? 0)
+const pendingPayments = computed(() => cards.value?.invoicesPending ?? 0)
 
 const filtered = computed(() => {
   let list = accounting.expenses
@@ -98,39 +100,41 @@ function formatShort(n: number) {
         </div>
       </div>
 
+      <p v-if="accounting.lastError" class="mb-4 text-sm text-red-400">{{ accounting.lastError }}</p>
+
       <template v-if="activeTab === 'overview'">
         <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
-              <span class="text-xs text-slate-500 uppercase tracking-wide">Total Income</span>
+              <span class="text-xs text-slate-500 uppercase tracking-wide">Доход</span>
               <span class="p-2 rounded-xl bg-emerald-brand/10 text-emerald-brand"><ArrowUpRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalIncome) }}</p>
-            <p class="text-xs text-slate-500 mt-2">по текущим договорам</p>
+            <p class="text-xs text-slate-500 mt-2">за текущий месяц</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
-              <span class="text-xs text-slate-500 uppercase tracking-wide">Total Expenses</span>
+              <span class="text-xs text-slate-500 uppercase tracking-wide">Расходы</span>
               <span class="p-2 rounded-xl bg-red-500/10 text-red-400"><ArrowDownRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalExpenses) }}</p>
-            <p class="text-xs text-slate-500 mt-2">расходы объектов</p>
+            <p class="text-xs text-slate-500 mt-2">за текущий месяц</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
-              <span class="text-xs text-slate-500 uppercase tracking-wide">Net Profit</span>
+              <span class="text-xs text-slate-500 uppercase tracking-wide">Прибыль</span>
               <span class="p-2 rounded-xl bg-orange-500/10 text-orange-400"><Wallet class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(netProfit) }}</p>
-            <p class="text-xs text-slate-500 mt-2">доход минус расход</p>
+            <p class="text-xs text-slate-500 mt-2">доход минус расход за месяц</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
-              <span class="text-xs text-slate-500 uppercase tracking-wide">Pending Payments</span>
+              <span class="text-xs text-slate-500 uppercase tracking-wide">Ожидают оплаты</span>
               <span class="p-2 rounded-xl bg-yellow-500/10 text-yellow-400"><Clock class="w-4 h-4" /></span>
             </div>
-            <p class="text-2xl font-bold font-mono text-white">{{ formatShort(accounting.currentMonthTotal) }}</p>
-            <p class="text-xs text-slate-500 mt-2">транзакции за этот месяц</p>
+            <p class="text-2xl font-bold font-mono text-white">{{ formatShort(pendingPayments) }}</p>
+            <p class="text-xs text-slate-500 mt-2">неподтверждённые счета</p>
           </div>
         </div>
 

@@ -10,6 +10,11 @@ export type UtilityCriterion =
   | 'gas'
   | 'sewerage'
   | 'cleaning'
+  | 'septic'
+
+export const VAT_RATE = 0.22
+
+export type ChargeMethod = 'meter' | 'area' | 'assign'
 
 export type BillPayer = 'landlord' | 'tenant'
 
@@ -38,8 +43,35 @@ export const METERED_CRITERIA: UtilityCriterion[] = [
   'sewerage',
 ]
 
+export const ASSIGN_CRITERIA: UtilityCriterion[] = ['septic']
+
+export const UPLOAD_CRITERIA: UtilityCriterion[] = [
+  'electricity',
+  'water',
+  'sewerage',
+  'gas',
+  'heating',
+  'management',
+  'garbage',
+  'septic',
+]
+
 export function isMeteredCriterion(criterion: UtilityCriterion): boolean {
   return (METERED_CRITERIA as string[]).includes(criterion)
+}
+
+export function isAreaCriterion(criterion: UtilityCriterion): boolean {
+  return (AREA_CRITERIA as string[]).includes(criterion)
+}
+
+export function isAssignCriterion(criterion: UtilityCriterion): boolean {
+  return (ASSIGN_CRITERIA as string[]).includes(criterion)
+}
+
+export function chargeMethodOf(criterion: UtilityCriterion): ChargeMethod {
+  if (isMeteredCriterion(criterion)) return 'meter'
+  if (isAssignCriterion(criterion)) return 'assign'
+  return 'area'
 }
 
 export const UTILITY_CRITERION_LABELS: Record<UtilityCriterion, string> = {
@@ -51,6 +83,7 @@ export const UTILITY_CRITERION_LABELS: Record<UtilityCriterion, string> = {
   gas: 'Газ',
   sewerage: 'Канализация',
   cleaning: 'Уборка рядом',
+  septic: 'Септик',
 }
 
 export const BILL_PAYER_LABELS: Record<BillPayer, string> = {
@@ -76,6 +109,7 @@ export function createDefaultSpaceUtilityPayers(): SpaceUtilityPayers {
     gas: 'landlord',
     sewerage: 'landlord',
     cleaning: 'landlord',
+    septic: 'tenant',
   }
 }
 
@@ -113,4 +147,49 @@ export function createEmptyBillLines(): PropertyBillLine[] {
 
 export function sumBillLines(lines: PropertyBillLine[]): number {
   return lines.reduce((sum, line) => sum + (line.amount > 0 ? line.amount : 0), 0)
+}
+
+export interface UtilityUploadItem {
+  id: string
+  fileName: string
+  document: InvoiceDocument
+  criterion: UtilityCriterion
+  unitPrice: number | null
+  vatRate: number
+  totalAmount: number | null
+  septicSpaceId: number | null
+  parsedTitle: string
+  source: string
+}
+
+export interface StatementCharge {
+  criterion: UtilityCriterion
+  amount: number
+  method: ChargeMethod
+}
+
+export interface StatementSpaceRow {
+  spaceId: number
+  spaceName: string
+  area: number
+  areaShare: number
+  tenantId: number | null
+  tenantName: string | null
+  charges: StatementCharge[]
+  total: number
+  destination: 'tenant' | 'loss'
+  issued: boolean
+}
+
+export interface UtilityStatement {
+  propertyId: number
+  address: string
+  period: string
+  dueDate: string
+  objectArea: number
+  items: UtilityUploadItem[]
+  spaces: StatementSpaceRow[]
+  landlordLoss: number
+  tenantTotal: number
+  warnings: string[]
 }

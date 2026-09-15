@@ -2,11 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Invoice, UploadBillFormData } from '@/types/billing'
 import type { Tenant } from '@/types/portfolio'
-
-function currentPeriod() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
+import { currentPeriod, formatDateRu, todayISODate } from '@/utils/dates'
 
 export const useBillingStore = defineStore('billing', () => {
   const invoices = ref<Invoice[]>([])
@@ -21,7 +17,7 @@ export const useBillingStore = defineStore('billing', () => {
   }
 
   function addTenantInvoice(data: UploadBillFormData, tenant: Tenant, period?: string) {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = todayISODate()
     invoices.value.unshift({
       id: Date.now() + Math.random(),
       tenantId: tenant.id,
@@ -44,7 +40,7 @@ export const useBillingStore = defineStore('billing', () => {
   }
 
   function formatDate(date: string) {
-    return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date))
+    return formatDateRu(date)
   }
 
   function formatPeriod(period: string) {

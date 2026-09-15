@@ -6,13 +6,17 @@ import type {
   SpaceUtilitySettings,
   UtilityCriterion,
   BillPayer,
+  UtilityStatement,
+  UtilityUploadItem,
 } from '@/types/utilityBills'
 import {
   createDefaultSpaceUtilityPayers,
 } from '@/types/utilityBills'
 import { getAccessToken, formatApiError } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
+import { formatDateRu, todayISODate } from '@/utils/dates'
 import {
+  createLandlordInvoice,
   createUtilityBill,
   getObjectPayers,
   listObjectBills,
@@ -22,6 +26,7 @@ import {
 } from '@/api/landlord'
 import { num } from '@/api/types'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { buildUtilityStatement, meterConsumption } from '@/composables/utilityCalc'
 
 export const useUtilityBillsStore = defineStore('utilityBills', () => {
   const spaceSettings = ref<SpaceUtilitySettings[]>([])
@@ -118,6 +123,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         payers: { ...createDefaultSpaceUtilityPayers(), [criterion]: payer },
       })
     }
+    if (criterion === 'septic') return
     try {
       await updateUnitPayer(spaceId, criterion, payer)
     } catch {
@@ -134,9 +140,136 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     addBillModalOpen.value = true
   }
 
+  const statement = ref<UtilityStatement | null>(null)
+  const statementError = ref<string | null>(null)
+  const issuing = ref(false)
+
   function closeAddBillModal() {
     addBillModalOpen.value = false
     addBillPropertyId.value = null
+  }
+
+  function closeStatement() {
+    statement.value = null
+    statementError.value = null
+  }
+
+  async function calculateStatement(params: {
+    propertyId: number
+    period: string
+    dueDate: string
+    items: UtilityUploadItem[]
+  }): Promise<boolean> {
+    statementError.value = null
+    const portfolio = usePortfolioStore()
+    const property = portfolio.getPropertyById(params.propertyId)
+    if (!property) {
+      statementError.value = 'Объект не найден'
+      return false
+    }
+    if (!params.items.length) {
+      statementError.value = 'Загрузите хотя бы один счёт'
+      return false
+    }
+    await loadMeters(params.propertyId, params.period)
+    const spaces = portfolio.getSpacesForProperty(params.propertyId)
+    statement.value = buildUtilityStatement({
+      propertyId: property.id,
+      address: property.address,
+      objectArea: property.totalArea,
+      period: params.period,
+      dueDate: params.dueDate,
+      spaces,
+      tenants: portfolio.getTenantsForProperty(property.id),
+      items: params.items,
+      getPayer,
+      getConsumption: (spaceId, criterion) => {
+        const draft = meterDrafts.value[meterKey(spaceId, criterion)]
+        if (!draft) return null
+        return meterConsumption(draft.previous, draft.current)
+      },
+    })
+    closeAddBillModal()
+    return true
+  }
+
+  async function uploadStatementFiles(items: UtilityUploadItem[]): Promise<number[]> {
+    const ids: number[] = []
+    const seen = new Set<string>()
+    for (const item of items) {
+      const key = `${item.document.name}:${item.document.size}:${item.document.dataUrl.slice(0, 40)}`
+      if (seen.has(key) || !item.document.dataUrl) continue
+      seen.add(key)
+      const uploaded = await uploadFileApi(
+        dataUrlToBlob(item.document.dataUrl, item.document.mimeType),
+        { filename: item.document.name, kind: 'supporting' },
+      )
+      ids.push(uploaded.id)
+    }
+    return ids
+  }
+
+  async function issueStatementRow(spaceId: number): Promise<boolean> {
+    const current = statement.value
+    if (!current) return false
+    const row = current.spaces.find((s) => s.spaceId === spaceId)
+    if (!row || row.issued || row.destination !== 'tenant' || !row.tenantId || row.total <= 0) return false
+    issuing.value = true
+    statementError.value = null
+    try {
+      const fileIds = await uploadStatementFiles(current.items)
+      await createLandlordInvoice({
+        tenant_id: row.tenantId,
+        unit_id: row.spaceId,
+        kind: 'utility',
+        period: current.period,
+        amount: row.total,
+        due_date: current.dueDate,
+        file_ids: fileIds.length ? fileIds : undefined,
+      })
+      row.issued = true
+      return true
+    } catch (err) {
+      statementError.value = formatApiError(err, 'Не удалось выставить счёт')
+      return false
+    } finally {
+      issuing.value = false
+    }
+  }
+
+  async function issueAllStatementRows(): Promise<boolean> {
+    const current = statement.value
+    if (!current) return false
+    const pending = current.spaces.filter(
+      (row) => !row.issued && row.destination === 'tenant' && row.tenantId && row.total > 0,
+    )
+    if (!pending.length) {
+      statementError.value = 'Нет помещений для выставления'
+      return false
+    }
+    issuing.value = true
+    statementError.value = null
+    try {
+      const fileIds = await uploadStatementFiles(current.items)
+      for (const row of pending) {
+        await createLandlordInvoice({
+          tenant_id: row.tenantId!,
+          unit_id: row.spaceId,
+          kind: 'utility',
+          period: current.period,
+          amount: row.total,
+          due_date: current.dueDate,
+          file_ids: fileIds.length ? fileIds : undefined,
+        })
+        row.issued = true
+      }
+      return true
+    } catch (err) {
+      statementError.value = formatApiError(err, 'Не удалось выставить счета')
+      return false
+    } finally {
+      issuing.value = false
+    }
   }
 
   async function addPropertyBill(data: PropertyBillFormData): Promise<boolean> {
@@ -175,7 +308,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         totalAmount: created.total ? num(created.total) : totalAmount,
         landlordLoss: num((created as { landlord_loss?: string }).landlord_loss),
         dueDate: data.dueDate,
-        issuedAt: created.created_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+        issuedAt: created.created_at?.slice(0, 10) ?? todayISODate(),
         status: 'distributed',
         document: data.document,
         lines: data.lines.filter((l) => l.amount > 0),
@@ -254,7 +387,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
   }
 
   function formatMoney(value: number) {
-    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value)
+    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value)
   }
 
   function formatPeriod(period: string) {
@@ -264,7 +397,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
   }
 
   function formatDate(date: string) {
-    return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date))
+    return formatDateRu(date)
   }
 
   return {
@@ -284,6 +417,13 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     openAddBillModal,
     closeAddBillModal,
     addPropertyBill,
+    statement,
+    statementError,
+    issuing,
+    closeStatement,
+    calculateStatement,
+    issueStatementRow,
+    issueAllStatementRows,
     meterDrafts,
     meterMeta,
     metersError,

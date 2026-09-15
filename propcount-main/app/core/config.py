@@ -1,4 +1,3 @@
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,8 +11,6 @@ class Settings(BaseSettings):
     password_reset_expire_minutes: int = 60
 
     storage_dir: str = "storage"
-    app_env: str = "development"
-    app_debug: bool = False
 
     cors_origins: str = (
         "http://localhost:3000,http://localhost:5173,"
@@ -37,22 +34,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("database_url")
-    @classmethod
-    def normalize_database_url(cls, value: str) -> str:
-        if value.startswith("postgres://"):
-            return "postgresql://" + value[len("postgres://") :]
-        return value
-
     @property
     def cors_origin_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
-
-    @property
-    def is_debug(self) -> bool:
-        if self.app_debug:
-            return True
-        return self.app_env.lower() in {"dev", "development", "local"}
 
 
 settings = Settings()

@@ -163,7 +163,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      await selectRoleApi(role)
+      const session = await selectRoleApi(role)
+      applyAuthResponse(session, role)
       let tenantInnValue = inn?.trim()
       if (role === 'tenant' && tenantInnValue) {
         const profile = await updateTenantProfileApi({
@@ -171,12 +172,8 @@ export const useAuthStore = defineStore('auth', () => {
           inn: tenantInnValue,
         })
         tenantInnValue = profile.inn
+        updateProfile({ inn: tenantInnValue })
       }
-
-      login(pending.email, pending.name, {
-        role,
-        inn: role === 'tenant' ? tenantInnValue : undefined,
-      })
       return { ok: true }
     } catch (err) {
       return { ok: false, error: formatApiError(err, 'Не удалось выбрать роль') }
@@ -226,21 +223,23 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function saveProfile(patch: Partial<Pick<AuthUser, 'name' | 'inn'>>): Promise<CompleteRoleResult> {
     if (!user.value) return { ok: false, error: 'Нет сессии' }
-    const inn = patch.inn?.trim()
-    if (inn) {
-      if (!isValidInn(inn)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
-      try {
-        const profile = await updateTenantProfileApi({
-          company_name: (patch.name ?? user.value.name).trim() || user.value.name,
-          inn,
-        })
-        updateProfile({ name: patch.name ?? user.value.name, inn: profile.inn })
-        return { ok: true }
-      } catch (err) {
-        return { ok: false, error: formatApiError(err, 'Не удалось сохранить ИНН') }
+    if (user.value.role === 'tenant') {
+      const inn = patch.inn?.trim()
+      if (inn) {
+        if (!isValidInn(inn)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
+        try {
+          const profile = await updateTenantProfileApi({
+            company_name: (patch.name ?? user.value.name).trim() || user.value.name,
+            inn,
+          })
+          updateProfile({ name: patch.name ?? user.value.name, inn: profile.inn })
+          return { ok: true }
+        } catch (err) {
+          return { ok: false, error: formatApiError(err, 'Не удалось сохранить ИНН') }
+        }
       }
     }
-    updateProfile({ name: patch.name ?? user.value.name })
+    updateProfile({ name: patch.name ?? user.value.name, inn: patch.inn?.trim() || user.value.inn })
     return { ok: true }
   }
 
@@ -248,12 +247,15 @@ export const useAuthStore = defineStore('auth', () => {
     if (!getAccessToken()) return
     try {
       const me = await fetchMe()
-      const role = me.current_role === 'tenant' || me.current_role === 'landlord' ? me.current_role : user.value?.role
+      if (me.current_role !== 'tenant' && me.current_role !== 'landlord') {
+        beginRoleChoice(me.user.email, me.user.name, 'login')
+        return
+      }
       applyUser(toUser({
         id: me.user.id,
         name: me.user.name,
         email: me.user.email,
-        role,
+        role: me.current_role,
         inn: me.tenant_profile?.inn ?? user.value?.inn,
       }))
     } catch {

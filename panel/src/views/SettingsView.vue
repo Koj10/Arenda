@@ -65,11 +65,15 @@ function goPricing() {
               v-model="inn"
               type="text"
               inputmode="numeric"
-              placeholder="Необязательно для арендодателя"
+              placeholder="Для арендатора обязателен. Для арендодателя — только в этом браузере"
               class="panel-input font-mono"
             />
             <span class="text-[11px] text-slate-600 mt-1.5 block">
-              Можно указать после входа. Для арендатора ИНН задаётся при выборе роли.
+              {{
+                auth.isTenant
+                  ? 'ИНН сохраняется в профиле арендатора и нужен, чтобы найти ваши договоры.'
+                  : 'В API нет профиля ИНН арендодателя — значение остаётся только на этом устройстве.'
+              }}
             </span>
           </label>
           <p v-if="profileError" class="text-xs text-red-400">{{ profileError }}</p>
@@ -127,7 +131,9 @@ function goPricing() {
             <span class="text-sm text-slate-300">Уведомления в панели</span>
             <input v-model="pushNotify" type="checkbox" class="accent-emerald-brand w-4 h-4" />
           </label>
-          <p class="text-[11px] text-slate-600">Настройки сохранятся в API, когда подключим бэкенд.</p>
+          <p class="text-[11px] text-slate-600">
+            Сами уведомления приходят из API. Эти переключатели пока только локальные и не влияют на рассылку.
+          </p>
         </div>
       </section>
 

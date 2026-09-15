@@ -1,9 +1,24 @@
 <script setup lang="ts">
-const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+import { computed } from 'vue'
+import { useAccountingStore } from '@/stores/accountingStore'
+import { formatDateRu } from '@/utils/dates'
 
-const income = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-const expenses = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-const net = income.map((v, i) => v - expenses[i])
+const accounting = useAccountingStore()
+
+const points = computed(() => accounting.analytics?.cashflow ?? [])
+
+const labels = computed(() =>
+  points.value.map((p) => {
+    if (/^\d{4}-\d{2}-\d{2}/.test(p.date)) {
+      return formatDateRu(p.date).slice(0, 5)
+    }
+    return p.date
+  }),
+)
+
+const income = computed(() => points.value.map((p) => p.income))
+const expenses = computed(() => points.value.map((p) => p.expense))
+const net = computed(() => points.value.map((p) => p.profit))
 
 const w = 560
 const h = 200
@@ -11,31 +26,41 @@ const pad = { t: 10, r: 10, b: 24, l: 40 }
 const innerW = w - pad.l - pad.r
 const innerH = h - pad.t - pad.b
 
+const yMax = computed(() => {
+  const vals = [...income.value, ...expenses.value, ...net.value, 0]
+  const max = Math.max(...vals.map((v) => Math.abs(v)), 1)
+  return max * 1.1
+})
+
 function scaleY(val: number) {
-  const max = 650
-  return pad.t + innerH - (val / max) * innerH
+  return pad.t + innerH - (val / yMax.value) * innerH
 }
 
-function scaleX(i: number) {
-  return pad.l + (i / (months.length - 1)) * innerW
+function scaleX(i: number, len: number) {
+  if (len <= 1) return pad.l + innerW / 2
+  return pad.l + (i / (len - 1)) * innerW
 }
 
 function linePath(data: number[]) {
-  return data.map((v, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(i)} ${scaleY(v)}`).join(' ')
+  if (!data.length) return ''
+  return data.map((v, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(i, data.length)} ${scaleY(v)}`).join(' ')
 }
 
 function areaPath(data: number[]) {
-  const line = data.map((v, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(i)} ${scaleY(v)}`).join(' ')
-  return `${line} L ${scaleX(data.length - 1)} ${pad.t + innerH} L ${scaleX(0)} ${pad.t + innerH} Z`
+  if (!data.length) return ''
+  const line = data.map((v, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(i, data.length)} ${scaleY(v)}`).join(' ')
+  return `${line} L ${scaleX(data.length - 1, data.length)} ${pad.t + innerH} L ${scaleX(0, data.length)} ${pad.t + innerH} Z`
 }
+
+const labelStep = computed(() => Math.max(1, Math.ceil(labels.value.length / 8)))
 </script>
 
 <template>
   <div class="panel-card p-5">
     <div class="flex items-start justify-between mb-4">
       <div>
-        <h3 class="text-base font-semibold text-white">Cash Flow Analysis</h3>
-        <p class="text-xs text-slate-500 mt-0.5">Доходы, расходы и чистая прибыль</p>
+        <h3 class="text-base font-semibold text-white">Денежный поток</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Доходы, расходы и прибыль за период</p>
       </div>
       <div class="flex items-center gap-4 text-xs">
         <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-brand" />Доход</span>
@@ -43,7 +68,8 @@ function areaPath(data: number[]) {
         <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-orange-400" />Чистая</span>
       </div>
     </div>
-    <svg :viewBox="`0 0 ${w} ${h}`" class="w-full h-auto">
+    <p v-if="!points.length" class="text-sm text-slate-500 py-10 text-center">Нет данных за этот месяц</p>
+    <svg v-else :viewBox="`0 0 ${w} ${h}`" class="w-full h-auto">
       <defs>
         <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.35" />
@@ -55,7 +81,16 @@ function areaPath(data: number[]) {
       <path :d="linePath(income)" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" />
       <path :d="linePath(expenses)" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" />
       <path :d="linePath(net)" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3" />
-      <text v-for="(m, i) in months" :key="m" :x="scaleX(i)" :y="h - 4" text-anchor="middle" fill="#666" font-size="10">{{ m }}</text>
+      <text
+        v-for="(m, i) in labels"
+        v-show="i % labelStep === 0"
+        :key="`${m}-${i}`"
+        :x="scaleX(i, labels.length)"
+        :y="h - 4"
+        text-anchor="middle"
+        fill="#666"
+        font-size="10"
+      >{{ m }}</text>
     </svg>
   </div>
 </template>

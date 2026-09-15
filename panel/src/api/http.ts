@@ -156,6 +156,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     if (ok) {
       return apiRequest<T>(path, { ...options, skipRefresh: true })
     }
+    clearTokens()
   }
 
   if (!res.ok) {

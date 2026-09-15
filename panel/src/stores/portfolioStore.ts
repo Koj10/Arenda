@@ -29,6 +29,7 @@ import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
 import * as landlordApi from '@/api/landlord'
 import { num } from '@/api/types'
 import type { ObjectDetailOut } from '@/api/types'
+import { daysUntil, formatDateRu, todayISODate } from '@/utils/dates'
 
 function recalcPropertyStats(property: Property, propertyTenants: Tenant[]) {
   const occupying = propertyTenants.filter((t) => t.status !== 'overdue')
@@ -329,7 +330,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   function formatDate(date: string) {
-    return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date))
+    return formatDateRu(date)
   }
 
   function formatArea(area: number) {
@@ -337,7 +338,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   function getTenantStatus(contract: string): TenantStatus {
-    const days = Math.ceil((new Date(contract).getTime() - Date.now()) / (86400000))
+    const days = daysUntil(contract)
     if (days < 0) return 'overdue'
     if (days <= 60) return 'expiring'
     return 'active'
@@ -480,6 +481,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           syncPropertyStats(property.id)
         }
         syncPlanUsage()
+        void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
+          useAccountingStore().syncPropertyExpenses()
+        })
       } catch (err) {
         lastError.value = formatApiError(err, 'Не удалось загрузить объекты')
       } finally {
@@ -628,7 +632,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       }
 
       const fileIds = await uploadPending(data.documents, 'contract')
-      const today = new Date().toISOString().slice(0, 10)
+      const today = todayISODate()
       const endDate = data.contract
       const rent = Number(data.rent)
       if (!Number.isFinite(rent) || rent < 0) {
@@ -671,12 +675,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       space.name = data.name.trim()
       space.area = data.area
       space.monthlyRate = data.monthlyRate
-      space.accountNumber = data.accountNumber.trim() || undefined
-      space.ceilingHeight = data.ceilingHeight ?? undefined
-      space.renovation = data.renovation || undefined
-      space.spaceType = data.spaceType.trim() || undefined
-      space.status = data.status
-      space.floor = data.floor.trim() || undefined
       if (space.name !== oldName) {
         const tenant = getTenantForSpace(space.propertyId, oldName)
         if (tenant) tenant.space = space.name

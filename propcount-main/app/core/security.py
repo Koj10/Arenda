@@ -31,10 +31,10 @@ def _create_token(
 
     payload: Dict[str, Any] = {
         "sub": str(user_id),
-        "role": role,
+        "role": role or "",
         "type": token_type,
-        "iat": now,
-        "exp": now + expires_delta,
+        "iat": int(now.timestamp()),
+        "exp": int((now + expires_delta).timestamp()),
     }
 
     return jwt.encode(

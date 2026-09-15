@@ -11,6 +11,7 @@ import type {
   UtilityBillListItem,
   LandlordInvoiceOut,
   InvoiceDetailOut,
+  LandlordAnalyticsResponse,
 } from '@/api/types'
 
 export async function listObjects(q?: string) {
@@ -106,7 +107,6 @@ export async function createLease(body: {
   rent_monthly: number
   start_date?: string
   end_date: string
-  invoice_day?: number
   file_ids?: number[]
 }) {
   return apiRequest('/landlord/leases', { method: 'POST', body })
@@ -118,7 +118,6 @@ export async function updateLease(
     rent_monthly?: number
     start_date?: string | null
     end_date?: string
-    invoice_day?: number
   },
 ) {
   return apiRequest(`/landlord/leases/${leaseId}`, { method: 'PATCH', body })
@@ -139,6 +138,16 @@ export async function listTransactions(params: Record<string, string | number | 
   }
   const q = search.toString()
   return apiRequest<TransactionOut[]>(`/landlord/transactions${q ? `?${q}` : ''}`)
+}
+
+export async function deleteTransaction(transactionId: number) {
+  return apiRequest<void>(`/landlord/transactions/${transactionId}`, { method: 'DELETE' })
+}
+
+export async function getLandlordAnalytics(period: string) {
+  return apiRequest<LandlordAnalyticsResponse>(
+    `/landlord/analytics?period=${encodeURIComponent(period)}`,
+  )
 }
 
 export async function createTransaction(body: {
@@ -171,6 +180,18 @@ export async function createUtilityBill(body: {
   amounts: Record<string, number>
 }) {
   return apiRequest('/landlord/bills', { method: 'POST', body })
+}
+
+export async function createLandlordInvoice(body: {
+  tenant_id: number
+  unit_id?: number | null
+  kind?: 'utility' | 'rent'
+  period: string
+  amount: number
+  due_date: string
+  file_ids?: number[]
+}) {
+  return apiRequest<LandlordInvoiceOut>('/landlord/invoices', { method: 'POST', body })
 }
 
 export async function listObjectMeters(objectId: number, period: string) {

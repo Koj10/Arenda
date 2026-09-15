@@ -14,12 +14,11 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useAccountingStore } from '@/stores/accountingStore'
 import {
   PROPERTY_TYPE_LABELS,
-  RENOVATION_LABELS,
   SPACE_STATUS_LABELS,
   formatAreaShare,
 } from '@/types/portfolio'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
-import type { RenovationType, SpaceStatus, SpaceUpdateData, TenantUpdateData } from '@/types/portfolio'
+import type { SpaceStatus, SpaceUpdateData, TenantUpdateData } from '@/types/portfolio'
 
 type MainTab = 'info' | 'persons' | 'expenses' | 'income' | 'deals' | 'competitors'
 type DealTab = 'rent' | 'rates' | 'extra' | 'purchase' | 'history'
@@ -103,31 +102,17 @@ const modalTitle = computed(() => {
 
 const spaceStatus = computed((): SpaceStatus => {
   if (!space.value) return 'vacant'
-  if (space.value.status) return space.value.status
   return tenant.value ? 'active' : 'vacant'
 })
 
 const spaceTypeLabel = computed(() =>
-  space.value?.spaceType ?? (property.value ? `${PROPERTY_TYPE_LABELS[property.value.type]}` : '—'),
-)
-
-const renovationLabel = computed(() => {
-  const r = space.value?.renovation as RenovationType | undefined
-  return r ? RENOVATION_LABELS[r] : '—'
-})
-
-const accountNumber = computed(() =>
-  space.value?.accountNumber ?? (space.value ? `645${space.value.propertyId}${space.value.id}` : '—'),
+  property.value ? PROPERTY_TYPE_LABELS[property.value.type] : '—',
 )
 
 const cadastralParcel = computed(() =>
   space.value?.cadastralParcelId
     ? store.getCadastralParcelById(space.value.cadastralParcelId)
     : null,
-)
-
-const ceilingHeight = computed(() =>
-  space.value?.ceilingHeight ? `${space.value.ceilingHeight} м` : '—',
 )
 
 const propertyExpenses = computed(() =>
@@ -401,35 +386,6 @@ watch(
               <input v-model.number="infoForm.monthlyRate" type="number" min="0" :class="[INPUT_CLASS, { 'border-red-500': infoErrors.monthlyRate }]" />
               <p v-if="infoErrors.monthlyRate" class="text-xs text-red-400 mt-1">{{ infoErrors.monthlyRate }}</p>
             </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">Лицевой счёт</label>
-              <input v-model="infoForm.accountNumber" type="text" :class="INPUT_CLASS" />
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">Статус помещения</label>
-              <select v-model="infoForm.status" :class="INPUT_CLASS">
-                <option v-for="(label, key) in SPACE_STATUS_LABELS" :key="key" :value="key">{{ label }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">Тип помещения</label>
-              <input v-model="infoForm.spaceType" type="text" placeholder="Офисное помещение" :class="INPUT_CLASS" />
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">Высота потолков, м</label>
-              <input v-model.number="infoForm.ceilingHeight" type="number" min="0" step="0.01" :class="INPUT_CLASS" />
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">Ремонт</label>
-              <select v-model="infoForm.renovation" :class="INPUT_CLASS">
-                <option value="">—</option>
-                <option v-for="(label, key) in RENOVATION_LABELS" :key="key" :value="key">{{ label }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs text-slate-500 mb-1">Этаж</label>
-              <input v-model="infoForm.floor" type="text" placeholder="1" :class="INPUT_CLASS" />
-            </div>
             <div class="sm:col-span-2 lg:col-span-3">
               <p class="text-xs text-slate-500">Адрес объекта: {{ property.address }}</p>
             </div>
@@ -464,10 +420,6 @@ watch(
               </template>
             </div>
             <div>
-              <p class="text-xs text-slate-500 mb-1">Лицевой счёт</p>
-              <p class="text-sm font-mono text-slate-200">{{ accountNumber }}</p>
-            </div>
-            <div>
               <p class="text-xs text-slate-500 mb-1">Статус помещения</p>
               <p class="text-sm text-slate-200">{{ SPACE_STATUS_LABELS[spaceStatus] }}</p>
             </div>
@@ -481,18 +433,6 @@ watch(
               <p v-if="property" class="text-xs text-slate-500 mt-0.5">
                 {{ Math.round((space.area / property.totalArea) * 100) }}% объекта
               </p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-500 mb-1">Высота потолков</p>
-              <p class="text-sm text-slate-200">{{ ceilingHeight }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-slate-500 mb-1">Ремонт</p>
-              <p class="text-sm text-slate-200">{{ renovationLabel }}</p>
-            </div>
-            <div v-if="space.floor">
-              <p class="text-xs text-slate-500 mb-1">Этаж</p>
-              <p class="text-sm text-slate-200">{{ space.floor }}</p>
             </div>
             <div>
               <p class="text-xs text-slate-500 mb-1">Базовая ставка</p>

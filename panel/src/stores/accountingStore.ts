@@ -4,10 +4,56 @@ import type { Expense, ExpenseFormData, ExpenseDocument, ExpenseCategory } from 
 import type { PendingDocument } from '@/types/portfolio'
 import { formatApiError, getAccessToken } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
-import { createTransaction, listTransactions } from '@/api/landlord'
+import {
+  createTransaction,
+  deleteTransaction,
+  getLandlordAnalytics,
+  listTransactions,
+} from '@/api/landlord'
 import { num } from '@/api/types'
+import { currentPeriod, formatDateRu, parseDateOnly } from '@/utils/dates'
 
 const CATEGORIES: ExpenseCategory[] = ['utilities', 'maintenance', 'tax', 'insurance', 'management', 'other']
+
+export interface AnalyticsCards {
+  income: number
+  expenses: number
+  profit: number
+  rentAccrued: number
+  utilityAccrued: number
+  invoicesPending: number
+  invoicesOverdue: number
+  occupancyPercent: number
+}
+
+export interface CashflowPoint {
+  date: string
+  income: number
+  expense: number
+  profit: number
+}
+
+export interface ExpenseBreakdownRow {
+  category: string
+  amount: number
+}
+
+export interface RevenueComparison {
+  currentPeriod: string
+  previousPeriod: string
+  current: number
+  previous: number
+  difference: number
+  percentChange: number
+}
+
+export interface LandlordAnalytics {
+  period: string
+  cards: AnalyticsCards
+  cashflow: CashflowPoint[]
+  expenseBreakdown: ExpenseBreakdownRow[]
+  revenueComparison: RevenueComparison
+}
 
 function asCategory(value: string): ExpenseCategory {
   return CATEGORIES.includes(value as ExpenseCategory) ? (value as ExpenseCategory) : 'other'
@@ -24,8 +70,43 @@ function toExpenseDocuments(docs: PendingDocument[]): ExpenseDocument[] {
   }))
 }
 
+function mapAnalytics(raw: Awaited<ReturnType<typeof getLandlordAnalytics>>): LandlordAnalytics {
+  return {
+    period: raw.period,
+    cards: {
+      income: num(raw.cards.income),
+      expenses: num(raw.cards.expenses),
+      profit: num(raw.cards.profit),
+      rentAccrued: num(raw.cards.rent_accrued),
+      utilityAccrued: num(raw.cards.utility_accrued),
+      invoicesPending: num(raw.cards.invoices_pending),
+      invoicesOverdue: num(raw.cards.invoices_overdue),
+      occupancyPercent: raw.cards.occupancy_percent ?? 0,
+    },
+    cashflow: (raw.cashflow ?? []).map((row) => ({
+      date: row.date,
+      income: num(row.income),
+      expense: num(row.expense),
+      profit: num(row.profit),
+    })),
+    expenseBreakdown: (raw.expense_breakdown ?? []).map((row) => ({
+      category: row.category,
+      amount: num(row.amount),
+    })),
+    revenueComparison: {
+      currentPeriod: raw.revenue_comparison.current_period,
+      previousPeriod: raw.revenue_comparison.previous_period,
+      current: num(raw.revenue_comparison.current),
+      previous: num(raw.revenue_comparison.previous),
+      difference: num(raw.revenue_comparison.difference),
+      percentChange: raw.revenue_comparison.percent_change ?? 0,
+    },
+  }
+}
+
 export const useAccountingStore = defineStore('accounting', () => {
   const expenses = ref<Expense[]>([])
+  const analytics = ref<LandlordAnalytics | null>(null)
   const lastError = ref<string | null>(null)
 
   const expenseModalOpen = ref(false)
@@ -40,7 +121,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     const year = now.getFullYear()
     return expenses.value
       .filter((e) => {
-        const d = new Date(e.date)
+        const d = parseDateOnly(e.date)
         return d.getMonth() === month && d.getFullYear() === year
       })
       .reduce((s, e) => s + e.amount, 0)
@@ -55,12 +136,35 @@ export const useAccountingStore = defineStore('accounting', () => {
   }
 
   function formatDate(date: string) {
-    return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date))
+    return formatDateRu(date)
+  }
+
+  function syncPropertyExpenses() {
+    void import('@/stores/portfolioStore').then(({ usePortfolioStore }) => {
+      const portfolio = usePortfolioStore()
+      const totals = new Map<number, number>()
+      for (const e of expenses.value) {
+        if (e.propertyId) totals.set(e.propertyId, (totals.get(e.propertyId) ?? 0) + e.amount)
+      }
+      for (const p of portfolio.properties) {
+        p.expense = totals.get(p.id) ?? 0
+      }
+    })
   }
 
   function reset() {
     expenses.value = []
+    analytics.value = null
     lastError.value = null
+  }
+
+  async function loadAnalytics() {
+    if (!getAccessToken()) return
+    try {
+      analytics.value = mapAnalytics(await getLandlordAnalytics(currentPeriod()))
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось загрузить аналитику')
+    }
   }
 
   async function loadFromApi() {
@@ -78,6 +182,8 @@ export const useAccountingStore = defineStore('accounting', () => {
         propertyId: row.object_id ?? null,
         documents: [],
       }))
+      syncPropertyExpenses()
+      await loadAnalytics()
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось загрузить транзакции')
     }
@@ -116,6 +222,8 @@ export const useAccountingStore = defineStore('accounting', () => {
         documents: toExpenseDocuments(data.documents),
       })
       expenseModalOpen.value = false
+      syncPropertyExpenses()
+      void loadAnalytics()
       return true
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось сохранить расход')
@@ -129,9 +237,19 @@ export const useAccountingStore = defineStore('accounting', () => {
     Object.assign(expense, data)
   }
 
-  function removeExpense(id: number) {
-    expenses.value = expenses.value.filter((e) => e.id !== id)
-    if (expenseDetailId.value === id) closeExpenseDetail()
+  async function removeExpense(id: number) {
+    lastError.value = null
+    try {
+      await deleteTransaction(id)
+      expenses.value = expenses.value.filter((e) => e.id !== id)
+      if (expenseDetailId.value === id) closeExpenseDetail()
+      syncPropertyExpenses()
+      void loadAnalytics()
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось удалить расход')
+      return false
+    }
   }
 
   function addExpenseDocument(expenseId: number, doc: PendingDocument) {
@@ -173,6 +291,7 @@ export const useAccountingStore = defineStore('accounting', () => {
 
   return {
     expenses,
+    analytics,
     lastError,
     expenseModalOpen,
     expenseDetailOpen,
@@ -183,6 +302,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     formatMoney,
     formatDate,
     loadFromApi,
+    loadAnalytics,
     reset,
     addExpense,
     updateExpense,
@@ -193,5 +313,6 @@ export const useAccountingStore = defineStore('accounting', () => {
     closeExpenseModal,
     openExpenseDetail,
     closeExpenseDetail,
+    syncPropertyExpenses,
   }
 })

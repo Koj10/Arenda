@@ -95,10 +95,6 @@ function onClose() {
           />
           <p v-if="errors.name" class="text-xs text-red-400 mt-1">{{ errors.name }}</p>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Этаж</label>
-          <input v-model="form.floor" type="text" placeholder="1" :class="inputClass" />
-        </div>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -132,40 +128,6 @@ function onClose() {
             <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">₽</span>
           </div>
           <p v-if="errors.monthlyRate" class="text-xs text-red-400 mt-1">{{ errors.monthlyRate }}</p>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Номер счёта</label>
-          <input v-model="form.accountNumber" type="text" :class="inputClass" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Высота потолков</label>
-          <div class="relative">
-            <input v-model.number="form.ceilingHeight" type="number" min="0" step="0.1" :class="[inputClass, 'font-mono pr-8']" />
-            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">м</span>
-          </div>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Тип помещения</label>
-          <input v-model="form.spaceType" type="text" :class="inputClass" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Статус</label>
-          <select v-model="form.status" :class="inputClass">
-            <option value="vacant">Свободно</option>
-            <option value="active">Активно</option>
-            <option value="inactive">Неактивно</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Отделка</label>
-          <select v-model="form.renovation" :class="inputClass">
-            <option value="none">Без отделки</option>
-            <option value="cosmetic">Косметическая</option>
-            <option value="design">Дизайнерская</option>
-          </select>
         </div>
       </div>
     </div>
