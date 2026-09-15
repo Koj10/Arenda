@@ -51,8 +51,10 @@ export function buildUtilityStatement(input: CalcInput): UtilityStatement {
   const raw = new Map<number, StatementCharge[]>()
   for (const space of input.spaces) raw.set(space.id, [])
 
+  const reconciliation = { adjustment: 0 }
+
   for (const item of input.items) {
-    applyItem(item, chargeMethodOf(item.criterion), input, objectArea, raw, warnings)
+    applyItem(item, chargeMethodOf(item.criterion), input, objectArea, raw, warnings, reconciliation)
   }
 
   const spaces: StatementSpaceRow[] = input.spaces.map((space) => {
@@ -82,7 +84,7 @@ export function buildUtilityStatement(input: CalcInput): UtilityStatement {
     }
   })
 
-  const landlordLoss = money(
+  const landlordLossBase = money(
     spaces.reduce((sum, row) => {
       const all = raw.get(row.spaceId) ?? []
       const allSum = money(all.reduce((s, c) => s + c.amount, 0))
@@ -90,6 +92,7 @@ export function buildUtilityStatement(input: CalcInput): UtilityStatement {
       return sum + allSum
     }, 0),
   )
+  const landlordLoss = money(landlordLossBase + reconciliation.adjustment)
   const tenantTotal = money(spaces.filter((r) => r.destination === 'tenant').reduce((s, r) => s + r.total, 0))
 
   return {
@@ -104,6 +107,16 @@ export function buildUtilityStatement(input: CalcInput): UtilityStatement {
     tenantTotal,
     warnings,
   }
+}
+
+function sumByCriterion(raw: Map<number, StatementCharge[]>, criterion: UtilityCriterion): number {
+  let total = 0
+  for (const list of raw.values()) {
+    for (const c of list) {
+      if (c.criterion === criterion) total += c.amount
+    }
+  }
+  return total
 }
 
 function pushCharge(
@@ -121,6 +134,10 @@ function pushCharge(
   else list.push({ criterion, amount: money(amount), method })
 }
 
+interface Reconciliation {
+  adjustment: number
+}
+
 function applyItem(
   item: UtilityUploadItem,
   method: ChargeMethod,
@@ -128,6 +145,7 @@ function applyItem(
   objectArea: number,
   raw: Map<number, StatementCharge[]>,
   warnings: string[],
+  reconciliation: Reconciliation,
 ) {
   const label = UTILITY_CRITERION_LABELS[item.criterion]
 
@@ -182,6 +200,10 @@ function applyItem(
   const missing = consumptions.filter((c) => !c.qty || c.qty <= 0)
   if (missing.length === input.spaces.length) {
     warnings.push(`${label}: нет показаний счётчиков — на помещения ничего не начислено.`)
+    if (item.totalAmount && item.totalAmount > 0) {
+      reconciliation.adjustment = money(reconciliation.adjustment + item.totalAmount)
+      warnings.push(`${label}: итого ${money(item.totalAmount)} ₽ по счёту отнесено на результаты (убытки).`)
+    }
     return
   }
   if (missing.length) {
@@ -200,8 +222,27 @@ function applyItem(
     return
   }
 
+  const sumBefore = sumByCriterion(raw, item.criterion)
   for (const { space, qty } of consumptions) {
     if (!qty || qty <= 0) continue
     pushCharge(raw, space.id, item.criterion, money(rateWithVat * qty), method)
+  }
+  const sumAfter = sumByCriterion(raw, item.criterion)
+  const chargedSum = money(sumAfter - sumBefore)
+
+  if (item.totalAmount && item.totalAmount > 0) {
+    const diff = money(item.totalAmount - chargedSum)
+    if (Math.abs(diff) > 0.01) {
+      reconciliation.adjustment = money(reconciliation.adjustment + diff)
+      if (diff > 0) {
+        warnings.push(
+          `${label}: сверка: в счёте ${money(item.totalAmount)} ₽, по тарифу вышло ${chargedSum} ₽. Разница +${diff} ₽ — убыток.`,
+        )
+      } else {
+        warnings.push(
+          `${label}: сверка: в счёте ${money(item.totalAmount)} ₽, по тарифу вышло ${chargedSum} ₽. Разница ${diff} ₽ — прибыль.`,
+        )
+      }
+    }
   }
 }

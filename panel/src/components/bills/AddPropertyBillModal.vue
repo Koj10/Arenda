@@ -107,8 +107,12 @@ function validate() {
     if (isAssignCriterion(item.criterion) && !item.septicSpaceId) {
       errors.value.items = 'Для септика выберите помещение'
     }
-    if (isMeteredCriterion(item.criterion) && !(item.unitPrice && item.unitPrice > 0) && !(item.totalAmount && item.totalAmount > 0)) {
-      errors.value.items = 'Для счётчика укажите тариф или итоговую сумму'
+    if (isMeteredCriterion(item.criterion)) {
+      if (!(item.unitPrice && item.unitPrice > 0)) {
+        errors.value.items = 'Для счётчика укажите цену за единицу (тариф)'
+      } else if (!(item.totalAmount && item.totalAmount > 0)) {
+        errors.value.items = 'Для счётчика укажите итоговую сумму в счёте (для сверки)'
+      }
     }
     if (!isMeteredCriterion(item.criterion) && !(item.totalAmount && item.totalAmount > 0)) {
       errors.value.items = 'Укажите сумму счёта'
@@ -129,7 +133,7 @@ async function submit() {
 }
 
 function methodHint(criterion: UtilityCriterion) {
-  if (isMeteredCriterion(criterion)) return 'тариф без НДС × 22% × показания'
+  if (isMeteredCriterion(criterion)) return 'тариф × НДС × показания · сумма в счёте — для сверки (разница в результатах)'
   if (isAssignCriterion(criterion)) return 'перевыставить на помещение'
   return 'доля площади помещения'
 }
@@ -226,11 +230,7 @@ function methodHint(criterion: UtilityCriterion) {
 
           <div
             class="grid gap-2"
-            :class="
-              isMeteredCriterion(item.criterion) && item.unitPrice && item.unitPrice > 0
-                ? 'sm:grid-cols-2'
-                : 'sm:grid-cols-3'
-            "
+            :class="isMeteredCriterion(item.criterion) ? 'sm:grid-cols-3' : 'sm:grid-cols-3'"
           >
             <template v-if="isMeteredCriterion(item.criterion)">
               <label class="block">
@@ -249,16 +249,19 @@ function methodHint(criterion: UtilityCriterion) {
                   }}
                 </p>
               </label>
+              <label class="block">
+                <span class="text-[11px] text-slate-500 mb-1 block">
+                  Итого в счёте <span class="text-amber-400/80">(для сверки)</span>
+                </span>
+                <input v-model.number="item.totalAmount" type="number" min="0" step="0.01" class="panel-input font-mono text-sm" />
+              </label>
             </template>
-            <label
-              v-if="!isMeteredCriterion(item.criterion) || !item.unitPrice || item.unitPrice <= 0"
-              class="block"
-            >
-              <span class="text-[11px] text-slate-500 mb-1 block">
-                {{ isMeteredCriterion(item.criterion) ? 'Итого в счёте (если нет тарифа)' : 'Сумма счёта' }}
-              </span>
-              <input v-model.number="item.totalAmount" type="number" min="0" step="0.01" class="panel-input font-mono text-sm" />
-            </label>
+            <template v-else>
+              <label class="block sm:col-span-3">
+                <span class="text-[11px] text-slate-500 mb-1 block">Сумма счёта</span>
+                <input v-model.number="item.totalAmount" type="number" min="0" step="0.01" class="panel-input font-mono text-sm" />
+              </label>
+            </template>
           </div>
         </div>
         <p v-if="errors.items" class="text-xs text-red-400">{{ errors.items }}</p>
