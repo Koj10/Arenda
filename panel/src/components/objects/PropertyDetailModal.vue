@@ -1,26 +1,44 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Building2, ChevronRight, Download, MapPin, Plus, Landmark, Trash2 } from '@lucide/vue'
+import {
+  Building2,
+  ChevronRight,
+  Download,
+  MapPin,
+  Plus,
+  Landmark,
+  Trash2,
+  Calendar as CalendarIcon,
+  FileText,
+} from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useUtilityBillsStore } from '@/stores/utilityBillsStore'
 import { PROPERTY_TYPE_LABELS, PROPERTY_DOCUMENT_LABELS, formatAreaShare } from '@/types/portfolio'
+import type { AttachedDocument } from '@/types/portfolio'
 import { usePlan } from '@/composables/usePlan'
 import { downloadDocumentsArchive } from '@/composables/useDocuments'
+import { formatDateRu } from '@/utils/dates'
 
-type PropertyTab = 'spaces' | 'documents'
+type PropertyTab = 'spaces' | 'documents' | 'bills'
 
 const store = usePortfolioStore()
+const utilityBills = useUtilityBillsStore()
 const { canAddSpace, requireCanAddSpace } = usePlan()
 
 const activeTab = ref<PropertyTab>('spaces')
 const downloadingAll = ref(false)
+const downloadingBills = ref(false)
 const downloadError = ref<string | null>(null)
+const billDownloadError = ref<string | null>(null)
 const deletingSpaceId = ref<number | null>(null)
 const spaceDeleteError = ref<string | null>(null)
 const deletingProperty = ref(false)
 const propertyDeleteError = ref<string | null>(null)
+
+const billPeriodFilter = ref<string>('')
 
 const property = computed(() =>
   store.propertyDetailId ? store.getPropertyById(store.propertyDetailId) : null,
@@ -38,6 +56,22 @@ const propertyDocuments = computed(() =>
   property.value ? store.getDocuments('property', property.value.id) : [],
 )
 
+const propertyBills = computed(() =>
+  property.value ? utilityBills.getBillsForProperty(property.value.id) : [],
+)
+
+const filteredPropertyBills = computed(() => {
+  const list = propertyBills.value
+  if (!billPeriodFilter.value) return list
+  return list.filter((b) => b.period === billPeriodFilter.value)
+})
+
+const billPeriods = computed(() => {
+  const set = new Set<string>()
+  for (const b of propertyBills.value) set.add(b.period)
+  return [...set].sort().reverse()
+})
+
 const spacesAreaTotal = computed(() =>
   property.value ? store.getTotalAreaForProperty(property.value.id) : 0,
 )
@@ -52,12 +86,57 @@ const totalCadastralValue = computed(() =>
 
 const TABS: { id: PropertyTab; label: string }[] = [
   { id: 'spaces', label: 'Помещения' },
+  { id: 'bills', label: 'Счета' },
   { id: 'documents', label: 'Документы' },
 ]
 
+function formatPeriod(period: string) {
+  const [y, m] = period.split('-')
+  const d = new Date(Number(y), Number(m) - 1, 1)
+  return new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }).format(d)
+}
+
+async function onDownloadBillDocuments() {
+  if (!property.value || !filteredPropertyBills.value.length || downloadingBills.value) return
+  downloadingBills.value = true
+  billDownloadError.value = null
+  const propId = property.value.id
+  try {
+    type BillDoc = { name?: string; dataUrl?: string; mimeType?: string; size?: number }
+    const docs: AttachedDocument[] = []
+    for (const b of filteredPropertyBills.value) {
+      const docMaybe = (b as unknown as { document?: BillDoc }).document
+      if (!docMaybe?.dataUrl) continue
+      docs.push({
+        id: Number(b.id) || Date.now() + Math.floor(Math.random() * 10000),
+        entityType: 'property',
+        entityId: propId,
+        category: 'service',
+        name: docMaybe.name || `Счёт_${b.period}_${b.id}.pdf`,
+        mimeType: docMaybe.mimeType || 'application/pdf',
+        size: docMaybe.size || 0,
+        uploadedAt: b.issuedAt || new Date().toISOString().slice(0, 10),
+        dataUrl: docMaybe.dataUrl,
+      })
+    }
+    if (!docs.length) {
+      billDownloadError.value = 'Нет прикрепленных PDF к этим счетам для выгрузки'
+      return
+    }
+    const ok = await downloadDocumentsArchive(docs, `Счета — ${property.value.address} — ${billPeriodFilter.value || 'все периоды'}`)
+    if (!ok) billDownloadError.value = 'Нет документов для выгрузки'
+  } catch {
+    billDownloadError.value = 'Не удалось собрать архив счетов'
+  } finally {
+    downloadingBills.value = false
+  }
+}
+
 function onClose() {
   activeTab.value = 'spaces'
+  billPeriodFilter.value = ''
   downloadError.value = null
+  billDownloadError.value = null
   spaceDeleteError.value = null
   propertyDeleteError.value = null
   store.closePropertyDetail()
@@ -190,6 +269,7 @@ function occupancyClass(occupied: boolean) {
         >
           {{ tab.label }}
           <span v-if="tab.id === 'spaces'" class="text-slate-600 font-normal">({{ spaces.length }})</span>
+          <span v-if="tab.id === 'bills'" class="text-slate-600 font-normal">({{ propertyBills.length }})</span>
           <span v-if="tab.id === 'documents'" class="text-slate-600 font-normal">({{ propertyDocuments.length }})</span>
         </button>
       </nav>
@@ -271,8 +351,92 @@ function occupancyClass(occupied: boolean) {
         </div>
       </div>
 
+      <!-- Счета -->
+      <div v-else-if="activeTab === 'bills'" class="space-y-4">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto]">
+            <label class="block">
+              <span class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">Период</span>
+              <div class="flex items-center gap-2">
+                <CalendarIcon class="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <select v-model="billPeriodFilter" class="panel-input text-xs py-2">
+                  <option value="">Все месяцы</option>
+                  <option v-for="period in billPeriods" :key="period" :value="period">
+                    {{ formatPeriod(period) }}
+                  </option>
+                </select>
+              </div>
+            </label>
+            <label class="block">
+              <span class="text-[11px] uppercase tracking-wide text-slate-500 mb-1 block">&nbsp;</span>
+              <input v-model="billPeriodFilter" type="month" class="panel-input text-xs py-2" />
+            </label>
+          </div>
+          <button
+            type="button"
+            class="panel-btn-secondary text-xs py-2 px-3 disabled:opacity-50"
+            :disabled="!filteredPropertyBills.length || downloadingBills"
+            @click="onDownloadBillDocuments"
+          >
+            <Download class="w-3.5 h-3.5" />
+            {{ downloadingBills ? 'Сборка архива...' : 'Скачать за период' }}
+          </button>
+        </div>
+        <p v-if="billDownloadError" class="text-xs text-rose-400">{{ billDownloadError }}</p>
+
+        <div v-if="filteredPropertyBills.length === 0" class="py-10 text-center rounded-xl border border-dashed border-border">
+          <FileText class="w-10 h-10 text-slate-600 mx-auto mb-2 opacity-60" />
+          <p class="text-sm text-slate-500">
+            {{ billPeriodFilter ? 'Счетов за выбранный месяц нет' : 'Счетов пока нет' }}
+          </p>
+          <p class="text-xs text-slate-600 mt-1">
+            Загружайте счета на вкладке «Счета» приложения
+          </p>
+        </div>
+
+        <div v-else class="space-y-2">
+          <div
+            v-for="bill in filteredPropertyBills"
+            :key="bill.id"
+            class="rounded-xl border border-border bg-panel/40 p-4 flex flex-wrap items-center justify-between gap-3"
+          >
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-white truncate">{{ bill.title }}</p>
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-slate-500">
+                <span class="inline-flex items-center gap-1">
+                  <CalendarIcon class="w-3 h-3" />{{ formatPeriod(bill.period) }}
+                </span>
+                <span>Создан: {{ formatDateRu(bill.issuedAt || bill.dueDate) }}</span>
+                <span>Оплатить до: {{ formatDateRu(bill.dueDate) }}</span>
+              </div>
+              <div v-if="bill.lines && bill.lines.length" class="mt-2 flex flex-wrap gap-x-2 gap-y-1">
+                <span
+                  v-for="(line, i) in bill.lines"
+                  :key="i"
+                  class="inline-block text-[10px] px-2 py-0.5 rounded bg-panel border border-border text-slate-400"
+                >
+                  {{ line.label || line.criterion }} · {{ utilityBills.formatMoney(line.amount) }}
+                </span>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-sm font-mono font-semibold text-white">
+                {{ utilityBills.formatMoney(bill.totalAmount) }}
+              </p>
+              <p v-if="bill.landlordLoss > 0.009" class="text-[11px] text-rose-400 mt-0.5">
+                Убыток: {{ utilityBills.formatMoney(bill.landlordLoss) }}
+              </p>
+              <p v-else-if="bill.landlordLoss < -0.009" class="text-[11px] text-emerald-brand mt-0.5">
+                Прибыль: {{ utilityBills.formatMoney(-bill.landlordLoss) }}
+              </p>
+              <p class="text-[10px] text-slate-600 mt-0.5">{{ bill.status === 'distributed' ? 'Распределен' : bill.status }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Документы -->
-      <div v-else class="space-y-4">
+      <div v-else-if="activeTab === 'documents'" class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="text-xs text-slate-500">
             Все документы объекта можно скачать одним ZIP-архивом

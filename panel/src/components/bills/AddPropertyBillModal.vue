@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { FileUp, Loader2, Sparkles, Trash2 } from '@lucide/vue'
+import { FileUp, Trash2 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import { useUtilityBillsStore } from '@/stores/utilityBillsStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -13,9 +13,9 @@ import {
   type UtilityCriterion,
   type UtilityUploadItem,
 } from '@/types/utilityBills'
-import { parseUtilityInvoiceFromFile, fileToInvoiceDocument } from '@/composables/useInvoiceParser'
 import { unitPriceWithVat } from '@/composables/utilityCalc'
 import { currentPeriod, todayISODate } from '@/utils/dates'
+import type { InvoiceDocument } from '@/types/billing'
 
 const utilityBills = useUtilityBillsStore()
 const portfolio = usePortfolioStore()
@@ -23,7 +23,6 @@ const portfolio = usePortfolioStore()
 const period = ref(currentPeriod())
 const dueDate = ref(todayISODate())
 const items = ref<UtilityUploadItem[]>([])
-const parsing = ref(false)
 const errors = ref<Record<string, string>>({})
 const inputRef = ref<HTMLInputElement | null>(null)
 
@@ -56,42 +55,40 @@ function newId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+async function readFileAsDataUrl(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(reader.error)
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  })
+}
+
 async function onFilesSelected(event: Event) {
   const input = event.target as HTMLInputElement
   const files = [...(input.files ?? [])]
   if (!files.length) return
-  parsing.value = true
   errors.value = {}
-  try {
-    for (const file of files) {
-      const document = await fileToInvoiceDocument(file)
-      const parsed = await parseUtilityInvoiceFromFile(file)
-      if (parsed.period && items.value.length === 0) period.value = parsed.period
-      if (parsed.dueDate && items.value.length === 0) dueDate.value = parsed.dueDate
-
-      const lines = parsed.lines.length
-        ? parsed.lines
-        : [{ criterion: 'electricity' as UtilityCriterion, amount: parsed.total ?? 0, label: '' }]
-
-      for (const line of lines) {
-        items.value.push({
-          id: newId(),
-          fileName: file.name,
-          document,
-          criterion: line.criterion,
-          unitPrice: isMeteredCriterion(line.criterion) ? parsed.unitPrice : null,
-          vatRate: parsed.vatRate || VAT_RATE,
-          totalAmount: line.amount || parsed.total,
-          septicSpaceId: null,
-          parsedTitle: parsed.title,
-          source: parsed.source,
-        })
-      }
+  for (const file of files) {
+    const dataUrl = await readFileAsDataUrl(file)
+    const document: InvoiceDocument = {
+      name: file.name,
+      size: file.size,
+      mimeType: file.type || 'application/pdf',
+      dataUrl,
     }
-  } finally {
-    parsing.value = false
-    input.value = ''
+    items.value.push({
+      id: newId(),
+      fileName: file.name,
+      document,
+      criterion: 'electricity',
+      unitPrice: null,
+      vatRate: VAT_RATE,
+      totalAmount: null,
+      septicSpaceId: null,
+    })
   }
+  input.value = ''
 }
 
 function removeItem(id: string) {
@@ -150,10 +147,9 @@ function methodHint(criterion: UtilityCriterion) {
     <div v-if="property" class="space-y-5">
       <p class="text-sm text-slate-500 rounded-lg border border-border bg-panel/30 px-3 py-2">
         Объект: <span class="text-slate-300">{{ property.address }}</span>.
-        Можно загрузить несколько PDF. Для каждого счёта выберите показатель.
-        Электричество, вода, канализация и газ — цена за единицу + НДС 22%, затем × показания помещения.
-        УК, тепло и мусор — итоговая сумма делится по доле площади.
-        Септик целиком уходит на выбранное помещение.
+        Загрузите счета в любом формате (PDF, изображение, TXT) и заполните все поля вручную.
+        Для каждого счёта выберите показатель и заполните суммы / тариф.
+        Прикрепленные файлы будут доступны на вкладке «Счета» в карточке объекта.
       </p>
 
       <div>
@@ -171,9 +167,8 @@ function methodHint(criterion: UtilityCriterion) {
             multiple
             @change="onFilesSelected"
           />
-          <Loader2 v-if="parsing" class="w-7 h-7 text-emerald-brand mx-auto mb-2 animate-spin" />
-          <FileUp v-else class="w-7 h-7 text-slate-500 mx-auto mb-2" />
-          <p class="text-sm text-slate-400">PDF, TXT или изображение — можно несколько сразу</p>
+          <FileUp class="w-7 h-7 text-slate-500 mx-auto mb-2" />
+          <p class="text-sm text-slate-400">Прикрепить счета (PDF, TXT, изображение) — можно несколько сразу</p>
         </div>
         <p v-if="errors.files" class="text-xs text-red-400 mt-1">{{ errors.files }}</p>
       </div>
@@ -198,9 +193,8 @@ function methodHint(criterion: UtilityCriterion) {
           <div class="flex items-start justify-between gap-2">
             <div>
               <p class="text-sm text-white">{{ item.fileName }}</p>
-              <p v-if="item.parsedTitle" class="text-[11px] text-slate-500 mt-0.5">{{ item.parsedTitle }}</p>
-              <p v-if="item.source" class="text-[11px] text-emerald-brand/80 mt-0.5 flex items-center gap-1">
-                <Sparkles class="w-3 h-3" />{{ item.source }}
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                Файл счёта прикреплен, поля ниже заполняются вручную
               </p>
             </div>
             <button type="button" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400" @click="removeItem(item.id)">
@@ -270,7 +264,7 @@ function methodHint(criterion: UtilityCriterion) {
 
     <template #footer>
       <button type="button" class="panel-btn-secondary" @click="resetAndClose">Отмена</button>
-      <button type="button" class="panel-btn-primary" :disabled="parsing" @click="submit">
+      <button type="button" class="panel-btn-primary" @click="submit">
         Рассчитать выписку
       </button>
     </template>
