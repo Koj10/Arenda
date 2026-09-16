@@ -28,25 +28,26 @@
   :root {
     --bg-navy: #0F0F11;
     --bg-sidebar: #0B0B0D;
-    --bg-content: #17181A;
-    --bg-card: #1E2023;
-    --bg-card-hover: #26282C;
-    --color-border: #2A2C30;
-    --color-border-subtle: #232529;
-    --color-surface: #1E2023;
+    --bg-content: #131416;
+    --bg-card: #1B1D20;
+    --bg-card-hover: #222428;
+    --color-border: #242629;
+    --color-border-subtle: #1E2023;
+    --color-surface: #1B1D20;
     --color-accent: #FACC15;
     --color-accent-dark: #EAB308;
-    --color-accent-soft: rgba(250, 204, 21, 0.12);
-    --color-accent-ring: rgba(250, 204, 21, 0.22);
-    --color-accent-ring-strong: rgba(250, 204, 21, 0.4);
-    --text-primary: #ffffff;
-    --text-secondary: #B5B8BD;
-    --text-muted: #7D8188;
+    --color-accent-soft: rgba(250, 204, 21, 0.1);
+    --color-accent-ring: rgba(250, 204, 21, 0.18);
+    --color-accent-ring-strong: rgba(250, 204, 21, 0.35);
+    --text-primary: #F8F9FA;
+    --text-secondary: #C6C9CE;
+    --text-muted: #91959C;
     --brand-title: #FACC15;
     --logo-filter: invert(79%) sepia(94%) saturate(707%) hue-rotate(357deg) brightness(102%) contrast(96%);
-    --backdrop-overlay: rgba(0, 0, 0, 0.6);
+    --backdrop-overlay: rgba(0, 0, 0, 0.55);
     --sidebar-brand: var(--bg-sidebar);
     --btn-primary-text: #0B0B0D;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     --color-navy: var(--bg-navy);
     --color-graphite: var(--bg-sidebar);
     --color-panel: var(--bg-content);
@@ -69,27 +70,28 @@
   }
 
   [data-theme='red'] {
-    --bg-navy: #0F0F11;
+    --bg-navy: #0D0E10;
     --bg-sidebar: #000000;
-    --bg-content: #131416;
-    --bg-card: #1C1D20;
-    --bg-card-hover: #252629;
-    --color-border: #2B2C2F;
-    --color-border-subtle: #222326;
-    --color-surface: #1C1D20;
+    --bg-content: #101113;
+    --bg-card: #18191C;
+    --bg-card-hover: #1F2024;
+    --color-border: #212226;
+    --color-border-subtle: #1B1C1F;
+    --color-surface: #18191C;
     --color-accent: #E53E3E;
     --color-accent-dark: #C53030;
-    --color-accent-soft: rgba(229, 62, 62, 0.12);
-    --color-accent-ring: rgba(229, 62, 62, 0.22);
-    --color-accent-ring-strong: rgba(229, 62, 62, 0.4);
-    --text-primary: #ffffff;
-    --text-secondary: #B5B8BD;
-    --text-muted: #7D8188;
+    --color-accent-soft: rgba(229, 62, 62, 0.1);
+    --color-accent-ring: rgba(229, 62, 62, 0.18);
+    --color-accent-ring-strong: rgba(229, 62, 62, 0.32);
+    --text-primary: #F6F7F8;
+    --text-secondary: #C4C7CC;
+    --text-muted: #8F939A;
     --brand-title: #E53E3E;
     --logo-filter: invert(35%) sepia(87%) saturate(2733%) hue-rotate(334deg) brightness(97%) contrast(89%);
-    --backdrop-overlay: rgba(0, 0, 0, 0.65);
+    --backdrop-overlay: rgba(0, 0, 0, 0.6);
     --sidebar-brand: var(--bg-sidebar);
     --btn-primary-text: #ffffff;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     --color-navy: var(--bg-navy);
     --color-graphite: var(--bg-sidebar);
     --color-panel: var(--bg-content);
@@ -112,27 +114,28 @@
   }
 
   [data-theme='corporate'] {
-    --bg-navy: #F3F4F6;
+    --bg-navy: #F7F8FA;
     --bg-sidebar: #FFFFFF;
     --bg-content: #F3F4F6;
     --bg-card: #FFFFFF;
-    --bg-card-hover: #EEF0F3;
-    --color-border: #E5E7EB;
-    --color-border-subtle: #EEF0F3;
+    --bg-card-hover: #F6F7F9;
+    --color-border: #EDF0F3;
+    --color-border-subtle: #F4F5F7;
     --color-surface: #FFFFFF;
-    --color-accent: #1D4ED8;
-    --color-accent-dark: #1E40AF;
-    --color-accent-soft: rgba(29, 78, 216, 0.1);
-    --color-accent-ring: rgba(29, 78, 216, 0.18);
-    --color-accent-ring-strong: rgba(29, 78, 216, 0.32);
-    --text-primary: #111827;
-    --text-secondary: #4B5563;
-    --text-muted: #9CA3AF;
-    --brand-title: #1D4ED8;
-    --logo-filter: invert(25%) sepia(93%) saturate(2630%) hue-rotate(220deg) brightness(92%) contrast(92%);
-    --backdrop-overlay: rgba(17, 24, 39, 0.32);
+    --color-accent: #2563EB;
+    --color-accent-dark: #1D4ED8;
+    --color-accent-soft: rgba(37, 99, 235, 0.08);
+    --color-accent-ring: rgba(37, 99, 235, 0.15);
+    --color-accent-ring-strong: rgba(37, 99, 235, 0.3);
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --brand-title: #1E40AF;
+    --logo-filter: invert(23%) sepia(91%) saturate(2066%) hue-rotate(223deg) brightness(92%) contrast(90%);
+    --backdrop-overlay: rgba(15, 23, 42, 0.3);
     --sidebar-brand: var(--bg-sidebar);
     --btn-primary-text: #ffffff;
+    --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     --color-navy: var(--bg-navy);
     --color-graphite: var(--bg-sidebar);
     --color-panel: var(--bg-content);
@@ -157,25 +160,26 @@
   [data-theme='yellow'] {
     --bg-navy: #0F0F11;
     --bg-sidebar: #0B0B0D;
-    --bg-content: #17181A;
-    --bg-card: #1E2023;
-    --bg-card-hover: #26282C;
-    --color-border: #2A2C30;
-    --color-border-subtle: #232529;
-    --color-surface: #1E2023;
+    --bg-content: #131416;
+    --bg-card: #1B1D20;
+    --bg-card-hover: #222428;
+    --color-border: #242629;
+    --color-border-subtle: #1E2023;
+    --color-surface: #1B1D20;
     --color-accent: #FACC15;
     --color-accent-dark: #EAB308;
-    --color-accent-soft: rgba(250, 204, 21, 0.12);
-    --color-accent-ring: rgba(250, 204, 21, 0.22);
-    --color-accent-ring-strong: rgba(250, 204, 21, 0.4);
-    --text-primary: #ffffff;
-    --text-secondary: #B5B8BD;
-    --text-muted: #7D8188;
+    --color-accent-soft: rgba(250, 204, 21, 0.1);
+    --color-accent-ring: rgba(250, 204, 21, 0.18);
+    --color-accent-ring-strong: rgba(250, 204, 21, 0.35);
+    --text-primary: #F8F9FA;
+    --text-secondary: #C6C9CE;
+    --text-muted: #91959C;
     --brand-title: #FACC15;
     --logo-filter: invert(79%) sepia(94%) saturate(707%) hue-rotate(357deg) brightness(102%) contrast(96%);
-    --backdrop-overlay: rgba(0, 0, 0, 0.6);
+    --backdrop-overlay: rgba(0, 0, 0, 0.55);
     --sidebar-brand: var(--bg-sidebar);
     --btn-primary-text: #0B0B0D;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
     --color-navy: var(--bg-navy);
     --color-graphite: var(--bg-sidebar);
     --color-panel: var(--bg-content);
@@ -198,27 +202,29 @@
   }
 
   [data-theme='default'] {
-    --bg-navy: #101214;
-    --bg-sidebar: #0d0f11;
-    --bg-content: #101214;
-    --bg-card: #1a1d21;
-    --bg-card-hover: #22262c;
-    --color-border: #23272c;
-    --color-border-subtle: #1c1f24;
-    --color-surface: #1a1d21;
-    --color-accent: #2dd4bf;
-    --color-accent-dark: #14b8a6;
-    --color-accent-soft: rgba(45, 212, 191, 0.1);
-    --color-accent-ring: rgba(45, 212, 191, 0.25);
-    --color-accent-ring-strong: rgba(45, 212, 191, 0.4);
-    --text-primary: #ffffff;
-    --text-secondary: #aab5c0;
-    --text-muted: #7a8590;
+    --bg-navy: #0F1113;
+    --bg-sidebar: #0B0D0F;
+    --bg-content: #111315;
+    --bg-card: #1A1D21;
+    --bg-card-hover: #22262B;
+    --color-border: #23272C;
+    --color-border-subtle: #1C2024;
+    --color-surface: #1A1D21;
+    --color-accent: #2DD4BF;
+    --color-accent-dark: #14B8A6;
+    --color-accent-soft: rgba(45, 212, 191, 0.09);
+    --color-accent-ring: rgba(45, 212, 191, 0.2);
+    --color-accent-ring-strong: rgba(45, 212, 191, 0.36);
+    --text-primary: #F8FAFC;
+    --text-secondary: #B9C2CC;
+    --color-text-secondary: var(--text-secondary);
+    --text-muted: #85919C;
     --brand-title: #ffffff;
     --logo-filter: none;
-    --backdrop-overlay: rgba(0, 0, 0, 0.6);
+    --backdrop-overlay: rgba(0, 0, 0, 0.55);
     --sidebar-brand: var(--bg-sidebar);
     --btn-primary-text: #000000;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
     --color-navy: var(--bg-navy);
     --color-graphite: var(--bg-sidebar);
     --color-panel: var(--bg-content);
@@ -372,19 +378,21 @@
   .panel-card {
     @apply rounded-xl border overflow-hidden;
     background-color: var(--bg-card);
-    border-color: var(--color-border);
+    border-color: var(--color-border-subtle);
+    box-shadow: var(--card-shadow);
   }
 
   .panel-stat-card {
     @apply rounded-xl border p-4 sm:p-5 xl:p-6;
     background-color: var(--bg-card);
-    border-color: var(--color-border);
+    border-color: var(--color-border-subtle);
+    box-shadow: var(--card-shadow);
   }
 
   .panel-input {
     @apply w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none transition-colors;
     background-color: var(--bg-panel);
-    border-color: var(--color-border);
+    border-color: var(--color-border-subtle);
     color: var(--text-primary);
   }
 
@@ -393,8 +401,8 @@
   }
 
   .panel-input:focus {
-    border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 25%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, transparent);
   }
 
   .panel-btn-primary {
@@ -405,24 +413,25 @@
 
   .panel-btn-primary:hover {
     background-color: var(--color-accent-dark);
-    box-shadow: 0 8px 24px var(--color-accent-ring);
+    box-shadow: 0 6px 20px var(--color-accent-ring);
   }
 
   .panel-btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-sm transition-colors whitespace-nowrap;
     border-color: var(--color-border);
     color: var(--text-secondary);
+    background-color: transparent;
   }
 
   .panel-btn-secondary:hover {
     background-color: var(--bg-card-hover);
-    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 
   .panel-table-head {
     @apply text-left text-xs uppercase tracking-wide border-b;
-    background-color: color-mix(in srgb, var(--bg-panel) 50%, transparent);
-    border-color: var(--color-border);
+    background-color: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+    border-color: var(--color-border-subtle);
     color: var(--text-muted);
   }
 
@@ -432,7 +441,7 @@
   }
 
   .panel-table-row:hover {
-    background-color: color-mix(in srgb, var(--bg-card-hover) 60%, transparent);
+    background-color: color-mix(in srgb, var(--bg-card-hover) 55%, transparent);
   }
 
   .panel-table-wrap {
@@ -481,9 +490,9 @@
 
   .panel-tab-active {
     background-color: var(--bg-card);
-    border-color: var(--color-border);
+    border-color: var(--color-border-subtle);
     color: var(--text-primary);
-    @apply shadow-sm;
+    box-shadow: var(--card-shadow);
   }
 
   .panel-tabs-row {
@@ -496,14 +505,14 @@
   }
 
   .panel-nav-item:hover {
-    background-color: color-mix(in srgb, var(--bg-card) 65%, transparent);
+    background-color: color-mix(in srgb, var(--bg-card) 60%, transparent);
     color: var(--text-primary);
   }
 
   .panel-nav-item-active {
     color: var(--color-accent);
     background-color: var(--color-accent-soft);
-    border-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
     font-weight: 600;
   }
 
@@ -515,7 +524,7 @@
   .panel-search {
     @apply w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none transition-colors;
     background-color: var(--bg-panel);
-    border-color: var(--color-border);
+    border-color: var(--color-border-subtle);
     color: var(--text-primary);
   }
 
@@ -535,25 +544,31 @@
 
   .panel-section {
     @apply rounded-xl border overflow-hidden;
-    background-color: color-mix(in srgb, var(--bg-panel) 40%, transparent);
-    border-color: var(--color-border);
+    background-color: color-mix(in srgb, var(--bg-panel) 50%, transparent);
+    border-color: var(--color-border-subtle);
+    box-shadow: var(--card-shadow);
   }
 
   .panel-btn-danger {
     @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border text-sm transition-colors;
-    border-color: rgba(244, 63, 94, 0.3);
+    border-color: color-mix(in srgb, #f43f5e 22%, transparent);
     color: #fb7185;
   }
 
   .panel-btn-danger:hover {
-    background-color: rgba(244, 63, 94, 0.1);
+    background-color: color-mix(in srgb, #f43f5e 10%, transparent);
   }
 
   .panel-popover {
-    @apply absolute z-50 mt-2 rounded-xl border shadow-2xl overflow-hidden;
+    @apply absolute z-50 mt-2 rounded-xl border overflow-hidden;
     background-color: var(--bg-card);
-    border-color: var(--color-border);
+    border-color: var(--color-border-subtle);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
     right: 0;
     width: min(22rem, calc(100vw - 1.5rem));
+  }
+
+  [data-theme='corporate'] .panel-popover {
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   }
 }
