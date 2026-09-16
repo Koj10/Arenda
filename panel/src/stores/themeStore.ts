@@ -19,7 +19,7 @@ function applyThemeToDocument(id: ThemeId) {
 
 export const useThemeStore = defineStore('theme', () => {
   const stored = readStoredTheme()
-  const themeId = ref<ThemeId>(stored ?? 'red-light')
+  const themeId = ref<ThemeId>(stored ?? 'default')
 
   const currentTheme = computed(() => THEMES[themeId.value])
   const allThemes = computed(() => THEME_ORDER.map((id) => THEMES[id]))
