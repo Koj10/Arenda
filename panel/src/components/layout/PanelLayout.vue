@@ -59,7 +59,10 @@ function closeMobile() {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div
+    class="min-h-screen"
+    style="background-color: var(--bg-content)"
+  >
     <div
       v-if="sidebarOpen"
       class="fixed inset-0 z-40 lg:hidden backdrop-blur-sm"

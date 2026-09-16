@@ -39,7 +39,10 @@ function logout() {
 </script>
 
 <template>
-  <aside class="flex flex-col h-full min-h-0 bg-navy border-r border-border w-full overflow-y-auto overscroll-contain">
+  <aside
+    class="flex flex-col h-full min-h-0 border-r border-border w-full overflow-y-auto overscroll-contain"
+    style="background-color: var(--bg-sidebar)"
+  >
     <div class="px-4 sm:px-5 pt-5 sm:pt-6 pb-4 flex items-center gap-3 pr-12 lg:pr-5">
       <PropCountLogo :size="32" />
       <span class="panel-brand-text font-bold text-base truncate">PropCount</span>
