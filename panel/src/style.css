@@ -39,17 +39,6 @@
   /* Логотип */
   --logo-color: var(--accent);
   --logo-text: var(--text-primary);
-  --logo-grad-light: #7ef0df;
-  --logo-grad-mid: #2dd4bf;
-  --logo-grad-dark: #0e7490;
-  --logo-edge-light: #ccfbf1;
-  --logo-edge-dark: #14b8a6;
-  --logo-deep-mid: #2dd4bf;
-  --logo-deep-dark: #115e59;
-  --logo-top-highlight: #a7f3e8;
-  --logo-right-shadow: #0f766e;
-  --logo-inner-light: #5eead4;
-  --logo-inner-shadow: #115e59;
 
   /* Тарифная карточка */
   --plan-bg: linear-gradient(135deg, var(--card) 0%, var(--panel) 100%);
@@ -86,17 +75,6 @@
 
   --logo-color: var(--accent);
   --logo-text: var(--accent);
-  --logo-grad-light: #fca5a5;
-  --logo-grad-mid: #991b1b;
-  --logo-grad-dark: #450a0a;
-  --logo-edge-light: #fee2e2;
-  --logo-edge-dark: #7f1d1d;
-  --logo-deep-mid: #991b1b;
-  --logo-deep-dark: #450a0a;
-  --logo-top-highlight: #fecaca;
-  --logo-right-shadow: #7f1d1d;
-  --logo-inner-light: #f87171;
-  --logo-inner-shadow: #450a0a;
 
   --plan-bg: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
   --plan-border: var(--accent);
@@ -132,17 +110,6 @@
 
   --logo-color: var(--accent);
   --logo-text: #FFFFFF;
-  --logo-grad-light: #fca5a5;
-  --logo-grad-mid: #dc2626;
-  --logo-grad-dark: #7f1d1d;
-  --logo-edge-light: #fee2e2;
-  --logo-edge-dark: #b91c1c;
-  --logo-deep-mid: #dc2626;
-  --logo-deep-dark: #7f1d1d;
-  --logo-top-highlight: #fecaca;
-  --logo-right-shadow: #7f1d1d;
-  --logo-inner-light: #f87171;
-  --logo-inner-shadow: #7f1d1d;
 
   --plan-bg: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
   --plan-border: var(--accent);
@@ -178,17 +145,6 @@
 
   --logo-color: var(--accent);
   --logo-text: #FFFFFF;
-  --logo-grad-light: #fef08a;
-  --logo-grad-mid: #facc15;
-  --logo-grad-dark: #854d0e;
-  --logo-edge-light: #fef9c3;
-  --logo-edge-dark: #eab308;
-  --logo-deep-mid: #facc15;
-  --logo-deep-dark: #713f12;
-  --logo-top-highlight: #fde68a;
-  --logo-right-shadow: #713f12;
-  --logo-inner-light: #fde047;
-  --logo-inner-shadow: #713f12;
 
   --plan-bg: linear-gradient(135deg, #713F12 0%, #422006 100%);
   --plan-border: var(--accent);
@@ -224,17 +180,6 @@
 
   --logo-color: var(--accent);
   --logo-text: var(--accent);
-  --logo-grad-light: #93c5fd;
-  --logo-grad-mid: #1e40af;
-  --logo-grad-dark: #1e3a8a;
-  --logo-edge-light: #dbeafe;
-  --logo-edge-dark: #2563eb;
-  --logo-deep-mid: #1e40af;
-  --logo-deep-dark: #172554;
-  --logo-top-highlight: #bfdbfe;
-  --logo-right-shadow: #172554;
-  --logo-inner-light: #60a5fa;
-  --logo-inner-shadow: #172554;
 
   --plan-bg: linear-gradient(135deg, #1E3A8A 0%, #172554 100%);
   --plan-border: var(--accent);
