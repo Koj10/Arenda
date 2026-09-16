@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev:landing": "npm exec --prefix panel -- vite --config ../landing/vite.config.ts",
+    "dev:landing": "cd landing && npx vite",
     "dev:panel": "npm run dev --prefix panel",
     "dev": "npm run dev:panel",
     "build:panel": "npm run build --prefix panel",
