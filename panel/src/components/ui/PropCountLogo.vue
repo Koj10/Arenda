@@ -24,12 +24,13 @@ const computedTextClass = computed(() => {
 
 const themeHex = computed(() => {
   switch (theme.themeId) {
-    case 'default':    return '#2dd4bf'
-    case 'red-light':  return '#7F1D1D'
-    case 'red-dark':   return '#DC2626'
-    case 'gold-dark':  return '#FACC15'
-    case 'blue-light': return '#1E40AF'
-    default:           return '#2dd4bf'
+    case 'default':       return '#2dd4bf'
+    case 'default-light': return '#0d9488'
+    case 'red-light':     return '#7F1D1D'
+    case 'red-dark':      return '#DC2626'
+    case 'gold-dark':     return '#FACC15'
+    case 'blue-light':    return '#1E40AF'
+    default:              return '#2dd4bf'
   }
 })
 
