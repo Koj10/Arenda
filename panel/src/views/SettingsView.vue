@@ -6,11 +6,13 @@ import TenantLayout from '@/components/layout/TenantLayout.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePlan } from '@/composables/usePlan'
 import { SITE } from '@/config/site'
-import { Mail, Bell, Shield, Sparkles } from '@lucide/vue'
+import { Mail, Bell, Shield, Sparkles, Palette, Check } from '@lucide/vue'
+import { useThemeStore } from '@/stores/themeStore'
 
 const auth = useAuthStore()
 const router = useRouter()
 const { plan, nextPlan, startCheckout, usage, limits } = usePlan()
+const themeStore = useThemeStore()
 
 const Layout = computed(() => (auth.isTenant ? TenantLayout : AppLayout))
 
@@ -81,6 +83,50 @@ function goPricing() {
             <button type="button" class="panel-btn-primary" @click="saveProfile">Сохранить</button>
             <span v-if="saved" class="text-xs text-emerald-brand">Сохранено</span>
           </div>
+        </div>
+      </section>
+
+      <section class="panel-card p-5 sm:p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <Palette class="w-4 h-4 text-emerald-brand" />
+          <h2 class="text-base font-semibold text-white">Тема интерфейса</h2>
+        </div>
+        <p class="text-sm text-slate-400 mb-4">Выберите оформление панели, которое вам больше нравится</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            v-for="theme in themeStore.allThemes"
+            :key="theme.id"
+            type="button"
+            class="group relative rounded-xl border p-3 text-left transition-all hover:border-emerald-brand/50"
+            :class="themeStore.themeId === theme.id ? 'border-emerald-brand ring-2 ring-emerald-brand/25' : 'border-border'"
+            @click="themeStore.setTheme(theme.id)"
+          >
+            <div
+              class="h-20 rounded-lg mb-3 border overflow-hidden relative"
+              :style="{ backgroundColor: theme.preview.bg, borderColor: theme.preview.card }"
+            >
+              <div
+                class="absolute left-3 top-3 bottom-3 w-1/3 rounded-md"
+                :style="{ backgroundColor: theme.preview.card }"
+              />
+              <div class="absolute right-3 top-3 h-2 w-24 rounded-full" :style="{ backgroundColor: theme.preview.card }" />
+              <div
+                class="absolute right-3 bottom-3 h-6 w-16 rounded-md flex items-center justify-center"
+                :style="{ backgroundColor: theme.preview.accent }"
+              >
+                <div class="w-6 h-1.5 rounded-full" style="background: rgba(255,255,255,0.7)" />
+              </div>
+              <div
+                v-if="themeStore.themeId === theme.id"
+                class="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                :style="{ backgroundColor: theme.preview.accent }"
+              >
+                <Check class="w-3 h-3" :style="{ color: theme.id === 'gold' ? '#0a0908' : '#ffffff' }" />
+              </div>
+            </div>
+            <p class="text-sm font-semibold text-white mb-0.5">{{ theme.name }}</p>
+            <p class="text-xs text-slate-500 leading-snug">{{ theme.description }}</p>
+          </button>
         </div>
       </section>
 

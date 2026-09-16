@@ -1,4 +1,4 @@
-export type ThemeId = 'default' | 'red' | 'corporate' | 'yellow'
+export type ThemeId = 'gold' | 'blue' | 'red'
 
 export interface ThemePalette {
   id: ThemeId
@@ -13,32 +13,26 @@ export interface ThemePalette {
 }
 
 export const THEMES: Record<ThemeId, ThemePalette> = {
-  default: {
-    id: 'default',
-    name: 'Базовая',
-    description: 'Тёмная с бирюзовым акцентом',
-    preview: { bg: '#101214', accent: '#2dd4bf', card: '#1a1d21', text: '#ffffff' },
+  gold: {
+    id: 'gold',
+    name: 'Золотая',
+    description: 'Тёмная с золотым акцентом',
+    preview: { bg: '#0d0e0f', accent: '#c9a227', card: '#1a1712', text: '#ffffff' },
+  },
+  blue: {
+    id: 'blue',
+    name: 'Голубая',
+    description: 'Светлая с синим акцентом',
+    preview: { bg: '#eef1f5', accent: '#1a56db', card: '#ffffff', text: '#1f2937' },
   },
   red: {
     id: 'red',
     name: 'Красная',
-    description: 'С тёмным фоном и красным акцентом',
-    preview: { bg: '#000000', accent: '#EF3124', card: '#505759', text: '#D9D9D9' },
-  },
-  corporate: {
-    id: 'corporate',
-    name: 'Корпоративная',
-    description: 'Светлая с тёмно-синим акцентом',
-    preview: { bg: '#FFFFFF', accent: '#003366', card: '#F5F7FA', text: '#0F172A' },
-  },
-  yellow: {
-    id: 'yellow',
-    name: 'Жёлтая',
-    description: 'С жёлтым акцентом и глубоким чёрным',
-    preview: { bg: '#1A1A1A', accent: '#FFDD2D', card: '#2A2A2A', text: '#FFFFFF' },
+    description: 'Тёмная с бордовым акцентом',
+    preview: { bg: '#0d0d0d', accent: '#b91c1c', card: '#1a1110', text: '#ffffff' },
   },
 }
 
-export const THEME_ORDER: ThemeId[] = ['default', 'corporate', 'red', 'yellow']
+export const THEME_ORDER: ThemeId[] = ['gold', 'blue', 'red']
 
 export const THEME_STORAGE_KEY = 'propcount.panel.theme'
