@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Политика конфиденциальности PropCount — как мы обрабатываем персональные данные." />
+  <link rel="canonical" href="https://propcount.ru/privacy" />
+  <title>Политика конфиденциальности — PropCount</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            landing: { DEFAULT: '#101214', card: '#1a1d21', border: '#2a2f36' },
+            accent: { DEFAULT: '#2dd4bf', dark: '#14b8a6' },
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+          },
+          maxWidth: { content: '72rem' },
+        },
+      },
+    }
+  </script>
+  <link href="css/styles.css" rel="stylesheet" />
+</head>
+<body class="bg-landing text-white antialiased">
+  <header class="border-b border-landing-border bg-landing/95 backdrop-blur sticky top-0 z-20">
+    <div class="max-w-content mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+      <a href="/" class="flex items-center gap-2.5 font-display font-bold text-lg text-white">
+        <img src="assets/logo.png" alt="" width="32" height="32" />
+        PropCount
+      </a>
+      <nav class="flex items-center gap-4 text-sm">
+        <a href="/terms" class="text-white/50 hover:text-accent transition-colors">Условия</a>
+        <a href="/" class="text-accent hover:text-accent-dark transition-colors">На главную</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+    <p class="text-xs uppercase tracking-wider text-accent mb-3">Правовая информация</p>
+    <h1 class="font-display text-3xl sm:text-4xl font-bold text-white mb-3">Политика конфиденциальности</h1>
+    <p class="text-sm text-white/45 mb-10">Редакция от 6 августа 2026 г. · Сервис PropCount (propcount.ru)</p>
+
+    <div class="legal-doc space-y-8 text-sm sm:text-[15px] leading-relaxed text-white/70">
+      <section>
+        <h2>1. Общие положения</h2>
+        <p>
+          Настоящая Политика определяет порядок обработки и защиты персональных данных пользователей
+          сервиса PropCount (далее — «Сервис»), доступного по адресу
+          <a href="https://propcount.ru">propcount.ru</a> и связанным поддоменам.
+        </p>
+        <p>
+          Используя Сервис, вы подтверждаете, что ознакомились с Политикой. Если вы не согласны с её условиями,
+          пожалуйста, не регистрируйтесь и не передавайте нам персональные данные.
+        </p>
+        <p>
+          Обработка данных осуществляется в соответствии с Федеральным законом РФ № 152-ФЗ
+          «О персональных данных» и иными применимыми нормами.
+        </p>
+      </section>
+
+      <section>
+        <h2>2. Оператор данных</h2>
+        <p>Оператором персональных данных является администрация сервиса PropCount.</p>
+        <ul>
+          <li>Email для запросов по персональным данным: <a href="mailto:hello@propcount.ru">hello@propcount.ru</a></li>
+          <li>Сайт: <a href="https://propcount.ru">https://propcount.ru</a></li>
+        </ul>
+        <p class="text-white/45 text-xs mt-3">
+          Реквизиты юридического лица (ИНН, ОГРН, юридический адрес) будут указаны здесь после регистрации
+          оператора и могут быть запрошены по email.
+        </p>
+      </section>
+
+      <section>
+        <h2>3. Какие данные мы обрабатываем</h2>
+        <p>В зависимости от роли (арендодатель / арендатор) и функций Сервиса могут обрабатываться:</p>
+        <ul>
+          <li><strong>Данные аккаунта:</strong> имя или наименование, email, пароль (в виде хеша), роль в системе.</li>
+          <li><strong>Данные арендодателя:</strong> сведения об объектах и помещениях, арендаторах, договорах, платежах, документах, которые вы загружаете.</li>
+          <li><strong>Данные арендатора:</strong> ИНН, сведения о связанных договорах и счетах, которые предоставляет арендодатель или вы сами.</li>
+          <li><strong>Платёжные и тарифные сведения:</strong> выбранный тариф, статус подписки, идентификаторы платежей (без хранения полных данных банковских карт на наших серверах — при подключении платёжного провайдера).</li>
+          <li><strong>Технические данные:</strong> IP-адрес, тип браузера, время доступа, cookie и аналогичные идентификаторы, журналы ошибок.</li>
+          <li><strong>Переписка:</strong> обращения в поддержку на email или через формы на сайте.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>4. Цели обработки</h2>
+        <ul>
+          <li>регистрация, аутентификация и предоставление доступа к кабинету;</li>
+          <li>оказание функций учёта аренды, документов, отчётов и кабинета арендатора;</li>
+          <li>биллинг тарифов Start / Profi / Elite и связанных услуг;</li>
+          <li>связь по вопросам сервиса, безопасности и поддержки;</li>
+          <li>улучшение Сервиса, аналитика использования в обезличенном или агрегированном виде;</li>
+          <li>исполнение требований закона.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Правовые основания</h2>
+        <p>Мы обрабатываем данные на основании:</p>
+        <ul>
+          <li>вашего согласия (в т.ч. при регистрации и принятии условий);</li>
+          <li>исполнения договора на использование Сервиса (оферта / Условия использования);</li>
+          <li>законных интересов оператора (безопасность, предотвращение злоупотреблений), если это не нарушает ваши права;</li>
+          <li>обязанностей, установленных законодательством РФ.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>6. Cookie и аналогичные технологии</h2>
+        <p>
+          Сервис может использовать cookie и локальное хранилище браузера для сессии, настроек интерфейса
+          и безопасности. Вы можете ограничить cookie в настройках браузера; часть функций при этом может стать недоступна.
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Передача третьим лицам</h2>
+        <p>Мы не продаём персональные данные. Передача возможна:</p>
+        <ul>
+          <li>хостинг-, облачным и инфраструктурным провайдерам, обеспечивающим работу Сервиса;</li>
+          <li>платёжным провайдерам — для оплаты подписки;</li>
+          <li>по требованию суда или уполномоченных органов в случаях, предусмотренных законом;</li>
+          <li>при передаче бизнеса (реорганизация), с уведомлением пользователей, когда это требуется.</li>
+        </ul>
+        <p>
+          Данные, которые арендодатель вносит об арендаторах, обрабатываются по поручению арендодателя
+          в рамках оказания Сервиса; ответственность за законность сбора таких данных несёт арендодатель.
+        </p>
+      </section>
+
+      <section>
+        <h2>8. Хранение и защита</h2>
+        <p>
+          Данные хранятся на защищённых серверах с использованием организационных и технических мер
+          (разграничение доступа, шифрование каналов HTTPS, хеширование паролей). Срок хранения —
+          пока аккаунт активен и дополнительно в пределах сроков, необходимых для исполнения закона,
+          разрешения споров и бухгалтерского/налогового учёта.
+        </p>
+      </section>
+
+      <section>
+        <h2>9. Ваши права</h2>
+        <p>Вы вправе:</p>
+        <ul>
+          <li>получить сведения об обработке ваших данных;</li>
+          <li>требовать уточнения, блокирования или удаления данных в случаях, предусмотренных законом;</li>
+          <li>отозвать согласие на обработку, если обработка основана на согласии;</li>
+          <li>обжаловать действия оператора в Роскомнадзор или суд.</li>
+        </ul>
+        <p>
+          Для реализации прав напишите на
+          <a href="mailto:hello@propcount.ru">hello@propcount.ru</a>. Мы ответим в разумный срок,
+          обычно не более 30 дней.
+        </p>
+      </section>
+
+      <section>
+        <h2>10. Данные несовершеннолетних</h2>
+        <p>
+          Сервис предназначен для лиц, достигших 18 лет (или иного возраста дееспособности для заключения
+          договоров в вашей юрисдикции). Мы сознательно не собираем данные детей.
+        </p>
+      </section>
+
+      <section>
+        <h2>11. Изменения Политики</h2>
+        <p>
+          Мы можем обновлять Политику. Актуальная версия всегда доступна на этой странице с указанием даты редакции.
+          Существенные изменения можем дополнительно сообщить по email или через интерфейс Сервиса.
+        </p>
+      </section>
+
+      <section>
+        <h2>12. Контакты</h2>
+        <p>
+          Вопросы по персональным данным:
+          <a href="mailto:hello@propcount.ru">hello@propcount.ru</a>
+        </p>
+        <p class="mt-4">
+          См. также:
+          <a href="/terms">Условия использования</a>
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t border-landing-border py-8 mt-8">
+    <div class="max-w-content mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-white/40">
+      <p>© 2026 PropCount</p>
+      <div class="flex gap-4">
+        <a href="/privacy" class="hover:text-accent">Конфиденциальность</a>
+        <a href="/terms" class="hover:text-accent">Условия</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
