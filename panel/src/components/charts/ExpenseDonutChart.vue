@@ -6,7 +6,7 @@ import type { ExpenseCategory } from '@/types/accounting'
 
 const accounting = useAccountingStore()
 
-const palette = ['#2dd4bf', '#a855f7', '#eab308', '#3b82f6', '#f97316', '#64748b']
+const fallbackPalette = ['#a855f7', '#eab308', '#3b82f6', '#f97316', '#64748b', '#ec4899']
 
 function categoryLabel(key: string) {
   return EXPENSE_CATEGORY_LABELS[key as ExpenseCategory] ?? key
@@ -23,7 +23,8 @@ const segments = computed(() => {
     label: categoryLabel(row.category),
     amount: row.amount,
     value: total.value > 0 ? (row.amount / total.value) * 100 : 0,
-    color: palette[i % palette.length],
+    useAccent: i === 0,
+    fallbackColor: fallbackPalette[(i - 1 + fallbackPalette.length) % fallbackPalette.length],
   }))
 })
 
@@ -63,16 +64,33 @@ const arcs = computed(() => {
     <p class="text-xs text-slate-500 mb-4">По категориям за период</p>
     <div class="flex flex-col items-center">
       <svg viewBox="0 0 200 200" class="w-44 h-44">
-        <circle v-if="!segments.length" :cx="cx" :cy="cy" :r="r" fill="none" stroke="#2a2f36" stroke-width="22" />
-        <path v-for="a in arcs" :key="a.label" :d="a.d" :fill="a.color" opacity="0.9" />
-        <text :x="cx" :y="cy - 6" text-anchor="middle" fill="#888" font-size="10">Итого</text>
-        <text :x="cx" :y="cy + 14" text-anchor="middle" fill="white" font-size="14" font-weight="600">
+        <circle
+          v-if="!segments.length"
+          :cx="cx"
+          :cy="cy"
+          :r="r"
+          fill="none"
+          :style="{ stroke: 'var(--chart-grid)' }"
+          stroke-width="22"
+        />
+        <path
+          v-for="a in arcs"
+          :key="a.label"
+          :d="a.d"
+          :style="{ fill: a.useAccent ? 'var(--chart-income)' : a.fallbackColor }"
+          opacity="0.9"
+        />
+        <text :x="cx" :y="cy - 6" text-anchor="middle" fill="var(--text-muted)" font-size="10">Итого</text>
+        <text :x="cx" :y="cy + 14" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="600">
           {{ accounting.formatMoney(total) }}
         </text>
       </svg>
       <div v-if="segments.length" class="grid grid-cols-2 gap-x-4 gap-y-2 mt-2 w-full">
         <div v-for="seg in segments" :key="seg.label" class="flex items-center gap-2 text-xs text-slate-400">
-          <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: seg.color }" />
+          <span
+            class="w-2 h-2 rounded-full shrink-0"
+            :style="{ background: seg.useAccent ? 'var(--chart-income)' : seg.fallbackColor }"
+          />
           <span class="truncate">{{ seg.label }}</span>
           <span class="ml-auto text-slate-500">{{ Math.round(seg.value) }}%</span>
         </div>

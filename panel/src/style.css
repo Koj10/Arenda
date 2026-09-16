@@ -1,128 +1,259 @@
 @import 'tailwindcss';
 
+/* ============================================================
+   THEME CSS VARIABLES — переопределяются для каждой темы
+   ============================================================ */
+
+:root {
+  /* Цвета фона */
+  --navy: #101214;
+  --graphite: #141618;
+  --panel: #0a0c0e;
+  --card: #1a1d21;
+  --card-hover: #22262c;
+  --surface: #1a1d21;
+  --slate-warm: #101214;
+  --slate-deep: #101214;
+
+  /* Границы */
+  --border: #2a2f36;
+  --border-subtle: #22262c;
+
+  /* Акцент */
+  --accent: #2dd4bf;
+  --accent-dark: #14b8a6;
+
+  /* Текст */
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-muted-2: #475569;
+  --text-secondary-2: #cbd5e1;
+
+  /* Графики */
+  --chart-income: var(--accent);
+  --chart-expense: #ef4444;
+  --chart-net: #fb923c;
+  --chart-grid: var(--border);
+
+  /* Логотип */
+  --logo-color: var(--accent);
+  --logo-text: var(--text-primary);
+
+  /* Тарифная карточка */
+  --plan-bg: linear-gradient(135deg, var(--card) 0%, var(--panel) 100%);
+  --plan-border: var(--accent);
+  --plan-btn-text: #000000;
+}
+
+/* ========== ТЕМА 1: Красная светлая ========== */
+[data-theme="red-light"] {
+  --navy: #F5F5F7;
+  --graphite: #EDEEF0;
+  --panel: #F3F4F6;
+  --card: #FFFFFF;
+  --card-hover: #F9FAFB;
+  --surface: #FFFFFF;
+  --slate-warm: #F3F4F6;
+  --slate-deep: #E5E7EB;
+
+  --border: #E5E7EB;
+  --border-subtle: #F3F4F6;
+
+  --accent: #7F1D1D;
+  --accent-dark: #991B1B;
+
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-muted-2: #6B7280;
+  --text-secondary-2: #374151;
+
+  --chart-income: var(--accent);
+  --chart-expense: #DC2626;
+  --chart-net: #F97316;
+
+  --logo-color: var(--accent);
+  --logo-text: var(--accent);
+
+  --plan-bg: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
+  --plan-border: var(--accent);
+  --plan-btn-text: #FFFFFF;
+}
+
+/* ========== ТЕМА 2: Красная тёмная ========== */
+[data-theme="red-dark"] {
+  --navy: #0F0F0F;
+  --graphite: #131313;
+  --panel: #161616;
+  --card: #1C1C1C;
+  --card-hover: #252525;
+  --surface: #1A1A1A;
+  --slate-warm: #131313;
+  --slate-deep: #0A0A0A;
+
+  --border: #2D2D2D;
+  --border-subtle: #222222;
+
+  --accent: #DC2626;
+  --accent-dark: #B91C1C;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --text-muted-2: #525252;
+  --text-secondary-2: #D1D5DB;
+
+  --chart-income: var(--accent);
+  --chart-expense: #F87171;
+  --chart-net: #FB923C;
+
+  --logo-color: var(--accent);
+  --logo-text: #FFFFFF;
+
+  --plan-bg: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
+  --plan-border: var(--accent);
+  --plan-btn-text: #FFFFFF;
+}
+
+/* ========== ТЕМА 3: Золотая тёмная ========== */
+[data-theme="gold-dark"] {
+  --navy: #0D0D0D;
+  --graphite: #111111;
+  --panel: #141414;
+  --card: #1A1A1A;
+  --card-hover: #222222;
+  --surface: #171717;
+  --slate-warm: #111111;
+  --slate-deep: #080808;
+
+  --border: #262626;
+  --border-subtle: #1F1F1F;
+
+  --accent: #FACC15;
+  --accent-dark: #EAB308;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-muted: #737373;
+  --text-muted-2: #525252;
+  --text-secondary-2: #D4D4D4;
+
+  --chart-income: var(--accent);
+  --chart-expense: #F87171;
+  --chart-net: #FB923C;
+
+  --logo-color: var(--accent);
+  --logo-text: #FFFFFF;
+
+  --plan-bg: linear-gradient(135deg, #713F12 0%, #422006 100%);
+  --plan-border: var(--accent);
+  --plan-btn-text: #000000;
+}
+
+/* ========== ТЕМА 4: Синяя светлая ========== */
+[data-theme="blue-light"] {
+  --navy: #F5F7FA;
+  --graphite: #E2E8F0;
+  --panel: #F1F5F9;
+  --card: #FFFFFF;
+  --card-hover: #F8FAFC;
+  --surface: #FFFFFF;
+  --slate-warm: #F1F5F9;
+  --slate-deep: #E2E8F0;
+
+  --border: #E2E8F0;
+  --border-subtle: #F1F5F9;
+
+  --accent: #1E40AF;
+  --accent-dark: #1E3A8A;
+
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --text-muted-2: #64748B;
+  --text-secondary-2: #334155;
+
+  --chart-income: var(--accent);
+  --chart-expense: #DC2626;
+  --chart-net: #F97316;
+
+  --logo-color: var(--accent);
+  --logo-text: var(--accent);
+
+  --plan-bg: linear-gradient(135deg, #1E3A8A 0%, #172554 100%);
+  --plan-border: var(--accent);
+  --plan-btn-text: #FFFFFF;
+}
+
+/* ============================================================
+   TAILWIND THEME — все цвета ссылаются на CSS-переменные выше
+   ============================================================ */
+
 @theme {
-  --color-navy: #101214;
-  --color-graphite: #141618;
-  --color-panel: #0a0c0e;
-  --color-card: #1a1d21;
-  --color-card-hover: #22262c;
-  --color-border: #2a2f36;
-  --color-border-subtle: #22262c;
-  --color-surface: #1a1d21;
-  --color-slate-warm: #101214;
-  --color-bronze: #2dd4bf;
-  --color-bronze-dark: #14b8a6;
-  --color-emerald-brand: #2dd4bf;
-  --color-accent-green: #2dd4bf;
-  --color-accent-amber: #2dd4bf;
-  --color-accent-teal: #2dd4bf;
-  --color-slate-deep: #101214;
+  --color-navy: var(--navy);
+  --color-graphite: var(--graphite);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-surface: var(--surface);
+  --color-slate-warm: var(--slate-warm);
+  --color-slate-deep: var(--slate-deep);
+
+  --color-bronze: var(--accent);
+  --color-bronze-dark: var(--accent-dark);
+  --color-emerald-brand: var(--accent);
+  --color-accent-green: var(--accent);
+  --color-accent-amber: var(--accent);
+  --color-accent-teal: var(--accent);
+
+  --color-chart-income: var(--chart-income);
+  --color-chart-expense: var(--chart-expense);
+  --color-chart-net: var(--chart-net);
+  --color-chart-grid: var(--chart-grid);
+
+  --color-logo: var(--logo-color);
+  --color-logo-text: var(--logo-text);
+
+  /* Семантические цвета текста — подстроены под светлые/тёмные темы */
+  --color-white: var(--text-primary);
+  --color-slate-50: var(--text-primary);
+  --color-slate-100: var(--text-secondary-2);
+  --color-slate-200: var(--text-secondary-2);
+  --color-slate-300: var(--text-secondary-2);
+  --color-slate-400: var(--text-secondary);
+  --color-slate-500: var(--text-muted);
+  --color-slate-600: var(--text-muted-2);
+
   --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
 }
 
-[data-theme='gold'] {
-  --color-navy: #0d0e0f;
-  --color-graphite: #121110;
-  --color-panel: #0a0908;
-  --color-card: #1a1712;
-  --color-card-hover: #252118;
-  --color-border: #3a3224;
-  --color-border-subtle: #252015;
-  --color-surface: #1a1712;
-  --color-slate-warm: #11100d;
-  --color-bronze: #c9a227;
-  --color-bronze-dark: #a8851d;
-  --color-emerald-brand: #c9a227;
-  --color-accent-green: #c9a227;
-  --color-accent-amber: #c9a227;
-  --color-accent-teal: #c9a227;
-  --color-slate-deep: #0d0e0f;
-  color-scheme: dark;
-}
-
-[data-theme='blue'] {
-  --color-navy: #eef1f5;
-  --color-graphite: #f5f7fa;
-  --color-panel: #e4e8ed;
-  --color-card: #ffffff;
-  --color-card-hover: #f0f2f5;
-  --color-border: #d1d5db;
-  --color-border-subtle: #e5e7eb;
-  --color-surface: #ffffff;
-  --color-slate-warm: #f3f4f6;
-  --color-bronze: #1a56db;
-  --color-bronze-dark: #1447b3;
-  --color-emerald-brand: #1a56db;
-  --color-accent-green: #1a56db;
-  --color-accent-amber: #1a56db;
-  --color-accent-teal: #1a56db;
-  --color-slate-deep: #eef1f5;
-  color-scheme: light;
-}
-
-[data-theme='red'] {
-  --color-navy: #0d0d0d;
-  --color-graphite: #121010;
-  --color-panel: #0a0808;
-  --color-card: #1a1110;
-  --color-card-hover: #251817;
-  --color-border: #3a2320;
-  --color-border-subtle: #251513;
-  --color-surface: #1a1110;
-  --color-slate-warm: #110d0d;
-  --color-bronze: #b91c1c;
-  --color-bronze-dark: #991b1b;
-  --color-emerald-brand: #b91c1c;
-  --color-accent-green: #b91c1c;
-  --color-accent-amber: #b91c1c;
-  --color-accent-teal: #b91c1c;
-  --color-slate-deep: #0d0d0d;
-  color-scheme: dark;
-}
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
 
 @layer base {
   body {
     font-family: var(--font-sans);
-    @apply antialiased bg-navy;
-    color: var(--theme-text, #ffffff);
-  }
-
-  [data-theme='blue'] body {
-    --theme-text: #1f2937;
-    color: #1f2937;
-  }
-
-  [data-theme='gold'] body,
-  [data-theme='red'] body {
-    --theme-text: #ffffff;
-    color: #ffffff;
+    @apply antialiased bg-navy text-white;
   }
 }
 
+/* ============================================================
+   COMPONENTS
+   ============================================================ */
+
 @layer components {
   .panel-page-title {
-    @apply text-2xl font-bold mb-1;
+    @apply text-2xl font-bold text-white mb-1;
     font-family: var(--font-display);
-    color: inherit;
-  }
-
-  [data-theme='blue'] .panel-page-title {
-    color: #111827;
-  }
-
-  [data-theme='gold'] .panel-page-title,
-  [data-theme='red'] .panel-page-title {
-    color: #ffffff;
   }
 
   .panel-page-sub {
-    @apply text-sm;
-    color: #94a3b8;
-  }
-
-  [data-theme='blue'] .panel-page-sub {
-    color: #6b7280;
+    @apply text-sm text-slate-400;
   }
 
   .panel-page {
@@ -156,99 +287,36 @@
   }
 
   .panel-card {
-    @apply rounded-xl border bg-card overflow-hidden;
-    border-color: var(--color-border);
-    background-color: var(--color-card);
+    @apply rounded-xl border border-border bg-card overflow-hidden;
   }
 
   .panel-stat-card {
-    @apply rounded-xl border p-4 sm:p-5 xl:p-6;
-    border-color: var(--color-border);
-    background-color: var(--color-card);
+    @apply rounded-xl border border-border bg-card p-4 sm:p-5 xl:p-6;
   }
 
   .panel-input {
-    @apply w-full px-3 py-2.5 rounded-xl bg-panel border text-sm placeholder:text-slate-500 focus:outline-none;
-    background-color: var(--color-panel);
-    border-color: var(--color-border);
-    color: inherit;
-  }
-
-  .panel-input:focus {
-    border-color: color-mix(in srgb, var(--color-emerald-brand) 50%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-emerald-brand) 25%, transparent);
-  }
-
-  [data-theme='blue'] .panel-input {
-    color: #1f2937;
-    background-color: #ffffff;
-  }
-
-  [data-theme='gold'] .panel-input,
-  [data-theme='red'] .panel-input {
-    color: #ffffff;
+    @apply w-full px-3 py-2.5 rounded-xl bg-panel border border-border text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-brand/50 focus:ring-1 focus:ring-emerald-brand/25;
   }
 
   .panel-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap;
-    background-color: var(--color-emerald-brand);
-    color: #ffffff;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-brand text-sm font-semibold hover:bg-bronze-dark transition-all whitespace-nowrap;
+    color: var(--plan-btn-text);
   }
 
   .panel-btn-primary:hover {
-    background-color: var(--color-bronze-dark);
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--color-emerald-brand) 25%, transparent);
-  }
-
-  [data-theme='blue'] .panel-btn-primary {
-    color: #ffffff;
-  }
-
-  [data-theme='gold'] .panel-btn-primary {
-    color: #0a0908;
-  }
-
-  [data-theme='red'] .panel-btn-primary {
-    color: #ffffff;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 25%, transparent);
   }
 
   .panel-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-sm transition-colors whitespace-nowrap;
-    border-color: var(--color-border);
-  }
-
-  [data-theme='blue'] .panel-btn-secondary {
-    color: #374151;
-  }
-
-  [data-theme='gold'] .panel-btn-secondary,
-  [data-theme='red'] .panel-btn-secondary {
-    color: #cbd5e1;
-  }
-
-  .panel-btn-secondary:hover {
-    background-color: var(--color-card-hover);
-    border-color: color-mix(in srgb, var(--color-emerald-brand) 40%, transparent);
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-border text-slate-300 text-sm hover:bg-card-hover hover:border-emerald-brand/40 transition-colors whitespace-nowrap;
   }
 
   .panel-table-head {
-    @apply text-left text-xs uppercase tracking-wide border-b;
-    color: #64748b;
-    border-color: var(--color-border);
-    background-color: color-mix(in srgb, var(--color-panel) 50%, transparent);
-  }
-
-  [data-theme='blue'] .panel-table-head {
-    color: #6b7280;
+    @apply text-left text-xs uppercase tracking-wide text-slate-500 border-b border-border bg-panel/50;
   }
 
   .panel-table-row {
-    @apply border-b transition-colors;
-    border-color: var(--color-border-subtle);
-  }
-
-  .panel-table-row:hover {
-    background-color: color-mix(in srgb, var(--color-card-hover) 60%, transparent);
+    @apply border-b border-border-subtle hover:bg-card-hover/60 transition-colors;
   }
 
   .panel-table-wrap {
@@ -286,44 +354,11 @@
   }
 
   .panel-tab {
-    @apply inline-flex items-center justify-center gap-2 shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium border border-transparent transition-colors;
-  }
-
-  [data-theme='blue'] .panel-tab {
-    color: #6b7280;
-  }
-
-  [data-theme='gold'] .panel-tab,
-  [data-theme='red'] .panel-tab {
-    color: #94a3b8;
-  }
-
-  .panel-tab:hover {
-    @apply bg-card/60;
-  }
-
-  [data-theme='blue'] .panel-tab:hover {
-    color: #111827;
-  }
-
-  [data-theme='gold'] .panel-tab:hover,
-  [data-theme='red'] .panel-tab:hover {
-    color: #ffffff;
+    @apply inline-flex items-center justify-center gap-2 shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-400 border border-transparent hover:text-white hover:bg-card/60 transition-colors;
   }
 
   .panel-tab-active {
-    @apply bg-card border shadow-sm;
-    border-color: var(--color-border);
-    background-color: var(--color-card);
-  }
-
-  [data-theme='blue'] .panel-tab-active {
-    color: #111827;
-  }
-
-  [data-theme='gold'] .panel-tab-active,
-  [data-theme='red'] .panel-tab-active {
-    color: #ffffff;
+    @apply bg-card text-white border-border shadow-sm;
   }
 
   .panel-tabs-row {
@@ -331,161 +366,67 @@
   }
 
   .panel-nav-item {
-    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border border-transparent text-left transition-colors;
-  }
-
-  [data-theme='blue'] .panel-nav-item {
-    color: #6b7280;
-  }
-
-  [data-theme='gold'] .panel-nav-item,
-  [data-theme='red'] .panel-nav-item {
-    color: #94a3b8;
-  }
-
-  .panel-nav-item:hover {
-    @apply bg-card;
-  }
-
-  [data-theme='blue'] .panel-nav-item:hover {
-    color: #111827;
-  }
-
-  [data-theme='gold'] .panel-nav-item:hover,
-  [data-theme='red'] .panel-nav-item:hover {
-    color: #ffffff;
+    @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border border-transparent text-slate-400 hover:text-white hover:bg-card transition-colors text-left;
   }
 
   .panel-nav-item-active {
-    color: var(--color-emerald-brand);
-    background-color: color-mix(in srgb, var(--color-emerald-brand) 10%, transparent);
-    border-color: color-mix(in srgb, var(--color-emerald-brand) 20%, transparent);
+    @apply bg-emerald-brand/10 border-emerald-brand/20 hover:bg-emerald-brand/10;
+    color: var(--accent);
   }
 
+  .panel-nav-item-active svg,
   .panel-nav-item-active:hover {
-    color: var(--color-emerald-brand);
-    background-color: color-mix(in srgb, var(--color-emerald-brand) 10%, transparent);
+    color: var(--accent);
   }
 
   .panel-search {
-    @apply w-full pl-10 pr-4 py-2.5 rounded-xl bg-panel border text-sm placeholder:text-slate-500 focus:outline-none;
-    background-color: var(--color-panel);
-    border-color: var(--color-border);
-    color: inherit;
-  }
-
-  .panel-search:focus {
-    border-color: color-mix(in srgb, var(--color-emerald-brand) 40%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-emerald-brand) 20%, transparent);
-  }
-
-  [data-theme='blue'] .panel-search {
-    color: #1f2937;
-    background-color: #ffffff;
-  }
-
-  [data-theme='gold'] .panel-search,
-  [data-theme='red'] .panel-search {
-    color: #ffffff;
+    @apply w-full pl-10 pr-4 py-2.5 rounded-xl bg-panel border border-border text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-brand/40 focus:ring-1 focus:ring-emerald-brand/20;
   }
 
   .panel-label {
-    @apply block text-xs font-medium uppercase tracking-wide mb-1.5;
-    color: #94a3b8;
-  }
-
-  [data-theme='blue'] .panel-label {
-    color: #6b7280;
+    @apply block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5;
   }
 
   .panel-section {
-    @apply rounded-xl border overflow-hidden;
-    border-color: var(--color-border);
-    background-color: color-mix(in srgb, var(--color-panel) 40%, transparent);
+    @apply rounded-xl border border-border bg-panel/40 overflow-hidden;
   }
 
   .panel-btn-danger {
-    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border text-sm transition-colors;
-    border-color: color-mix(in srgb, #f43f5e 30%, transparent);
-    color: #fb7185;
-  }
-
-  .panel-btn-danger:hover {
-    background-color: color-mix(in srgb, #f43f5e 10%, transparent);
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors;
   }
 
   .panel-popover {
-    @apply absolute z-50 mt-2 rounded-xl border shadow-2xl overflow-hidden;
+    @apply absolute z-50 mt-2 rounded-xl border border-border bg-card shadow-2xl overflow-hidden;
     right: 0;
     width: min(22rem, calc(100vw - 1.5rem));
-    border-color: var(--color-border);
-    background-color: var(--color-card);
   }
 
-  [data-theme='blue'] h1,
-  [data-theme='blue'] h2,
-  [data-theme='blue'] h3,
-  [data-theme='blue'] h4,
-  [data-theme='blue'] h5,
-  [data-theme='blue'] h6,
-  [data-theme='blue'] .text-white {
-    color: #111827 !important;
+  /* Карточка тарифа в сайдбаре */
+  .plan-card {
+    background: var(--plan-bg);
+    border-color: color-mix(in srgb, var(--plan-border) 35%, transparent);
   }
 
-  [data-theme='gold'] .text-white,
-  [data-theme='red'] .text-white {
-    color: #ffffff !important;
+  .plan-card .plan-name-text {
+    color: #FFFFFF;
   }
 
-  [data-theme='blue'] .text-slate-300 {
-    color: #374151 !important;
+  .plan-card .plan-desc {
+    color: rgba(255, 255, 255, 0.7);
   }
 
-  [data-theme='gold'] .text-slate-300,
-  [data-theme='red'] .text-slate-300 {
-    color: #cbd5e1 !important;
+  /* Акцентная иконка пользователя */
+  .user-avatar {
+    background-color: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent);
   }
 
-  [data-theme='blue'] .text-slate-400 {
-    color: #6b7280 !important;
+  /* Accent текст / Plan Sparkles */
+  .accent-text {
+    color: var(--accent);
   }
 
-  [data-theme='gold'] .text-slate-400,
-  [data-theme='red'] .text-slate-400 {
-    color: #94a3b8 !important;
-  }
-
-  [data-theme='blue'] .text-slate-500 {
-    color: #6b7280 !important;
-  }
-
-  [data-theme='gold'] .text-slate-500,
-  [data-theme='red'] .text-slate-500 {
-    color: #64748b !important;
-  }
-
-  [data-theme='blue'] .text-slate-600 {
-    color: #4b5563 !important;
-  }
-
-  [data-theme='gold'] .text-slate-600,
-  [data-theme='red'] .text-slate-600 {
-    color: #475569 !important;
-  }
-
-  [data-theme='blue'] ::placeholder {
-    color: #9ca3af !important;
-  }
-
-  [data-theme='blue'] .accent-emerald-brand {
-    accent-color: #1a56db;
-  }
-
-  [data-theme='gold'] .accent-emerald-brand {
-    accent-color: #c9a227;
-  }
-
-  [data-theme='red'] .accent-emerald-brand {
-    accent-color: #b91c1c;
+  .accent-bg {
+    background-color: var(--accent);
   }
 }

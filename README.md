@@ -7,25 +7,29 @@ SaaS-прототип для арендодателей: лендинг + пан
 ```
 landing/   — статический лендинг, вход и регистрация (HTML + Tailwind CDN)
 panel/     — Vue 3 панель (дашборд после авторизации)
-docker/    — конфиги nginx и entrypoint для Docker-сборки фронтенда
+deploy/    — nginx для Docker
 ```
 
-> **API** разрабатывается в отдельном проекте и доступен по адресу `https://api.propcount.ru`.
-
-## Продакшен (Docker)
+## Продакшен (Docker + HTTPS)
 
 | | |
 |--|--|
 | Домен | **https://propcount.ru** |
+| IP | 94.228.166.142 |
+| Порты | **80**, **443** |
 | Лендинг | `/` |
 | Панель | `/panel/` |
-| API | `https://api.propcount.ru` (отдельный сервис) |
+| API | `/api/` |
 
 ```bash
-# Собрать и запустить локально
-docker compose up -d --build
-# Панель доступна на http://localhost:3005
+# 1) DNS: propcount.ru и www → 94.228.166.142
+# 2) Открыть firewall: 80, 443
+cp .env.example .env   # пароли БД
+chmod +x deploy/issue-certs.sh
+./deploy/issue-certs.sh
 ```
+
+Сервисы: `web` · `api` · `db` · `redis` · `certbot` (профиль certs).
 
 ## Локальная разработка
 

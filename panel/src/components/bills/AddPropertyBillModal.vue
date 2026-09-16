@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { FileUp, Trash2 } from '@lucide/vue'
+import { FileUp, Loader2, Sparkles, Trash2 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import { useUtilityBillsStore } from '@/stores/utilityBillsStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -13,9 +13,9 @@ import {
   type UtilityCriterion,
   type UtilityUploadItem,
 } from '@/types/utilityBills'
+import { parseUtilityInvoiceFromFile, fileToInvoiceDocument } from '@/composables/useInvoiceParser'
 import { unitPriceWithVat } from '@/composables/utilityCalc'
 import { currentPeriod, todayISODate } from '@/utils/dates'
-import type { InvoiceDocument } from '@/types/billing'
 
 const utilityBills = useUtilityBillsStore()
 const portfolio = usePortfolioStore()
@@ -23,6 +23,7 @@ const portfolio = usePortfolioStore()
 const period = ref(currentPeriod())
 const dueDate = ref(todayISODate())
 const items = ref<UtilityUploadItem[]>([])
+const parsing = ref(false)
 const errors = ref<Record<string, string>>({})
 const inputRef = ref<HTMLInputElement | null>(null)
 
@@ -55,40 +56,42 @@ function newId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-async function readFileAsDataUrl(file: File): Promise<string> {
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(reader.error)
-    reader.onload = () => resolve(String(reader.result ?? ''))
-    reader.readAsDataURL(file)
-  })
-}
-
 async function onFilesSelected(event: Event) {
   const input = event.target as HTMLInputElement
   const files = [...(input.files ?? [])]
   if (!files.length) return
+  parsing.value = true
   errors.value = {}
-  for (const file of files) {
-    const dataUrl = await readFileAsDataUrl(file)
-    const document: InvoiceDocument = {
-      name: file.name,
-      size: file.size,
-      mimeType: file.type || 'application/pdf',
-      dataUrl,
+  try {
+    for (const file of files) {
+      const document = await fileToInvoiceDocument(file)
+      const parsed = await parseUtilityInvoiceFromFile(file)
+      if (parsed.period && items.value.length === 0) period.value = parsed.period
+      if (parsed.dueDate && items.value.length === 0) dueDate.value = parsed.dueDate
+
+      const lines = parsed.lines.length
+        ? parsed.lines
+        : [{ criterion: 'electricity' as UtilityCriterion, amount: parsed.total ?? 0, label: '' }]
+
+      for (const line of lines) {
+        items.value.push({
+          id: newId(),
+          fileName: file.name,
+          document,
+          criterion: line.criterion,
+          unitPrice: isMeteredCriterion(line.criterion) ? parsed.unitPrice : null,
+          vatRate: parsed.vatRate || VAT_RATE,
+          totalAmount: line.amount || parsed.total,
+          septicSpaceId: null,
+          parsedTitle: parsed.title,
+          source: parsed.source,
+        })
+      }
     }
-    items.value.push({
-      id: newId(),
-      fileName: file.name,
-      document,
-      criterion: 'electricity',
-      unitPrice: null,
-      vatRate: VAT_RATE,
-      totalAmount: null,
-      septicSpaceId: null,
-    })
+  } finally {
+    parsing.value = false
+    input.value = ''
   }
-  input.value = ''
 }
 
 function removeItem(id: string) {
@@ -104,12 +107,8 @@ function validate() {
     if (isAssignCriterion(item.criterion) && !item.septicSpaceId) {
       errors.value.items = 'Для септика выберите помещение'
     }
-    if (isMeteredCriterion(item.criterion)) {
-      if (!(item.unitPrice && item.unitPrice > 0)) {
-        errors.value.items = 'Для счётчика укажите цену за единицу (тариф)'
-      } else if (!(item.totalAmount && item.totalAmount > 0)) {
-        errors.value.items = 'Для счётчика укажите итоговую сумму в счёте (для сверки)'
-      }
+    if (isMeteredCriterion(item.criterion) && !(item.unitPrice && item.unitPrice > 0) && !(item.totalAmount && item.totalAmount > 0)) {
+      errors.value.items = 'Для счётчика укажите тариф или итоговую сумму'
     }
     if (!isMeteredCriterion(item.criterion) && !(item.totalAmount && item.totalAmount > 0)) {
       errors.value.items = 'Укажите сумму счёта'
@@ -130,7 +129,7 @@ async function submit() {
 }
 
 function methodHint(criterion: UtilityCriterion) {
-  if (isMeteredCriterion(criterion)) return 'тариф × НДС × показания · сумма в счёте — для сверки (разница в результатах)'
+  if (isMeteredCriterion(criterion)) return 'тариф без НДС × 22% × показания'
   if (isAssignCriterion(criterion)) return 'перевыставить на помещение'
   return 'доля площади помещения'
 }
@@ -147,9 +146,10 @@ function methodHint(criterion: UtilityCriterion) {
     <div v-if="property" class="space-y-5">
       <p class="text-sm text-slate-500 rounded-lg border border-border bg-panel/30 px-3 py-2">
         Объект: <span class="text-slate-300">{{ property.address }}</span>.
-        Загрузите счета в любом формате (PDF, изображение, TXT) и заполните все поля вручную.
-        Для каждого счёта выберите показатель и заполните суммы / тариф.
-        Прикрепленные файлы будут доступны на вкладке «Счета» в карточке объекта.
+        Можно загрузить несколько PDF. Для каждого счёта выберите показатель.
+        Электричество, вода, канализация и газ — цена за единицу + НДС 22%, затем × показания помещения.
+        УК, тепло и мусор — итоговая сумма делится по доле площади.
+        Септик целиком уходит на выбранное помещение.
       </p>
 
       <div>
@@ -167,8 +167,9 @@ function methodHint(criterion: UtilityCriterion) {
             multiple
             @change="onFilesSelected"
           />
-          <FileUp class="w-7 h-7 text-slate-500 mx-auto mb-2" />
-          <p class="text-sm text-slate-400">Прикрепить счета (PDF, TXT, изображение) — можно несколько сразу</p>
+          <Loader2 v-if="parsing" class="w-7 h-7 text-emerald-brand mx-auto mb-2 animate-spin" />
+          <FileUp v-else class="w-7 h-7 text-slate-500 mx-auto mb-2" />
+          <p class="text-sm text-slate-400">PDF, TXT или изображение — можно несколько сразу</p>
         </div>
         <p v-if="errors.files" class="text-xs text-red-400 mt-1">{{ errors.files }}</p>
       </div>
@@ -193,8 +194,9 @@ function methodHint(criterion: UtilityCriterion) {
           <div class="flex items-start justify-between gap-2">
             <div>
               <p class="text-sm text-white">{{ item.fileName }}</p>
-              <p class="text-[11px] text-slate-500 mt-0.5">
-                Файл счёта прикреплен, поля ниже заполняются вручную
+              <p v-if="item.parsedTitle" class="text-[11px] text-slate-500 mt-0.5">{{ item.parsedTitle }}</p>
+              <p v-if="item.source" class="text-[11px] text-emerald-brand/80 mt-0.5 flex items-center gap-1">
+                <Sparkles class="w-3 h-3" />{{ item.source }}
               </p>
             </div>
             <button type="button" class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400" @click="removeItem(item.id)">
@@ -222,10 +224,7 @@ function methodHint(criterion: UtilityCriterion) {
             </label>
           </div>
 
-          <div
-            class="grid gap-2"
-            :class="isMeteredCriterion(item.criterion) ? 'sm:grid-cols-3' : 'sm:grid-cols-3'"
-          >
+          <div class="grid sm:grid-cols-3 gap-2">
             <template v-if="isMeteredCriterion(item.criterion)">
               <label class="block">
                 <span class="text-[11px] text-slate-500 mb-1 block">Цена за единицу без НДС</span>
@@ -243,19 +242,13 @@ function methodHint(criterion: UtilityCriterion) {
                   }}
                 </p>
               </label>
-              <label class="block">
-                <span class="text-[11px] text-slate-500 mb-1 block">
-                  Итого в счёте <span class="text-amber-400/80">(для сверки)</span>
-                </span>
-                <input v-model.number="item.totalAmount" type="number" min="0" step="0.01" class="panel-input font-mono text-sm" />
-              </label>
             </template>
-            <template v-else>
-              <label class="block sm:col-span-3">
-                <span class="text-[11px] text-slate-500 mb-1 block">Сумма счёта</span>
-                <input v-model.number="item.totalAmount" type="number" min="0" step="0.01" class="panel-input font-mono text-sm" />
-              </label>
-            </template>
+            <label class="block">
+              <span class="text-[11px] text-slate-500 mb-1 block">
+                {{ isMeteredCriterion(item.criterion) ? 'Итого в счёте (если нет тарифа)' : 'Сумма счёта' }}
+              </span>
+              <input v-model.number="item.totalAmount" type="number" min="0" step="0.01" class="panel-input font-mono text-sm" />
+            </label>
           </div>
         </div>
         <p v-if="errors.items" class="text-xs text-red-400">{{ errors.items }}</p>
@@ -264,7 +257,7 @@ function methodHint(criterion: UtilityCriterion) {
 
     <template #footer>
       <button type="button" class="panel-btn-secondary" @click="resetAndClose">Отмена</button>
-      <button type="button" class="panel-btn-primary" @click="submit">
+      <button type="button" class="panel-btn-primary" :disabled="parsing" @click="submit">
         Рассчитать выписку
       </button>
     </template>

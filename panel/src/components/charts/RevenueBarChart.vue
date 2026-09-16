@@ -51,20 +51,30 @@ const changeLabel = computed(() => {
           <span class="w-2.5 h-2.5 rounded-full bg-slate-600" />{{ formatPeriod(comparison.previousPeriod) }}
         </span>
         <span class="flex items-center gap-1.5 text-slate-400">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-brand" />{{ formatPeriod(comparison.currentPeriod) }}
+          <span class="w-2.5 h-2.5 rounded-full" style="background: var(--chart-income)" />{{ formatPeriod(comparison.currentPeriod) }}
         </span>
       </div>
     </div>
     <p v-if="!comparison" class="text-sm text-slate-500 py-10 text-center">Нет данных</p>
     <svg v-else :viewBox="`0 0 ${w} ${h}`" class="w-full h-auto max-w-xl mx-auto">
-      <line v-for="i in 4" :key="i" :x1="pad.l" :x2="w - pad.r" :y1="pad.t + (innerH / 4) * i" :y2="pad.t + (innerH / 4) * i" stroke="#2a2f36" stroke-width="1" />
+      <line
+        v-for="i in 4"
+        :key="i"
+        :x1="pad.l"
+        :x2="w - pad.r"
+        :y1="pad.t + (innerH / 4) * i"
+        :y2="pad.t + (innerH / 4) * i"
+        style="stroke: var(--chart-grid)"
+        stroke-width="1"
+      />
       <rect
         :x="pad.l + innerW * 0.22"
         :y="pad.t + innerH - barH(previous)"
         :width="barW"
         :height="barH(previous)"
         rx="4"
-        fill="#404040"
+        fill="var(--border-subtle)"
+        :style="{ fill: 'color-mix(in srgb, var(--text-muted) 45%, transparent)' }"
       />
       <rect
         :x="pad.l + innerW * 0.56"
@@ -72,12 +82,24 @@ const changeLabel = computed(() => {
         :width="barW"
         :height="barH(current)"
         rx="4"
-        fill="#2dd4bf"
+        :style="{ fill: 'var(--chart-income)' }"
       />
-      <text :x="pad.l + innerW * 0.22 + barW / 2" :y="h - 8" text-anchor="middle" fill="#888" font-size="11">
+      <text
+        :x="pad.l + innerW * 0.22 + barW / 2"
+        :y="h - 8"
+        text-anchor="middle"
+        fill="var(--text-muted)"
+        font-size="11"
+      >
         {{ accounting.formatMoney(previous) }}
       </text>
-      <text :x="pad.l + innerW * 0.56 + barW / 2" :y="h - 8" text-anchor="middle" fill="#888" font-size="11">
+      <text
+        :x="pad.l + innerW * 0.56 + barW / 2"
+        :y="h - 8"
+        text-anchor="middle"
+        fill="var(--text-muted)"
+        font-size="11"
+      >
         {{ accounting.formatMoney(current) }}
       </text>
     </svg>

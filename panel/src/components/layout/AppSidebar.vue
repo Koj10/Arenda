@@ -63,7 +63,12 @@ const objectsLabel = () => {
   <aside class="flex flex-col h-full min-h-0 bg-navy border-r border-border w-full overflow-y-auto overscroll-contain">
     <div class="px-4 sm:px-5 pt-5 sm:pt-6 pb-4 flex items-center gap-3 pr-12 lg:pr-5">
       <PropCountLogo :size="32" />
-      <span class="font-bold text-base truncate" style="font-family: var(--font-display)">PropCount</span>
+      <span
+        class="font-bold text-base truncate"
+        style="font-family: var(--font-display); color: var(--logo-text)"
+      >
+        PropCount
+      </span>
     </div>
 
     <div class="px-3 sm:px-4 mb-2">
@@ -102,28 +107,28 @@ const objectsLabel = () => {
       </nav>
     </div>
 
-    <div class="mx-3 sm:mx-4 mb-4 p-3.5 rounded-xl bg-card border border-border">
+    <div class="mx-3 sm:mx-4 mb-4 p-3.5 rounded-xl plan-card border border-border overflow-hidden">
       <div class="flex items-center justify-between gap-2 mb-1">
-        <span class="text-sm font-semibold truncate">{{ plan.name }}</span>
-        <span class="text-[10px] uppercase tracking-wide text-slate-500 tabular-nums shrink-0">
+        <span class="text-sm font-semibold truncate plan-name-text">{{ plan.name }}</span>
+        <span class="text-[10px] uppercase tracking-wide tabular-nums shrink-0" style="color: rgba(255,255,255,0.65)">
           {{ objectsLabel() }}
         </span>
       </div>
       <template v-if="!isPaid || nextPlan">
         <div class="flex items-center gap-2 mb-1.5 mt-2">
-          <Sparkles class="w-4 h-4 text-emerald-brand shrink-0" />
-          <span class="text-sm font-semibold truncate">{{ nextPlan ? nextPlan.name : 'Тариф' }}</span>
+          <Sparkles class="w-4 h-4 shrink-0" style="color: var(--plan-border)" />
+          <span class="text-sm font-semibold truncate plan-name-text">{{ nextPlan ? nextPlan.name : 'Тариф' }}</span>
         </div>
-        <p class="text-xs text-slate-500 mb-3 leading-relaxed line-clamp-2">
+        <p class="text-xs mb-3 leading-relaxed line-clamp-2 plan-desc">
           {{ nextPlan?.description ?? 'Расширенная аналитика и автоматизация.' }}
         </p>
         <button type="button" class="panel-btn-primary w-full text-xs py-2" @click="onUpgradeClick">
           {{ nextPlan ? `Подключить ${nextPlan.name}` : 'Тарифы' }}
         </button>
       </template>
-      <p v-else class="text-xs text-slate-500 leading-relaxed mt-2">
+      <p v-else class="text-xs leading-relaxed mt-2 plan-desc">
         Максимальный тариф ·
-        <a :href="`${SITE.url}/#pricing`" class="text-emerald-brand hover:underline">детали</a>
+        <a :href="`${SITE.url}/#pricing`" class="hover:underline" style="color: var(--plan-border)">детали</a>
       </p>
     </div>
   </aside>

@@ -14,15 +14,16 @@ function applyThemeToDocument(id: ThemeId) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   root.setAttribute('data-theme', id)
-  root.style.colorScheme = id === 'blue' ? 'light' : 'dark'
+  root.style.colorScheme = THEMES[id].mode
 }
 
 export const useThemeStore = defineStore('theme', () => {
   const stored = readStoredTheme()
-  const themeId = ref<ThemeId>(stored ?? 'gold')
+  const themeId = ref<ThemeId>(stored ?? 'red-light')
 
   const currentTheme = computed(() => THEMES[themeId.value])
   const allThemes = computed(() => THEME_ORDER.map((id) => THEMES[id]))
+  const isDark = computed(() => THEMES[themeId.value].mode === 'dark')
 
   function setTheme(id: ThemeId) {
     themeId.value = id
@@ -43,6 +44,7 @@ export const useThemeStore = defineStore('theme', () => {
     themeId,
     currentTheme,
     allThemes,
+    isDark,
     setTheme,
   }
 })

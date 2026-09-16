@@ -1,2 +1,2 @@
-/** Все запросы к API по адресу api.propcount.ru */
-window.PROPCOUNT_API = 'https://api.propcount.ru'
+/** Все запросы: этот сайт /__api → локальный API :8000 или api.propcount.ru */
+window.PROPCOUNT_API = '/__api'

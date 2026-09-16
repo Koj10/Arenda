@@ -54,7 +54,7 @@ async function onUpgrade() {
 
     <div class="rounded-xl border border-border bg-panel p-4">
       <div class="flex items-center gap-2 mb-1">
-        <Sparkles class="w-4 h-4 text-emerald-brand" />
+        <Sparkles class="w-4 h-4 accent-text" />
         <span class="font-semibold text-white">{{ target.name }}</span>
       </div>
       <p class="text-sm text-slate-400 mb-2">{{ target.description }}</p>

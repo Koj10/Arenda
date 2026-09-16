@@ -63,24 +63,58 @@ const labelStep = computed(() => Math.max(1, Math.ceil(labels.value.length / 8))
         <p class="text-xs text-slate-500 mt-0.5">Доходы, расходы и прибыль за период</p>
       </div>
       <div class="flex items-center gap-4 text-xs">
-        <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-brand" />Доход</span>
-        <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-red-500" />Расход</span>
-        <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-orange-400" />Чистая</span>
+        <span class="flex items-center gap-1.5 text-slate-400">
+          <span class="w-2.5 h-2.5 rounded-full" style="background: var(--chart-income)" />Доход
+        </span>
+        <span class="flex items-center gap-1.5 text-slate-400">
+          <span class="w-2.5 h-2.5 rounded-full" style="background: var(--chart-expense)" />Расход
+        </span>
+        <span class="flex items-center gap-1.5 text-slate-400">
+          <span class="w-2.5 h-2.5 rounded-full" style="background: var(--chart-net)" />Чистая
+        </span>
       </div>
     </div>
     <p v-if="!points.length" class="text-sm text-slate-500 py-10 text-center">Нет данных за этот месяц</p>
     <svg v-else :viewBox="`0 0 ${w} ${h}`" class="w-full h-auto">
       <defs>
         <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.35" />
-          <stop offset="100%" stop-color="#2dd4bf" stop-opacity="0" />
+          <stop offset="0%" style="stop-color: var(--chart-income); stop-opacity: 0.35" />
+          <stop offset="100%" style="stop-color: var(--chart-income); stop-opacity: 0" />
         </linearGradient>
       </defs>
-      <line v-for="i in 4" :key="i" :x1="pad.l" :x2="w - pad.r" :y1="pad.t + (innerH / 4) * i" :y2="pad.t + (innerH / 4) * i" stroke="#2a2f36" stroke-width="1" />
+      <line
+        v-for="i in 4"
+        :key="i"
+        :x1="pad.l"
+        :x2="w - pad.r"
+        :y1="pad.t + (innerH / 4) * i"
+        :y2="pad.t + (innerH / 4) * i"
+        style="stroke: var(--chart-grid)"
+        stroke-width="1"
+      />
       <path :d="areaPath(income)" fill="url(#incomeGrad)" />
-      <path :d="linePath(income)" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" />
-      <path :d="linePath(expenses)" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" />
-      <path :d="linePath(net)" fill="none" stroke="#fb923c" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3" />
+      <path
+        :d="linePath(income)"
+        fill="none"
+        :style="{ stroke: 'var(--chart-income)' }"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+      <path
+        :d="linePath(expenses)"
+        fill="none"
+        :style="{ stroke: 'var(--chart-expense)' }"
+        stroke-width="2"
+        stroke-linecap="round"
+      />
+      <path
+        :d="linePath(net)"
+        fill="none"
+        :style="{ stroke: 'var(--chart-net)' }"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-dasharray="4 3"
+      />
       <text
         v-for="(m, i) in labels"
         v-show="i % labelStep === 0"
@@ -88,7 +122,7 @@ const labelStep = computed(() => Math.max(1, Math.ceil(labels.value.length / 8))
         :x="scaleX(i, labels.length)"
         :y="h - 4"
         text-anchor="middle"
-        fill="#666"
+        fill="var(--text-muted)"
         font-size="10"
       >{{ m }}</text>
     </svg>

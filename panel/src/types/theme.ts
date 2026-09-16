@@ -1,9 +1,10 @@
-export type ThemeId = 'gold' | 'blue' | 'red'
+export type ThemeId = 'red-light' | 'red-dark' | 'gold-dark' | 'blue-light'
 
 export interface ThemePalette {
   id: ThemeId
   name: string
   description: string
+  mode: 'light' | 'dark'
   preview: {
     bg: string
     accent: string
@@ -13,26 +14,36 @@ export interface ThemePalette {
 }
 
 export const THEMES: Record<ThemeId, ThemePalette> = {
-  gold: {
-    id: 'gold',
-    name: 'Золотая',
-    description: 'Тёмная с золотым акцентом',
-    preview: { bg: '#0d0e0f', accent: '#c9a227', card: '#1a1712', text: '#ffffff' },
+  'red-light': {
+    id: 'red-light',
+    name: 'Красная светлая',
+    description: 'Светлая тема с бордовым акцентом',
+    mode: 'light',
+    preview: { bg: '#F5F5F7', accent: '#7F1D1D', card: '#FFFFFF', text: '#111827' },
   },
-  blue: {
-    id: 'blue',
-    name: 'Голубая',
-    description: 'Светлая с синим акцентом',
-    preview: { bg: '#eef1f5', accent: '#1a56db', card: '#ffffff', text: '#1f2937' },
+  'red-dark': {
+    id: 'red-dark',
+    name: 'Красная тёмная',
+    description: 'Тёмная тема с ярко-красным акцентом',
+    mode: 'dark',
+    preview: { bg: '#0F0F0F', accent: '#DC2626', card: '#1C1C1C', text: '#FFFFFF' },
   },
-  red: {
-    id: 'red',
-    name: 'Красная',
-    description: 'Тёмная с бордовым акцентом',
-    preview: { bg: '#0d0d0d', accent: '#b91c1c', card: '#1a1110', text: '#ffffff' },
+  'gold-dark': {
+    id: 'gold-dark',
+    name: 'Золотая тёмная',
+    description: 'Тёмная тема с золотым акцентом',
+    mode: 'dark',
+    preview: { bg: '#0D0D0D', accent: '#FACC15', card: '#1A1A1A', text: '#FFFFFF' },
+  },
+  'blue-light': {
+    id: 'blue-light',
+    name: 'Синяя светлая',
+    description: 'Светлая тема с тёмно-синим акцентом',
+    mode: 'light',
+    preview: { bg: '#F5F7FA', accent: '#1E40AF', card: '#FFFFFF', text: '#0F172A' },
   },
 }
 
-export const THEME_ORDER: ThemeId[] = ['gold', 'blue', 'red']
+export const THEME_ORDER: ThemeId[] = ['red-light', 'red-dark', 'gold-dark', 'blue-light']
 
 export const THEME_STORAGE_KEY = 'propcount.panel.theme'

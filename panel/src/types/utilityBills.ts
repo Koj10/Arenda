@@ -116,7 +116,6 @@ export function createDefaultSpaceUtilityPayers(): SpaceUtilityPayers {
 export interface PropertyBillLine {
   criterion: UtilityCriterion
   amount: number
-  label?: string
 }
 
 export interface PropertyBill {
@@ -159,8 +158,8 @@ export interface UtilityUploadItem {
   vatRate: number
   totalAmount: number | null
   septicSpaceId: number | null
-  parsedTitle?: string
-  source?: string
+  parsedTitle: string
+  source: string
 }
 
 export interface StatementCharge {
