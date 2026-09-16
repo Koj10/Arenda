@@ -4,11 +4,13 @@ import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TenantLayout from '@/components/layout/TenantLayout.vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useThemeStore } from '@/stores/themeStore'
 import { usePlan } from '@/composables/usePlan'
 import { SITE } from '@/config/site'
-import { Mail, Bell, Shield, Sparkles } from '@lucide/vue'
+import { Mail, Bell, Shield, Sparkles, Palette, Check } from '@lucide/vue'
 
 const auth = useAuthStore()
+const theme = useThemeStore()
 const router = useRouter()
 const { plan, nextPlan, startCheckout, usage, limits } = usePlan()
 
@@ -81,6 +83,88 @@ function goPricing() {
             <button type="button" class="panel-btn-primary" @click="saveProfile">Сохранить</button>
             <span v-if="saved" class="text-xs text-emerald-brand">Сохранено</span>
           </div>
+        </div>
+      </section>
+
+      <section class="panel-card p-5 sm:p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <Palette class="w-4 h-4" style="color: var(--color-accent)" />
+          <h2 class="text-base font-semibold" style="color: var(--text-primary)">Оформление</h2>
+        </div>
+        <p class="text-sm mb-4" style="color: var(--text-secondary)">
+          Выберите цветовую схему панели. Изменения применяются сразу и сохраняются на этом устройстве.
+        </p>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <button
+            v-for="t in theme.allThemes"
+            :key="t.id"
+            type="button"
+            class="relative rounded-xl border-2 p-2 transition-all hover:scale-[1.02]"
+            :class="theme.themeId === t.id
+              ? 'border-solid shadow-lg'
+              : 'border-transparent hover:opacity-90'"
+            :style="{
+              borderColor: theme.themeId === t.id ? t.preview.accent : 'transparent',
+              backgroundColor: 'transparent',
+            }"
+            @click="theme.setTheme(t.id)"
+          >
+            <div
+              class="relative rounded-lg overflow-hidden aspect-[4/3] mb-2 border"
+              :style="{
+                backgroundColor: t.preview.bg,
+                borderColor: t.preview.card,
+              }"
+            >
+              <div
+                class="absolute left-2 top-2 right-2 h-2 rounded-full"
+                :style="{ backgroundColor: t.preview.card }"
+              ></div>
+              <div
+                class="absolute left-2 top-5 w-4 h-4 rounded-sm"
+                :style="{ backgroundColor: t.preview.accent }"
+              ></div>
+              <div
+                class="absolute left-8 top-5 right-2 h-1.5 rounded-full"
+                :style="{ backgroundColor: t.preview.card }"
+              ></div>
+              <div
+                class="absolute left-2 top-11 right-2 bottom-2 rounded-md"
+                :style="{ backgroundColor: t.preview.card }"
+              >
+                <div
+                  class="absolute left-2 top-2 right-2 h-1 rounded-full opacity-60"
+                  :style="{ backgroundColor: t.preview.text }"
+                ></div>
+                <div
+                  class="absolute left-2 top-4 right-5 h-1 rounded-full opacity-40"
+                  :style="{ backgroundColor: t.preview.text }"
+                ></div>
+                <div
+                  class="absolute left-2 top-7 right-3 bottom-2 rounded-md opacity-30"
+                  :style="{ backgroundColor: t.preview.accent }"
+                ></div>
+              </div>
+              <div
+                v-if="theme.themeId === t.id"
+                class="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                :style="{ backgroundColor: t.preview.accent }"
+              >
+                <Check
+                  class="w-3.5 h-3.5"
+                  :style="{ color: t.id === 'corporate' ? '#ffffff' : t.id === 'yellow' ? '#1a1a1a' : '#000000' }"
+                />
+              </div>
+            </div>
+            <div class="text-center">
+              <p class="text-sm font-semibold leading-tight" style="color: var(--text-primary)">
+                {{ t.name }}
+              </p>
+              <p class="text-[11px] mt-0.5 leading-tight" style="color: var(--text-muted)">
+                {{ t.description }}
+              </p>
+            </div>
+          </button>
         </div>
       </section>
 
