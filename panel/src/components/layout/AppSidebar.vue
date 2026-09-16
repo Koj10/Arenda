@@ -60,20 +60,14 @@ const objectsLabel = () => {
 </script>
 
 <template>
-  <aside
-    class="flex flex-col h-full min-h-0 border-r border-border w-full overflow-y-auto overscroll-contain"
-    style="background-color: var(--bg-sidebar)"
-  >
+  <aside class="flex flex-col h-full min-h-0 bg-navy border-r border-border w-full overflow-y-auto overscroll-contain">
     <div class="px-4 sm:px-5 pt-5 sm:pt-6 pb-4 flex items-center gap-3 pr-12 lg:pr-5">
       <PropCountLogo :size="32" />
-      <span class="panel-brand-text font-bold text-base truncate">PropCount</span>
+      <span class="font-bold text-base truncate" style="font-family: var(--font-display)">PropCount</span>
     </div>
 
     <div class="px-3 sm:px-4 mb-2">
-      <p
-        class="px-3 text-[11px] font-semibold uppercase tracking-wider mb-2"
-        style="color: var(--text-muted)"
-      >Меню</p>
+      <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Меню</p>
       <nav class="space-y-0.5">
         <RouterLink
           v-for="item in menuItems"
@@ -91,10 +85,7 @@ const objectsLabel = () => {
     <div class="flex-1 min-h-4" />
 
     <div class="px-3 sm:px-4 mb-3">
-      <p
-        class="px-3 text-[11px] font-semibold uppercase tracking-wider mb-2"
-        style="color: var(--text-muted)"
-      >Общее</p>
+      <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Общее</p>
       <nav class="space-y-0.5">
         <button type="button" :class="navClass(isActive('/settings'))" @click="go('/settings')">
           <Settings class="w-[18px] h-[18px] shrink-0" />
@@ -113,45 +104,26 @@ const objectsLabel = () => {
 
     <div class="mx-3 sm:mx-4 mb-4 p-3.5 rounded-xl bg-card border border-border">
       <div class="flex items-center justify-between gap-2 mb-1">
-        <span class="text-sm font-semibold truncate" style="color: var(--text-primary)">{{ plan.name }}</span>
-        <span
-          class="text-[10px] uppercase tracking-wide tabular-nums shrink-0"
-          style="color: var(--text-muted)"
-        >
+        <span class="text-sm font-semibold truncate">{{ plan.name }}</span>
+        <span class="text-[10px] uppercase tracking-wide text-slate-500 tabular-nums shrink-0">
           {{ objectsLabel() }}
         </span>
       </div>
       <template v-if="!isPaid || nextPlan">
         <div class="flex items-center gap-2 mb-1.5 mt-2">
-          <Sparkles
-            class="w-4 h-4 shrink-0"
-            style="color: var(--color-accent)"
-          />
-          <span class="text-sm font-semibold truncate" style="color: var(--text-primary)">
-            {{ nextPlan ? nextPlan.name : 'Тариф' }}
-          </span>
+          <Sparkles class="w-4 h-4 text-emerald-brand shrink-0" />
+          <span class="text-sm font-semibold truncate">{{ nextPlan ? nextPlan.name : 'Тариф' }}</span>
         </div>
-        <p
-          class="text-xs mb-3 leading-relaxed line-clamp-2"
-          style="color: var(--text-muted)"
-        >
+        <p class="text-xs text-slate-500 mb-3 leading-relaxed line-clamp-2">
           {{ nextPlan?.description ?? 'Расширенная аналитика и автоматизация.' }}
         </p>
         <button type="button" class="panel-btn-primary w-full text-xs py-2" @click="onUpgradeClick">
           {{ nextPlan ? `Подключить ${nextPlan.name}` : 'Тарифы' }}
         </button>
       </template>
-      <p
-        v-else
-        class="text-xs leading-relaxed mt-2"
-        style="color: var(--text-muted)"
-      >
+      <p v-else class="text-xs text-slate-500 leading-relaxed mt-2">
         Максимальный тариф ·
-        <a
-          :href="`${SITE.url}/#pricing`"
-          class="hover:underline"
-          style="color: var(--color-accent)"
-        >детали</a>
+        <a :href="`${SITE.url}/#pricing`" class="text-emerald-brand hover:underline">детали</a>
       </p>
     </div>
   </aside>

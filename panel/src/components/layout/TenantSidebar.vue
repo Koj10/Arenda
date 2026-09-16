@@ -39,20 +39,14 @@ function logout() {
 </script>
 
 <template>
-  <aside
-    class="flex flex-col h-full min-h-0 border-r border-border w-full overflow-y-auto overscroll-contain"
-    style="background-color: var(--bg-sidebar)"
-  >
+  <aside class="flex flex-col h-full min-h-0 bg-navy border-r border-border w-full overflow-y-auto overscroll-contain">
     <div class="px-4 sm:px-5 pt-5 sm:pt-6 pb-4 flex items-center gap-3 pr-12 lg:pr-5">
       <PropCountLogo :size="32" />
-      <span class="panel-brand-text font-bold text-base truncate">PropCount</span>
+      <span class="font-bold text-base truncate" style="font-family: var(--font-display)">PropCount</span>
     </div>
 
     <div class="px-3 sm:px-4 mb-2">
-      <p
-        class="px-3 text-[11px] font-semibold uppercase tracking-wider mb-2"
-        style="color: var(--text-muted)"
-      >Кабинет</p>
+      <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Кабинет</p>
       <nav class="space-y-0.5">
         <RouterLink
           v-for="item in items"
@@ -70,10 +64,7 @@ function logout() {
     <div class="flex-1 min-h-4" />
 
     <div class="px-3 sm:px-4 mb-5">
-      <p
-        class="px-3 text-[11px] font-semibold uppercase tracking-wider mb-2"
-        style="color: var(--text-muted)"
-      >Общее</p>
+      <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Общее</p>
       <nav class="space-y-0.5">
         <button type="button" :class="navClass(isActive('/settings'))" @click="go('/settings')">
           <Settings class="w-[18px] h-[18px] shrink-0" />
@@ -88,10 +79,7 @@ function logout() {
           <span class="truncate">Выйти</span>
         </button>
       </nav>
-      <p
-        class="px-3 mt-4 text-[10px] leading-relaxed"
-        style="color: var(--text-muted)"
-      >
+      <p class="px-3 mt-4 text-[10px] text-slate-600 leading-relaxed">
         Только просмотр. Изменения вносит арендодатель.
       </p>
     </div>

@@ -7,7 +7,7 @@ withDefaults(
     showText?: boolean
     textClass?: string
   }>(),
-  { size: 36, showText: false, textClass: '' },
+  { size: 36, showText: false, textClass: 'font-bold text-white' },
 )
 </script>
 
@@ -18,13 +18,13 @@ withDefaults(
       alt="PropCount"
       :width="size"
       :height="size"
-      class="shrink-0 object-contain panel-logo-img"
+      class="shrink-0 object-contain"
       draggable="false"
     />
     <span
       v-if="showText"
-      class="panel-brand-text font-bold"
       :class="textClass"
+      style="font-family: var(--font-display)"
     >
       PropCount
     </span>

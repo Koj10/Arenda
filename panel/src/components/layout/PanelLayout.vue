@@ -59,14 +59,10 @@ function closeMobile() {
 </script>
 
 <template>
-  <div
-    class="min-h-screen"
-    style="background-color: var(--bg-content)"
-  >
+  <div class="min-h-screen bg-navy text-white">
     <div
       v-if="sidebarOpen"
-      class="fixed inset-0 z-40 lg:hidden backdrop-blur-sm"
-      style="background-color: var(--backdrop-overlay)"
+      class="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
       @click="sidebarOpen = false"
     />
 
@@ -77,9 +73,7 @@ function closeMobile() {
       <div class="relative h-full">
         <button
           type="button"
-          class="lg:hidden absolute top-3 right-3 z-10 p-2 rounded-xl bg-card border border-border transition-colors"
-          style="color: var(--text-secondary)"
-          :style="{ '--hover-text': 'var(--text-primary)' }"
+          class="lg:hidden absolute top-3 right-3 z-10 p-2 rounded-xl bg-card border border-border text-slate-400 hover:text-white"
           aria-label="Закрыть меню"
           @click="closeMobile"
         >
@@ -90,18 +84,14 @@ function closeMobile() {
     </aside>
 
     <div class="flex flex-col min-w-0 min-h-screen lg:pl-[260px]">
-      <header
-        class="sticky top-0 z-30 border-b border-border backdrop-blur-md"
-        style="background-color: color-mix(in srgb, var(--bg-navy) 95%, transparent)"
-      >
+      <header class="sticky top-0 z-30 border-b border-border bg-navy/95 backdrop-blur-md">
         <div
           class="panel-header-bar grid items-center gap-x-3 sm:gap-x-4 min-h-[64px] sm:min-h-[72px] px-3 sm:px-5 lg:px-8 py-2"
         >
           <div class="flex items-center gap-2 sm:gap-3 min-w-0 justify-self-start">
             <button
               type="button"
-              class="lg:hidden shrink-0 p-2 rounded-xl border border-transparent hover:border-border transition-colors"
-              style="color: var(--text-secondary)"
+              class="lg:hidden shrink-0 p-2 rounded-xl text-slate-400 hover:bg-card border border-transparent hover:border-border"
               aria-label="Открыть меню"
               @click="sidebarOpen = true"
             >
@@ -110,14 +100,13 @@ function closeMobile() {
             <div class="min-w-0">
               <h1
                 class="text-base sm:text-lg font-bold truncate leading-tight"
-                style="font-family: var(--font-display); color: var(--text-primary)"
+                style="font-family: var(--font-display)"
               >
                 {{ pageTitle }}
               </h1>
               <p
                 v-if="pageSubtitle"
-                class="text-[11px] truncate mt-0.5 hidden xl:block max-w-[16rem] 2xl:max-w-[20rem]"
-                style="color: var(--text-muted)"
+                class="text-[11px] text-slate-500 truncate mt-0.5 hidden xl:block max-w-[16rem] 2xl:max-w-[20rem]"
               >
                 {{ pageSubtitle }}
               </p>
