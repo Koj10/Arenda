@@ -6,6 +6,26 @@ import { UTILITY_CRITERION_LABELS, type UtilityCriterion } from '@/types/utility
 
 const utilityBills = useUtilityBillsStore()
 
+function lossLabel(value: number) {
+  if (Math.abs(value) < 0.01) return 'Сверка ОК'
+  if (value > 0) return 'Убыток арендодателя'
+  return 'Прибыль арендодателя'
+}
+
+function lossClass(value: number) {
+  if (Math.abs(value) < 0.01) return 'text-slate-400'
+  if (value > 0) return 'text-rose-400'
+  return 'text-emerald-brand'
+}
+
+function spacesTotalArea() {
+  return (statement.value?.spaces ?? []).reduce((s, r) => s + (r.area > 0 ? r.area : 0), 0)
+}
+
+function abs(value: number) {
+  return Math.abs(value)
+}
+
 const open = computed(() => !!utilityBills.statement)
 const statement = computed(() => utilityBills.statement)
 
@@ -45,7 +65,10 @@ function close() {
         <p class="text-xs mt-1">
           {{ utilityBills.formatPeriod(statement.period) }}
           · оплатить до {{ utilityBills.formatDate(statement.dueDate) }}
-          · площадь объекта {{ statement.objectArea }} м²
+          · площадь помещений {{ spacesTotalArea() }} м²
+          <span v-if="statement.objectArea > 0 && statement.objectArea !== spacesTotalArea()">
+            (в объекте {{ statement.objectArea }} м²)
+          </span>
         </p>
       </div>
 
@@ -105,8 +128,10 @@ function close() {
           <span class="text-emerald-brand font-mono">{{ utilityBills.formatMoney(statement.tenantTotal) }}</span>
         </p>
         <p class="text-slate-400">
-          Потери:
-          <span class="text-rose-400 font-mono">{{ utilityBills.formatMoney(statement.landlordLoss) }}</span>
+          {{ lossLabel(statement.landlordLoss) }}:
+          <span class="font-mono" :class="lossClass(statement.landlordLoss)">
+            {{ utilityBills.formatMoney(abs(statement.landlordLoss)) }}
+          </span>
         </p>
       </div>
     </div>

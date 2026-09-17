@@ -46,7 +46,9 @@ interface CalcInput {
 export function buildUtilityStatement(input: CalcInput): UtilityStatement {
   const warnings: string[] = []
   const objectArea = input.objectArea > 0 ? input.objectArea : input.spaces.reduce((s, x) => s + x.area, 0)
-  if (objectArea <= 0) warnings.push('У объекта не указана площадь — нельзя разделить счета по квадратуре.')
+  const spacesTotalArea = input.spaces.reduce((s, sp) => s + (sp.area > 0 ? sp.area : 0), 0)
+  const shareDenominator = spacesTotalArea > 0 ? spacesTotalArea : objectArea
+  if (objectArea <= 0 && spacesTotalArea <= 0) warnings.push('У объекта не указана площадь — нельзя разделить счета по квадратуре.')
 
   const raw = new Map<number, StatementCharge[]>()
   for (const space of input.spaces) raw.set(space.id, [])
@@ -54,7 +56,7 @@ export function buildUtilityStatement(input: CalcInput): UtilityStatement {
   const reconciliation = { adjustment: 0 }
 
   for (const item of input.items) {
-    applyItem(item, chargeMethodOf(item.criterion), input, objectArea, raw, warnings, reconciliation)
+    applyItem(item, chargeMethodOf(item.criterion), input, raw, warnings, reconciliation)
   }
 
   const spaces: StatementSpaceRow[] = input.spaces.map((space) => {
@@ -74,7 +76,7 @@ export function buildUtilityStatement(input: CalcInput): UtilityStatement {
       spaceId: space.id,
       spaceName: space.name,
       area: space.area,
-      areaShare: objectArea > 0 ? space.area / objectArea : 0,
+      areaShare: shareDenominator > 0 ? space.area / shareDenominator : 0,
       tenantId: tenant?.id ?? null,
       tenantName: tenant?.company ?? null,
       charges: destination === 'tenant' ? tenantCharges : allCharges,
@@ -142,7 +144,6 @@ function applyItem(
   item: UtilityUploadItem,
   method: ChargeMethod,
   input: CalcInput,
-  objectArea: number,
   raw: Map<number, StatementCharge[]>,
   warnings: string[],
   reconciliation: Reconciliation,
@@ -163,7 +164,27 @@ function applyItem(
       warnings.push('Септик: выбранное помещение не найдено.')
       return
     }
+    const sumBefore = sumByCriterion(raw, item.criterion)
     pushCharge(raw, item.septicSpaceId, item.criterion, amount, method)
+    const sumAfter = sumByCriterion(raw, item.criterion)
+    const chargedSum = money(sumAfter - sumBefore)
+    const diff = money(amount - chargedSum)
+    if (Math.abs(diff) > 0.01) {
+      reconciliation.adjustment = money(reconciliation.adjustment + diff)
+      if (diff > 0) {
+        warnings.push(
+          `${label}: сверка: в счёте ${money(amount)} ₽, начислено на помещение ${chargedSum} ₽. Разница +${money(diff)} ₽ — убыток арендодателя.`,
+        )
+      } else {
+        warnings.push(
+          `${label}: сверка: в счёте ${money(amount)} ₽, начислено на помещение ${chargedSum} ₽. Разница ${money(diff)} ₽ — прибыль арендодателя.`,
+        )
+      }
+    } else {
+      warnings.push(
+        `${label}: сверка ОК: ${money(amount)} ₽ перевыставлено на помещение.`,
+      )
+    }
     return
   }
 
@@ -173,18 +194,51 @@ function applyItem(
       warnings.push(`${label}: укажите итоговую сумму счёта.`)
       return
     }
-    if (objectArea <= 0 || !input.spaces.length) {
-      warnings.push(`${label}: нет площади объекта — сумму нельзя распределить.`)
+    if (!input.spaces.length) {
+      warnings.push(`${label}: нет помещений — сумму нельзя распределить.`)
+      if (amount > 0) {
+        reconciliation.adjustment = money(reconciliation.adjustment + amount)
+        warnings.push(`${label}: вся сумма ${money(amount)} ₽ отнесена на убытки.`)
+      }
       return
     }
+    const spacesTotalArea = input.spaces.reduce((s, sp) => s + (sp.area > 0 ? sp.area : 0), 0)
+    if (spacesTotalArea <= 0) {
+      warnings.push(`${label}: у помещений не указаны площади — распределить нельзя.`)
+      if (amount > 0) {
+        reconciliation.adjustment = money(reconciliation.adjustment + amount)
+        warnings.push(`${label}: вся сумма ${money(amount)} ₽ отнесена на убытки.`)
+      }
+      return
+    }
+    const sumBefore = sumByCriterion(raw, item.criterion)
     let allocated = 0
     input.spaces.forEach((space, index) => {
       const share = index === input.spaces.length - 1
         ? money(amount - allocated)
-        : money(amount * (space.area / objectArea))
+        : money(amount * (space.area / spacesTotalArea))
       allocated = money(allocated + share)
       pushCharge(raw, space.id, item.criterion, share, method)
     })
+    const sumAfter = sumByCriterion(raw, item.criterion)
+    const chargedSum = money(sumAfter - sumBefore)
+    const diff = money(amount - chargedSum)
+    if (Math.abs(diff) > 0.01) {
+      reconciliation.adjustment = money(reconciliation.adjustment + diff)
+      if (diff > 0) {
+        warnings.push(
+          `${label}: сверка: в счёте ${money(amount)} ₽, распределено по помещениям ${chargedSum} ₽. Разница +${money(diff)} ₽ — убыток арендодателя.`,
+        )
+      } else {
+        warnings.push(
+          `${label}: сверка: в счёте ${money(amount)} ₽, распределено по помещениям ${chargedSum} ₽. Разница ${money(diff)} ₽ — прибыль арендодателя.`,
+        )
+      }
+    } else {
+      warnings.push(
+        `${label}: сверка ОК: ${money(amount)} ₽ распределено по ${input.spaces.length} помещениям (по долям их площадей ${spacesTotalArea} м²).`,
+      )
+    }
     return
   }
 
