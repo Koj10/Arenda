@@ -65,9 +65,9 @@ function close() {
         <p class="text-xs mt-1">
           {{ utilityBills.formatPeriod(statement.period) }}
           · оплатить до {{ utilityBills.formatDate(statement.dueDate) }}
-          · площадь помещений {{ spacesTotalArea() }} м²
-          <span v-if="statement.objectArea > 0 && statement.objectArea !== spacesTotalArea()">
-            (в объекте {{ statement.objectArea }} м²)
+          · общая площадь объекта {{ statement.objectArea }} м²
+          <span v-if="spacesTotalArea() > 0 && statement.objectArea !== spacesTotalArea()">
+            · заведено помещений {{ spacesTotalArea() }} м²
           </span>
         </p>
       </div>
