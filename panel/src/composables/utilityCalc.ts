@@ -189,7 +189,7 @@ function applyItem(
   }
 
   const vatRate = item.vatRate > 0 ? item.vatRate : VAT_RATE
-  let rateWithVat: number | null = item.unitPrice != null && item.unitPrice > 0
+  const rateWithVat: number | null = item.unitPrice != null && item.unitPrice > 0
     ? unitPriceWithVat(item.unitPrice, vatRate)
     : null
 
@@ -199,10 +199,10 @@ function applyItem(
   }))
   const missing = consumptions.filter((c) => !c.qty || c.qty <= 0)
   if (missing.length === input.spaces.length) {
-    warnings.push(`${label}: нет показаний счётчиков — на помещения ничего не начислено.`)
+    warnings.push(`${label}: нет показаний счётчиков по всем помещениям — начисления по тарифу нет.`)
     if (item.totalAmount && item.totalAmount > 0) {
       reconciliation.adjustment = money(reconciliation.adjustment + item.totalAmount)
-      warnings.push(`${label}: итого ${money(item.totalAmount)} ₽ по счёту отнесено на результаты (убытки).`)
+      warnings.push(`${label}: вся сумма счёта ${money(item.totalAmount)} ₽ — убыток арендодателя.`)
     }
     return
   }
@@ -212,13 +212,12 @@ function applyItem(
     )
   }
 
-  const totalQty = consumptions.reduce((s, c) => s + (c.qty && c.qty > 0 ? c.qty : 0), 0)
-  if (rateWithVat == null && item.totalAmount && item.totalAmount > 0 && totalQty > 0) {
-    rateWithVat = money(item.totalAmount / totalQty)
-    warnings.push(`${label}: тариф не найден в счёте, итого разделено по показаниям (НДС уже в сумме).`)
-  }
   if (rateWithVat == null) {
     warnings.push(`${label}: укажите цену за единицу без НДС.`)
+    if (item.totalAmount && item.totalAmount > 0) {
+      reconciliation.adjustment = money(reconciliation.adjustment + item.totalAmount)
+      warnings.push(`${label}: вся сумма счёта ${money(item.totalAmount)} ₽ отнесена на убытки.`)
+    }
     return
   }
 
@@ -236,13 +235,21 @@ function applyItem(
       reconciliation.adjustment = money(reconciliation.adjustment + diff)
       if (diff > 0) {
         warnings.push(
-          `${label}: сверка: в счёте ${money(item.totalAmount)} ₽, по тарифу вышло ${chargedSum} ₽. Разница +${diff} ₽ — убыток.`,
+          `${label}: сверка: в счёте ${money(item.totalAmount)} ₽, по тарифам × показаниям ${chargedSum} ₽. Разница +${money(diff)} ₽ — убыток арендодателя.`,
         )
       } else {
         warnings.push(
-          `${label}: сверка: в счёте ${money(item.totalAmount)} ₽, по тарифу вышло ${chargedSum} ₽. Разница ${diff} ₽ — прибыль.`,
+          `${label}: сверка: в счёте ${money(item.totalAmount)} ₽, по тарифам × показаниям ${chargedSum} ₽. Разница ${money(diff)} ₽ — прибыль арендодателя.`,
         )
       }
+    } else {
+      warnings.push(
+        `${label}: сверка ОК: в счёте ${money(item.totalAmount)} ₽, расчёт ${chargedSum} ₽.`,
+      )
     }
+  } else {
+    warnings.push(
+      `${label}: начислено по тарифу ${chargedSum} ₽ (без сверки: итоговая сумма не указана).`,
+    )
   }
 }

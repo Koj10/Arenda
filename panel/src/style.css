@@ -46,28 +46,63 @@
   --plan-btn-text: #000000;
 }
 
-/* ========== ТЕМА 1: Красная светлая ========== */
-[data-theme="red-light"] {
-  --navy: #F5F5F7;
-  --graphite: #EDEEF0;
-  --panel: #F3F4F6;
+/* ========== ТЕМА 1: Базовая светлая ========== */
+[data-theme="default-light"] {
+  --navy: #F4F6F7;
+  --graphite: #E2E8EC;
+  --panel: #EEF2F5;
   --card: #FFFFFF;
-  --card-hover: #F9FAFB;
+  --card-hover: #F7FAFC;
   --surface: #FFFFFF;
-  --slate-warm: #F3F4F6;
-  --slate-deep: #E5E7EB;
+  --slate-warm: #EEF2F5;
+  --slate-deep: #D9E2EC;
 
-  --border: #E5E7EB;
-  --border-subtle: #F3F4F6;
+  --border: #D9E2EC;
+  --border-subtle: #EEF2F5;
 
-  --accent: #7F1D1D;
-  --accent-dark: #991B1B;
+  --accent: #0d9488;
+  --accent-dark: #0F766E;
 
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
-  --text-muted-2: #6B7280;
-  --text-secondary-2: #374151;
+  --text-primary: #0B1220;
+  --text-secondary: #54687A;
+  --text-muted: #8FA0B0;
+  --text-muted-2: #6B7F91;
+  --text-secondary-2: #2C3A4B;
+
+  --chart-income: var(--accent);
+  --chart-expense: #DC2626;
+  --chart-net: #F97316;
+
+  --logo-color: var(--accent);
+  --logo-text: var(--text-primary);
+
+  --plan-bg: linear-gradient(135deg, #0F766E 0%, #134E4A 100%);
+  --plan-border: var(--accent);
+  --plan-btn-text: #FFFFFF;
+}
+
+/* ========== ТЕМА 2: Красная светлая ========== */
+[data-theme="red-light"] {
+  --navy: #FAF7F7;
+  --graphite: #F1ECEC;
+  --panel: #F5F0F0;
+  --card: #FFFFFF;
+  --card-hover: #FBF7F7;
+  --surface: #FFFFFF;
+  --slate-warm: #F5F0F0;
+  --slate-deep: #E6DCDC;
+
+  --border: #E6DCDC;
+  --border-subtle: #F5F0F0;
+
+  --accent: #991B1B;
+  --accent-dark: #7F1D1D;
+
+  --text-primary: #1F0A0A;
+  --text-secondary: #6B5555;
+  --text-muted: #9E8A8A;
+  --text-muted-2: #7F6666;
+  --text-secondary-2: #3E2222;
 
   --chart-income: var(--accent);
   --chart-expense: #DC2626;
@@ -76,12 +111,12 @@
   --logo-color: var(--accent);
   --logo-text: var(--accent);
 
-  --plan-bg: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
+  --plan-bg: linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%);
   --plan-border: var(--accent);
   --plan-btn-text: #FFFFFF;
 }
 
-/* ========== ТЕМА 2: Красная тёмная ========== */
+/* ========== ТЕМА 3: Красная тёмная ========== */
 [data-theme="red-dark"] {
   --navy: #0F0F0F;
   --graphite: #131313;
@@ -116,7 +151,42 @@
   --plan-btn-text: #FFFFFF;
 }
 
-/* ========== ТЕМА 3: Золотая тёмная ========== */
+/* ========== ТЕМА 4: Золотая светлая ========== */
+[data-theme="gold-light"] {
+  --navy: #FAF8F1;
+  --graphite: #F1ECDA;
+  --panel: #F6F1E1;
+  --card: #FFFFFF;
+  --card-hover: #FBF9F2;
+  --surface: #FFFFFF;
+  --slate-warm: #F6F1E1;
+  --slate-deep: #E6DBB8;
+
+  --border: #E6DBB8;
+  --border-subtle: #F6F1E1;
+
+  --accent: #A16207;
+  --accent-dark: #854D0E;
+
+  --text-primary: #1C1206;
+  --text-secondary: #6B5A3A;
+  --text-muted: #9E8F6A;
+  --text-muted-2: #7F6F4D;
+  --text-secondary-2: #3E2F12;
+
+  --chart-income: var(--accent);
+  --chart-expense: #DC2626;
+  --chart-net: #F97316;
+
+  --logo-color: var(--accent);
+  --logo-text: var(--accent);
+
+  --plan-bg: linear-gradient(135deg, #A16207 0%, #713F12 100%);
+  --plan-border: var(--accent);
+  --plan-btn-text: #FFFFFF;
+}
+
+/* ========== ТЕМА 5: Золотая тёмная ========== */
 [data-theme="gold-dark"] {
   --navy: #0D0D0D;
   --graphite: #111111;
@@ -151,28 +221,28 @@
   --plan-btn-text: #000000;
 }
 
-/* ========== ТЕМА 4: Синяя светлая ========== */
+/* ========== ТЕМА 6: Синяя светлая ========== */
 [data-theme="blue-light"] {
-  --navy: #F5F7FA;
-  --graphite: #E2E8F0;
-  --panel: #F1F5F9;
+  --navy: #F5F8FC;
+  --graphite: #E0E9F2;
+  --panel: #EEF4FB;
   --card: #FFFFFF;
-  --card-hover: #F8FAFC;
+  --card-hover: #F7FAFD;
   --surface: #FFFFFF;
-  --slate-warm: #F1F5F9;
-  --slate-deep: #E2E8F0;
+  --slate-warm: #EEF4FB;
+  --slate-deep: #D2DCE8;
 
-  --border: #E2E8F0;
-  --border-subtle: #F1F5F9;
+  --border: #D2DCE8;
+  --border-subtle: #EEF4FB;
 
-  --accent: #1E40AF;
-  --accent-dark: #1E3A8A;
+  --accent: #1D4ED8;
+  --accent-dark: #1E40AF;
 
-  --text-primary: #0F172A;
-  --text-secondary: #64748B;
-  --text-muted: #94A3B8;
-  --text-muted-2: #64748B;
-  --text-secondary-2: #334155;
+  --text-primary: #0A1128;
+  --text-secondary: #546587;
+  --text-muted: #8E9CB6;
+  --text-muted-2: #6B7C9A;
+  --text-secondary-2: #2B3A5C;
 
   --chart-income: var(--accent);
   --chart-expense: #DC2626;
@@ -181,7 +251,7 @@
   --logo-color: var(--accent);
   --logo-text: var(--accent);
 
-  --plan-bg: linear-gradient(135deg, #1E3A8A 0%, #172554 100%);
+  --plan-bg: linear-gradient(135deg, #1E40AF 0%, #172554 100%);
   --plan-border: var(--accent);
   --plan-btn-text: #FFFFFF;
 }
