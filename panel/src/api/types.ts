@@ -87,6 +87,8 @@ export interface TenantOut {
   id: number
   name: string
   inn: string
+  email?: string | null
+  registered?: boolean
   created_at: string
   active_leases_count?: number
 }

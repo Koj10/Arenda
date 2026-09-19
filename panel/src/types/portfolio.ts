@@ -67,7 +67,12 @@ export interface Tenant {
   contract: string
   status: TenantStatus
   leaseId?: number
+  email?: string | null
+  registered?: boolean
 }
+
+/** Указывает, приглашён ли арендатор и зарегистрировался ли он в системе */
+export type TenantInviteStatus = 'invited' | 'registered' | 'not_invited'
 
 export interface AttachedDocument {
   id: number
@@ -230,6 +235,7 @@ export function createSplitCadastralFormData(source: CadastralParcel): SplitCada
 export interface TenantFormData {
   company: string
   inn: string
+  email: string
   propertyId: number | null
   space: string
   rent: number
@@ -252,6 +258,7 @@ export interface SpaceUpdateData {
 export interface TenantUpdateData {
   company: string
   inn: string
+  email: string
   rent: number
   contract: string
 }

@@ -11,6 +11,7 @@ const store = usePortfolioStore()
 const form = ref<TenantFormData>({
   company: '',
   inn: '',
+  email: '',
   propertyId: null,
   space: '',
   rent: 0,
@@ -30,7 +31,7 @@ const spaceOptions = computed(() => {
 })
 
 function resetForm() {
-  form.value = { company: '', inn: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
+  form.value = { company: '', inn: '', email: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
   errors.value = {}
 }
 
@@ -80,6 +81,8 @@ function validate() {
   errors.value = {}
   if (!form.value.company.trim()) errors.value.company = 'Укажите название'
   if (!/^\d{10}$|^\d{12}$/.test(form.value.inn)) errors.value.inn = 'ИНН: 10 или 12 цифр'
+  const email = form.value.email.trim()
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.value.email = 'Введите корректный e-mail'
   if (!form.value.propertyId) errors.value.propertyId = 'Выберите объект'
   if (!form.value.space.trim()) errors.value.space = 'Укажите помещение'
   if (form.value.rent <= 0) errors.value.rent = 'Укажите сумму аренды'
@@ -116,6 +119,23 @@ function onClose() {
         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">ИНН</label>
         <input v-model="form.inn" type="text" placeholder="7707083893" class="panel-input font-mono" :class="{ 'border-red-500': errors.inn }" />
         <p v-if="errors.inn" class="text-xs text-red-400 mt-1">{{ errors.inn }}</p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">
+          E-mail для счетов и приглашения
+        </label>
+        <input
+          v-model="form.email"
+          type="email"
+          placeholder="tenant@company.ru"
+          class="panel-input font-mono"
+          :class="{ 'border-red-500': errors.email }"
+        />
+        <p v-if="errors.email" class="text-xs text-red-400 mt-1">{{ errors.email }}</p>
+        <p class="text-xs text-slate-500 mt-1">
+          На этот адрес будут приходить счета за аренду и ЖКХ. Если арендатор ещё не зарегистрирован — вместе с первым счётом придёт приглашение.
+        </p>
       </div>
 
       <div>
