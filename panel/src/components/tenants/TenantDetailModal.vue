@@ -22,11 +22,23 @@ const editForm = ref<TenantUpdateData>({
   contract: '',
 })
 
+const emailEditedByUser = ref(false)
+
 const tenant = computed(() => {
   if (store.tenantDetailLeaseId) {
     return store.getTenantByLeaseId(store.tenantDetailLeaseId) ?? store.getTenantById(store.tenantDetailId!)
   }
   return store.tenantDetailId ? store.getTenantById(store.tenantDetailId) : null
+})
+
+const autoFilledByInn = computed(() => {
+  if (!editing.value) return null
+  const inn = editForm.value.inn.trim()
+  if (!/^\d{10}$|^\d{12}$/.test(inn)) return null
+  const match = store.tenants.find(
+    (t) => t.inn === inn && t.id !== tenant.value?.id && (t.email || t.company),
+  )
+  return match ?? null
 })
 
 const property = computed(() =>
@@ -51,6 +63,7 @@ watch(
       saveError.value = null
       errors.value = {}
       terminateError.value = null
+      emailEditedByUser.value = false
     }
   },
 )
@@ -66,9 +79,34 @@ watch(
         rent: t.rent,
         contract: t.contract,
       }
+      emailEditedByUser.value = false
     }
   },
   { immediate: true },
+)
+
+watch(
+  () => editForm.value.inn,
+  (innVal) => {
+    if (!editing.value) return
+    const inn = innVal.trim()
+    if (!/^\d{10}$|^\d{12}$/.test(inn)) return
+    const match = store.tenants.find(
+      (t) => t.inn === inn && t.id !== tenant.value?.id,
+    )
+    if (match) {
+      if (match.email && !emailEditedByUser.value) {
+        editForm.value.email = match.email
+      }
+    }
+  },
+)
+
+watch(
+  () => editForm.value.email,
+  () => {
+    if (editing.value) emailEditedByUser.value = true
+  },
 )
 
 function statusLabel(status: string) {
@@ -119,6 +157,7 @@ function startEdit() {
   }
   errors.value = {}
   saveError.value = null
+  emailEditedByUser.value = false
   editing.value = true
 }
 
@@ -227,7 +266,17 @@ async function terminateLease() {
             <Mail class="w-3.5 h-3.5" />
             E-mail для счетов
           </div>
-          <p v-if="tenant.email" class="text-sm font-mono text-slate-200 break-all">{{ tenant.email }}</p>
+          <div v-if="tenant.email" class="flex items-center justify-between gap-3">
+            <p class="text-sm font-mono text-slate-200 break-all">{{ tenant.email }}</p>
+            <button
+              type="button"
+              class="text-xs panel-btn-secondary !py-1 !px-3 shrink-0"
+              @click="startEdit"
+            >
+              <Pencil class="w-3.5 h-3.5 mr-1 inline-block align-text-bottom" />
+              Изменить
+            </button>
+          </div>
           <div v-else class="flex items-center justify-between gap-3">
             <p class="text-sm text-slate-500">Не указан — счета не будут отправляться</p>
             <button
@@ -288,6 +337,12 @@ async function terminateLease() {
               :class="{ 'border-red-500': errors.email }"
             />
             <p v-if="errors.email" class="text-xs text-red-400 mt-1">{{ errors.email }}</p>
+            <p
+              v-else-if="autoFilledByInn?.email && editForm.email === autoFilledByInn.email"
+              class="text-xs text-emerald-brand mt-1"
+            >
+              ✅ E-mail подтянулся из арендатора с тем же ИНН
+            </p>
             <p v-else class="text-xs text-slate-500 mt-1">
               На этот адрес будут приходить счета за аренду и ЖКХ.
             </p>
