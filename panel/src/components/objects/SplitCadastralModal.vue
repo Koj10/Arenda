@@ -42,6 +42,7 @@ function validate() {
   errors.value = {}
   if (!sourceParcel.value) return false
 
+  if (!form.value.firstCadastralNumber.trim()) errors.value.firstCadastralNumber = 'Укажите номер первого участка'
   if (!form.value.newCadastralNumber.trim()) errors.value.newCadastralNumber = 'Укажите номер второго участка'
   if (form.value.firstCadastralValue <= 0) errors.value.firstCadastralValue = 'Укажите стоимость'
   if (form.value.secondCadastralValue <= 0) errors.value.secondCadastralValue = 'Укажите стоимость'
@@ -92,7 +93,18 @@ function onClose() {
       <div class="grid md:grid-cols-2 gap-4">
         <section class="rounded-xl border border-border bg-panel/30 p-4 space-y-3">
           <h3 class="text-sm font-semibold text-white">1. Первый номер (остаётся)</h3>
-          <p class="text-xs font-mono text-slate-400">{{ sourceParcel.cadastralNumber }}</p>
+
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Кадастровый номер</label>
+            <input
+              v-model="form.firstCadastralNumber"
+              type="text"
+              placeholder="77:01:0004012:1680"
+              :class="[inputClass, 'font-mono', { 'border-red-500': errors.firstCadastralNumber }]"
+            />
+            <p v-if="errors.firstCadastralNumber" class="text-xs text-red-400 mt-1">{{ errors.firstCadastralNumber }}</p>
+          </div>
+
           <p class="text-xs text-slate-500">
             Площадь: {{ store.formatArea(sourceParcel.area) }} · помещения остаются здесь
           </p>

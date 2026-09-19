@@ -826,11 +826,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   async function splitCadastralParcel(parcelId: number, data: SplitCadastralFormData) {
     const original = getCadastralParcelById(parcelId)
     if (!original) return false
+    if (!data.firstCadastralNumber.trim()) return false
     if (!data.newCadastralNumber.trim()) return false
     if (data.firstCadastralValue <= 0 || data.secondCadastralValue <= 0) return false
     lastError.value = null
     try {
       await landlordApi.updateCadastre(parcelId, {
+        number: data.firstCadastralNumber.trim(),
         cadastral_value: data.firstCadastralValue,
         purchase_price: data.firstPurchasePrice,
       })
@@ -839,6 +841,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         cadastral_value: data.secondCadastralValue,
         purchase_price: data.secondPurchasePrice,
       })
+      original.cadastralNumber = data.firstCadastralNumber.trim()
       original.cadastralValue = data.firstCadastralValue
       original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
         ? data.firstPurchasePrice

@@ -215,6 +215,7 @@ export function createEmptyCadastralParcelFormData(): CadastralParcelFormData {
 
 /** Разделение одного кадастрового номера на два */
 export interface SplitCadastralFormData {
+  firstCadastralNumber: string
   firstCadastralValue: number
   firstPurchasePrice?: number
   newCadastralNumber: string
@@ -224,6 +225,7 @@ export interface SplitCadastralFormData {
 
 export function createSplitCadastralFormData(source: CadastralParcel): SplitCadastralFormData {
   return {
+    firstCadastralNumber: source.cadastralNumber,
     firstCadastralValue: Math.round(source.cadastralValue / 2),
     firstPurchasePrice: source.purchasePrice ? Math.round(source.purchasePrice / 2) : undefined,
     newCadastralNumber: '',
