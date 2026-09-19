@@ -221,14 +221,23 @@ async function terminateLease() {
         </div>
 
         <div
-          v-if="tenant.email"
           class="rounded-xl border border-border bg-panel/40 p-4 mb-5 space-y-2"
         >
           <div class="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wide">
             <Mail class="w-3.5 h-3.5" />
             E-mail для счетов
           </div>
-          <p class="text-sm font-mono text-slate-200 break-all">{{ tenant.email }}</p>
+          <p v-if="tenant.email" class="text-sm font-mono text-slate-200 break-all">{{ tenant.email }}</p>
+          <div v-else class="flex items-center justify-between gap-3">
+            <p class="text-sm text-slate-500">Не указан — счета не будут отправляться</p>
+            <button
+              type="button"
+              class="text-xs panel-btn-secondary !py-1 !px-3"
+              @click="startEdit"
+            >
+              Добавить
+            </button>
+          </div>
         </div>
 
         <div class="grid sm:grid-cols-2 gap-4 mb-5">
@@ -359,9 +368,8 @@ async function terminateLease() {
           {{ terminating ? 'Завершение…' : 'Завершить договор' }}
         </button>
         <button
-          v-else
           type="button"
-          class="panel-btn-secondary mr-auto"
+          class="panel-btn-secondary"
           @click="startEdit"
         >
           <Pencil class="w-4 h-4 mr-1.5 inline-block align-text-bottom" />
