@@ -27,6 +27,7 @@ import {
 import { num } from '@/api/types'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { buildUtilityStatement, meterConsumption } from '@/composables/utilityCalc'
+import { buildMeterDrafts, meterKey, shiftPeriod } from '@/composables/meters'
 
 export const useUtilityBillsStore = defineStore('utilityBills', () => {
   const spaceSettings = ref<SpaceUtilitySettings[]>([])
@@ -320,12 +321,9 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     }
   }
 
-  function meterKey(unitId: number, criterion: string) {
-    return `${unitId}:${criterion}`
-  }
-
   const meterDrafts = ref<Record<string, { previous: string; current: string }>>({})
   const meterMeta = ref<Record<string, string>>({})
+  const meterCarried = ref<Record<string, boolean>>({})
   const metersError = ref<string | null>(null)
 
   function getMeterDraft(unitId: number, criterion: string) {
@@ -337,19 +335,17 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
   async function loadMeters(propertyId: number, period: string) {
     metersError.value = null
     try {
-      const data = await listObjectMeters(propertyId, period)
-      const next: Record<string, { previous: string; current: string }> = {}
-      const meta: Record<string, string> = {}
-      for (const row of data.readings) {
-        const key = meterKey(row.unit_id, row.criterion)
-        next[key] = {
-          previous: String(num(row.previous_value)),
-          current: String(num(row.current_value)),
-        }
-        meta[key] = row.submitted_by_role
-      }
-      meterDrafts.value = next
-      meterMeta.value = meta
+      const prevPeriod = shiftPeriod(period, -1)
+      const [data, prevData] = await Promise.all([
+        listObjectMeters(propertyId, period),
+        prevPeriod
+          ? listObjectMeters(propertyId, prevPeriod).catch(() => null)
+          : Promise.resolve(null),
+      ])
+      const built = buildMeterDrafts(data.readings ?? [], prevData?.readings ?? [])
+      meterDrafts.value = built.drafts
+      meterMeta.value = built.meta
+      meterCarried.value = built.carried
     } catch (err) {
       metersError.value = formatApiError(err, 'Не удалось загрузить показания')
     }
@@ -426,6 +422,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     issueAllStatementRows,
     meterDrafts,
     meterMeta,
+    meterCarried,
     metersError,
     getMeterDraft,
     loadMeters,

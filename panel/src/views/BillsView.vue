@@ -270,8 +270,8 @@ function tenantName(spaceName: string) {
             <div v-else-if="activeTab === 'meters'">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <p class="text-xs text-slate-500 max-w-xl">
-                  Предыдущие и текущие показания. Если арендатор уже внёс их — подставятся автоматически.
-                  Без показаний электричество, вода, газ и канализация на помещение не начисляются.
+                  «Было» подставляется из «стало» прошлого месяца — вручную нужно только в первый раз.
+                  Показания арендатора можно править; ваши записи арендатор изменить не сможет.
                 </p>
                 <div class="flex items-center gap-2">
                   <input v-model="metersPeriod" type="month" class="panel-input font-mono text-xs py-1.5 w-40" />
@@ -325,10 +325,16 @@ function tenantName(spaceName: string) {
                             @input="utilityBills.getMeterDraft(space.id, criterion).current = ($event.target as HTMLInputElement).value"
                           />
                           <p
-                            v-if="utilityBills.meterMeta[`${space.id}:${criterion}`]"
+                            v-if="utilityBills.meterCarried[`${space.id}:${criterion}`]"
                             class="text-[10px] text-slate-600 text-center"
                           >
-                            {{ utilityBills.meterMeta[`${space.id}:${criterion}`] === 'tenant' ? 'арендатор' : 'вы' }}
+                            было из прошлого месяца
+                          </p>
+                          <p
+                            v-else-if="utilityBills.meterMeta[`${space.id}:${criterion}`]"
+                            class="text-[10px] text-slate-600 text-center"
+                          >
+                            {{ utilityBills.meterMeta[`${space.id}:${criterion}`] === 'tenant' ? 'арендатор · можно изменить' : 'вы' }}
                           </p>
                         </div>
                       </td>

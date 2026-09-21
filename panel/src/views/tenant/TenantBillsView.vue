@@ -7,7 +7,7 @@ import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } fro
 import type { InvoiceStatus, PaymentMethod } from '@/types/billing'
 import { listTenantMeters, payTenantInvoice, upsertTenantMeter } from '@/api/tenant'
 import { uploadFileApi } from '@/api/auth'
-import { num, type MeterReadingOut } from '@/api/types'
+import { type MeterReadingOut } from '@/api/types'
 import { METERED_CRITERIA, UTILITY_CRITERION_LABELS } from '@/types/utilityBills'
 import type { UtilityCriterion } from '@/types/utilityBills'
 import { formatApiError } from '@/api/http'
@@ -16,6 +16,7 @@ import { useToastStore } from '@/stores/toastStore'
 import { useBankRequisitesStore } from '@/stores/bankRequisitesStore'
 import Modal from '@/components/ui/Modal.vue'
 import BankRequisitesCard from '@/components/ui/BankRequisitesCard.vue'
+import { buildMeterDrafts, isMeterLockedForTenant, meterKey, shiftPeriod } from '@/composables/meters'
 
 const billing = useBillingStore()
 const tenantPanel = useTenantPanelStore()
@@ -32,6 +33,7 @@ const metersPeriod = ref(currentPeriod())
 const meterUnits = ref<{ unit_id: number; unit_number: string; object_address: string }[]>([])
 const meterDrafts = ref<Record<string, { previous: string; current: string }>>({})
 const meterMeta = ref<Record<string, string>>({})
+const meterCarried = ref<Record<string, boolean>>({})
 const metersError = ref<string | null>(null)
 const metersSaving = ref(false)
 
@@ -40,33 +42,40 @@ function currentPeriod() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-function meterKey(unitId: number, criterion: string) {
-  return `${unitId}:${criterion}`
-}
-
 function getDraft(unitId: number, criterion: string) {
   const key = meterKey(unitId, criterion)
   if (!meterDrafts.value[key]) meterDrafts.value[key] = { previous: '', current: '' }
   return meterDrafts.value[key]!
 }
 
+function tenantMeterLocked(unitId: number, criterion: string) {
+  return isMeterLockedForTenant(meterMeta.value[meterKey(unitId, criterion)])
+}
+
+const tenantCanSaveMeters = computed(() =>
+  meterUnits.value.some((unit) =>
+    METERED_CRITERIA.some((criterion) => !tenantMeterLocked(unit.unit_id, criterion)),
+  ),
+)
+
 async function loadMeters() {
   metersError.value = null
   try {
-    const data = await listTenantMeters(metersPeriod.value)
+    const prevPeriod = shiftPeriod(metersPeriod.value, -1)
+    const [data, prevData] = await Promise.all([
+      listTenantMeters(metersPeriod.value),
+      prevPeriod
+        ? listTenantMeters(prevPeriod).catch(() => null)
+        : Promise.resolve(null),
+    ])
     meterUnits.value = data.units ?? []
-    const next: Record<string, { previous: string; current: string }> = {}
-    const meta: Record<string, string> = {}
-    for (const row of data.readings as MeterReadingOut[]) {
-      const key = meterKey(row.unit_id, row.criterion)
-      next[key] = {
-        previous: String(num(row.previous_value)),
-        current: String(num(row.current_value)),
-      }
-      meta[key] = row.submitted_by_role
-    }
-    meterDrafts.value = next
-    meterMeta.value = meta
+    const built = buildMeterDrafts(
+      (data.readings ?? []) as MeterReadingOut[],
+      (prevData?.readings ?? []) as MeterReadingOut[],
+    )
+    meterDrafts.value = built.drafts
+    meterMeta.value = built.meta
+    meterCarried.value = built.carried
   } catch (err) {
     metersError.value = formatApiError(err, 'Не удалось загрузить показания')
   }
@@ -78,6 +87,7 @@ async function saveMeters() {
   try {
     for (const unit of meterUnits.value) {
       for (const criterion of METERED_CRITERIA) {
+        if (tenantMeterLocked(unit.unit_id, criterion)) continue
         const draft = meterDrafts.value[meterKey(unit.unit_id, criterion)]
         if (!draft) continue
         const previous = Number(String(draft.previous).replace(',', '.'))
@@ -199,12 +209,17 @@ async function submitPay() {
           <div>
             <h2 class="text-sm font-semibold text-white">Показания счётчиков</h2>
             <p class="text-xs text-slate-500 mt-1">
-              Если арендодатель уже внёс цифры за период — они появятся здесь. Можно править и сохранить.
+              «Было» подставляется из «стало» прошлого месяца. Если показания уже внёс арендодатель, изменить их нельзя.
             </p>
           </div>
           <div class="flex items-center gap-2">
             <input v-model="metersPeriod" type="month" class="panel-input font-mono text-xs py-1.5 w-40" />
-            <button type="button" class="panel-btn-primary text-xs" :disabled="metersSaving" @click="saveMeters">
+            <button
+              type="button"
+              class="panel-btn-primary text-xs"
+              :disabled="metersSaving || !tenantCanSaveMeters"
+              @click="saveMeters"
+            >
               {{ metersSaving ? 'Сохранение...' : 'Сохранить' }}
             </button>
           </div>
@@ -235,7 +250,8 @@ async function submitPay() {
                       min="0"
                       step="0.001"
                       placeholder="было"
-                      class="panel-input font-mono text-[11px] py-1"
+                      class="panel-input font-mono text-[11px] py-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                      :disabled="tenantMeterLocked(unit.unit_id, criterion)"
                       @input="getDraft(unit.unit_id, criterion).previous = ($event.target as HTMLInputElement).value"
                     />
                     <input
@@ -244,10 +260,26 @@ async function submitPay() {
                       min="0"
                       step="0.001"
                       placeholder="стало"
-                      class="panel-input font-mono text-[11px] py-1"
+                      class="panel-input font-mono text-[11px] py-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                      :disabled="tenantMeterLocked(unit.unit_id, criterion)"
                       @input="getDraft(unit.unit_id, criterion).current = ($event.target as HTMLInputElement).value"
                     />
-                    <p v-if="meterMeta[`${unit.unit_id}:${criterion}`]" class="text-[10px] text-slate-600 text-center">
+                    <p
+                      v-if="tenantMeterLocked(unit.unit_id, criterion)"
+                      class="text-[10px] text-amber-400/80 text-center"
+                    >
+                      внёс арендодатель
+                    </p>
+                    <p
+                      v-else-if="meterCarried[`${unit.unit_id}:${criterion}`]"
+                      class="text-[10px] text-slate-600 text-center"
+                    >
+                      было из прошлого месяца
+                    </p>
+                    <p
+                      v-else-if="meterMeta[`${unit.unit_id}:${criterion}`]"
+                      class="text-[10px] text-slate-600 text-center"
+                    >
                       {{ meterMeta[`${unit.unit_id}:${criterion}`] === 'landlord' ? 'арендодатель' : 'вы' }}
                     </p>
                   </div>
