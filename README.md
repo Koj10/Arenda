@@ -1,37 +1,34 @@
 # PropCount
 
-SaaS-прототип для арендодателей: лендинг + панель управления.
+Лендинг и панель арендодателя. Backend живёт в отдельном репозитории и доступен на **https://api.propcount.ru**.
 
 ## Структура
 
 ```
-landing/   — статический лендинг, вход и регистрация (HTML + Tailwind CDN)
-panel/     — Vue 3 панель (дашборд после авторизации)
-deploy/    — nginx для Docker
+landing/   — статический лендинг, вход и регистрация
+panel/     — Vue 3 панель
+deploy/    — nginx для Docker (прокси /__api → api.propcount.ru)
 ```
 
-## Продакшен (Docker + HTTPS)
+## Продакшен
 
 | | |
 |--|--|
 | Домен | **https://propcount.ru** |
-| IP | 94.228.166.142 |
-| Порты | **80**, **443** |
-| Лендинг | `/` |
 | Панель | `/panel/` |
-| API | `/api/` |
-
-```bash
-# 1) DNS: propcount.ru и www → 94.228.166.142
-# 2) Открыть firewall: 80, 443
-cp .env.example .env   # пароли БД
-chmod +x deploy/issue-certs.sh
-./deploy/issue-certs.sh
-```
-
-Сервисы: `web` · `api` · `db` · `redis` · `certbot` (профиль certs).
+| API | **https://api.propcount.ru** (браузер ходит через `/__api`) |
 
 ## Локальная разработка
+
+Запросы `/__api` Vite проксирует на `https://api.propcount.ru`. Локальный бэкенд не нужен.
+
+### Панель (порт 5173)
+
+```bash
+npm run dev
+```
+
+http://127.0.0.1:5173
 
 ### Лендинг (порт 3000)
 
@@ -39,29 +36,4 @@ chmod +x deploy/issue-certs.sh
 npm run dev:landing
 ```
 
-http://localhost:3000
-
-### Панель (порт 5173)
-
-```bash
-cd panel && npm run dev
-```
-
-http://localhost:5173
-
-## Навигация (прод)
-
-| Страница | URL |
-|----------|-----|
-| Лендинг | `/` |
-| Вход | `/login.html` |
-| Регистрация | `/register.html` |
-| Панель | `/panel/` |
-
-После входа/регистрации — редирект на `/panel/?autologin=…` и выбор роли.
-
-## Стек
-
-- **Landing:** HTML, Tailwind CSS (CDN), Feather Icons, AOS.js
-- **Panel:** Vue 3, TypeScript, Vite, Tailwind v4, Pinia, Vue Router
-- **Deploy:** Docker + nginx
+http://127.0.0.1:3000

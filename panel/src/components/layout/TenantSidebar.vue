@@ -42,12 +42,7 @@ function logout() {
   <aside class="flex flex-col h-full min-h-0 bg-navy border-r border-border w-full overflow-y-auto overscroll-contain">
     <div class="px-4 sm:px-5 pt-5 sm:pt-6 pb-4 flex items-center gap-3 pr-12 lg:pr-5">
       <PropCountLogo :size="32" />
-      <span
-        class="font-bold text-base truncate"
-        style="font-family: var(--font-display); color: var(--logo-text)"
-      >
-        PropCount
-      </span>
+      <span class="font-bold text-base truncate" style="font-family: var(--font-display)">PropCount</span>
     </div>
 
     <div class="px-3 sm:px-4 mb-2">

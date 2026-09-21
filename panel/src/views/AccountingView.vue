@@ -107,13 +107,7 @@ function formatShort(n: number) {
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
               <span class="text-xs text-slate-500 uppercase tracking-wide">Доход</span>
-              <span
-                class="p-2 rounded-xl"
-                :style="{
-                  backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                  color: 'var(--accent)',
-                }"
-              ><ArrowUpRight class="w-4 h-4" /></span>
+              <span class="p-2 rounded-xl bg-emerald-brand/10 text-emerald-brand"><ArrowUpRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalIncome) }}</p>
             <p class="text-xs text-slate-500 mt-2">за текущий месяц</p>
@@ -121,13 +115,7 @@ function formatShort(n: number) {
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
               <span class="text-xs text-slate-500 uppercase tracking-wide">Расходы</span>
-              <span
-                class="p-2 rounded-xl"
-                :style="{
-                  backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                  color: 'var(--accent)',
-                }"
-              ><ArrowDownRight class="w-4 h-4" /></span>
+              <span class="p-2 rounded-xl bg-red-500/10 text-red-400"><ArrowDownRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalExpenses) }}</p>
             <p class="text-xs text-slate-500 mt-2">за текущий месяц</p>
@@ -135,13 +123,7 @@ function formatShort(n: number) {
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
               <span class="text-xs text-slate-500 uppercase tracking-wide">Прибыль</span>
-              <span
-                class="p-2 rounded-xl"
-                :style="{
-                  backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                  color: 'var(--accent)',
-                }"
-              ><Wallet class="w-4 h-4" /></span>
+              <span class="p-2 rounded-xl bg-orange-500/10 text-orange-400"><Wallet class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(netProfit) }}</p>
             <p class="text-xs text-slate-500 mt-2">доход минус расход за месяц</p>
@@ -149,13 +131,7 @@ function formatShort(n: number) {
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
               <span class="text-xs text-slate-500 uppercase tracking-wide">Ожидают оплаты</span>
-              <span
-                class="p-2 rounded-xl"
-                :style="{
-                  backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-                  color: 'var(--accent)',
-                }"
-              ><Clock class="w-4 h-4" /></span>
+              <span class="p-2 rounded-xl bg-yellow-500/10 text-yellow-400"><Clock class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(pendingPayments) }}</p>
             <p class="text-xs text-slate-500 mt-2">неподтверждённые счета</p>

@@ -1,6 +1,6 @@
 /**
- * Префикс /__api на этом же сайте. Nginx/Vite отдают его на
- * https://api.propcount.ru или локально http://127.0.0.1:8000 (Vite/nginx прокси).
+ * Префикс /__api на этом же сайте. Vite и nginx проксируют его на
+ * https://api.propcount.ru.
  */
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_API_URL as string | undefined

@@ -11,7 +11,6 @@ const store = usePortfolioStore()
 const form = ref<TenantFormData>({
   company: '',
   inn: '',
-  email: '',
   propertyId: null,
   space: '',
   rent: 0,
@@ -19,21 +18,11 @@ const form = ref<TenantFormData>({
   documents: [],
 })
 
-const innFilledByUser = ref(false)
-const emailFilledByUser = ref(false)
-const nameFilledByUser = ref(false)
-
 const errors = ref<Partial<Record<string, string>>>({})
 
 const propertyOptions = computed(() => store.properties)
 const lockedProperty = computed(() => !!store.tenantModalPrefill?.propertyId)
 const lockedSpace = computed(() => !!store.tenantModalPrefill?.space)
-
-const autoFilledHint = computed(() => {
-  if (innFilledByUser.value || !/^\d{10}$|^\d{12}$/.test(form.value.inn)) return null
-  const match = store.tenants.find((t) => t.inn === form.value.inn.trim())
-  return match ?? null
-})
 
 const spaceOptions = computed(() => {
   if (!form.value.propertyId) return []
@@ -41,11 +30,8 @@ const spaceOptions = computed(() => {
 })
 
 function resetForm() {
-  form.value = { company: '', inn: '', email: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
+  form.value = { company: '', inn: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
   errors.value = {}
-  innFilledByUser.value = false
-  emailFilledByUser.value = false
-  nameFilledByUser.value = false
 }
 
 function applyPrefill() {
@@ -58,37 +44,6 @@ function applyPrefill() {
     if (space) form.value.rent = space.monthlyRate
   }
 }
-
-watch(
-  () => form.value.inn,
-  (innVal) => {
-    const inn = innVal.trim()
-    if (!/^\d{10}$|^\d{12}$/.test(inn)) return
-    const match = store.tenants.find((t) => t.inn === inn)
-    if (match) {
-      if (match.company && !nameFilledByUser.value) {
-        form.value.company = match.company
-      }
-      if (match.email && !emailFilledByUser.value) {
-        form.value.email = match.email
-      }
-    }
-  },
-)
-
-watch(
-  () => form.value.email,
-  () => {
-    emailFilledByUser.value = true
-  },
-)
-
-watch(
-  () => form.value.company,
-  () => {
-    nameFilledByUser.value = true
-  },
-)
 
 watch(
   () => form.value.space,
@@ -125,8 +80,6 @@ function validate() {
   errors.value = {}
   if (!form.value.company.trim()) errors.value.company = 'Укажите название'
   if (!/^\d{10}$|^\d{12}$/.test(form.value.inn)) errors.value.inn = 'ИНН: 10 или 12 цифр'
-  const email = form.value.email.trim()
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.value.email = 'Введите корректный e-mail'
   if (!form.value.propertyId) errors.value.propertyId = 'Выберите объект'
   if (!form.value.space.trim()) errors.value.space = 'Укажите помещение'
   if (form.value.rent <= 0) errors.value.rent = 'Укажите сумму аренды'
@@ -163,26 +116,6 @@ function onClose() {
         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">ИНН</label>
         <input v-model="form.inn" type="text" placeholder="7707083893" class="panel-input font-mono" :class="{ 'border-red-500': errors.inn }" />
         <p v-if="errors.inn" class="text-xs text-red-400 mt-1">{{ errors.inn }}</p>
-      </div>
-
-      <div>
-        <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">
-          E-mail для счетов и приглашения
-        </label>
-        <input
-          v-model="form.email"
-          type="email"
-          placeholder="tenant@company.ru"
-          class="panel-input font-mono"
-          :class="{ 'border-red-500': errors.email }"
-        />
-        <p v-if="errors.email" class="text-xs text-red-400 mt-1">{{ errors.email }}</p>
-        <p v-else-if="autoFilledHint?.email && form.email === autoFilledHint.email" class="text-xs text-emerald-brand mt-1">
-          ✅ E-mail подтянулся из существующего арендатора с таким ИНН
-        </p>
-        <p class="text-xs text-slate-500 mt-1">
-          На этот адрес будут приходить счета за аренду и ЖКХ. Если арендатор ещё не зарегистрирован — вместе с первым счётом придёт приглашение.
-        </p>
       </div>
 
       <div>

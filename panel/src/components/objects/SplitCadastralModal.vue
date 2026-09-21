@@ -42,10 +42,31 @@ function validate() {
   errors.value = {}
   if (!sourceParcel.value) return false
 
-  if (!form.value.firstCadastralNumber.trim()) errors.value.firstCadastralNumber = 'Укажите номер первого участка'
-  if (!form.value.newCadastralNumber.trim()) errors.value.newCadastralNumber = 'Укажите номер второго участка'
-  if (form.value.firstCadastralValue <= 0) errors.value.firstCadastralValue = 'Укажите стоимость'
-  if (form.value.secondCadastralValue <= 0) errors.value.secondCadastralValue = 'Укажите стоимость'
+  const firstNumber = form.value.firstCadastralNumber.trim()
+  const secondNumber = form.value.newCadastralNumber.trim()
+  if (!firstNumber) errors.value.firstCadastralNumber = 'Укажите кадастровый номер'
+  if (!secondNumber) errors.value.newCadastralNumber = 'Укажите кадастровый номер'
+  if (firstNumber && secondNumber && firstNumber === secondNumber) {
+    errors.value.newCadastralNumber = 'Номера должны отличаться'
+  }
+
+  const others = store
+    .getCadastralParcelsForProperty(sourceParcel.value.propertyId)
+    .filter((p) => p.id !== sourceParcel.value!.id)
+    .map((p) => p.cadastralNumber.trim())
+  if (firstNumber && others.includes(firstNumber)) {
+    errors.value.firstCadastralNumber = 'Такой номер уже есть у объекта'
+  }
+  if (secondNumber && others.includes(secondNumber)) {
+    errors.value.newCadastralNumber = 'Такой номер уже есть у объекта'
+  }
+
+  if (!form.value.firstCadastralValue || form.value.firstCadastralValue <= 0) {
+    errors.value.firstCadastralValue = 'Укажите новую кадастровую стоимость'
+  }
+  if (!form.value.secondCadastralValue || form.value.secondCadastralValue <= 0) {
+    errors.value.secondCadastralValue = 'Укажите новую кадастровую стоимость'
+  }
 
   return Object.keys(errors.value).length === 0
 }
@@ -83,34 +104,30 @@ function onClose() {
       <div class="rounded-xl border border-emerald-brand/30 bg-emerald-brand/5 px-4 py-3 text-sm text-slate-300">
         <p class="font-medium text-white mb-1">{{ property.address }}</p>
         <p>
-          Номер <span class="font-mono">{{ sourceParcel.cadastralNumber }}</span>
-          сейчас <span class="font-mono text-emerald-brand">{{ store.formatArea(sourceParcel.area) }}</span>
+          Исходный номер <span class="font-mono">{{ sourceParcel.cadastralNumber }}</span>
+          · площадь <span class="font-mono text-emerald-brand">{{ store.formatArea(sourceParcel.area) }}</span>
           ({{ spacesOnParcel }} пом.).
-          Укажите кадастровые стоимости для двух номеров — площадь каждого считается по привязанным помещениям.
+          Укажите два разных кадастровых номера и новую стоимость каждого. Площадь считается по привязанным помещениям.
         </p>
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
         <section class="rounded-xl border border-border bg-panel/30 p-4 space-y-3">
-          <h3 class="text-sm font-semibold text-white">1. Первый номер (остаётся)</h3>
+          <h3 class="text-sm font-semibold text-white">1. Первый кадастр</h3>
+          <p class="text-xs text-slate-500">Помещения пока остаются здесь</p>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Кадастровый номер</label>
             <input
               v-model="form.firstCadastralNumber"
               type="text"
-              placeholder="77:01:0004012:1680"
+              placeholder="77:01:0004012:1670"
               :class="[inputClass, 'font-mono', { 'border-red-500': errors.firstCadastralNumber }]"
             />
             <p v-if="errors.firstCadastralNumber" class="text-xs text-red-400 mt-1">{{ errors.firstCadastralNumber }}</p>
           </div>
-
-          <p class="text-xs text-slate-500">
-            Площадь: {{ store.formatArea(sourceParcel.area) }} · помещения остаются здесь
-          </p>
-
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Кадастровая стоимость, ₽</label>
+            <label class="block text-xs text-slate-500 mb-1">Новая кадастровая стоимость, ₽</label>
             <input
               v-model.number="form.firstCadastralValue"
               type="number"
@@ -126,7 +143,10 @@ function onClose() {
         </section>
 
         <section class="rounded-xl border border-border bg-panel/30 p-4 space-y-3">
-          <h3 class="text-sm font-semibold text-white">2. Второй номер (новый)</h3>
+          <h3 class="text-sm font-semibold text-white">2. Второй кадастр</h3>
+          <p class="text-xs text-slate-500">
+            После разделения перетащите сюда нужные помещения — площадь пересчитается автоматически.
+          </p>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Кадастровый номер</label>
@@ -138,11 +158,8 @@ function onClose() {
             />
             <p v-if="errors.newCadastralNumber" class="text-xs text-red-400 mt-1">{{ errors.newCadastralNumber }}</p>
           </div>
-          <p class="text-xs text-slate-500">
-            После разделения перетащите нужные помещения во второй номер — его площадь пересчитается автоматически.
-          </p>
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Кадастровая стоимость, ₽</label>
+            <label class="block text-xs text-slate-500 mb-1">Новая кадастровая стоимость, ₽</label>
             <input
               v-model.number="form.secondCadastralValue"
               type="number"

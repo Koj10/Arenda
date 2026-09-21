@@ -1,42 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import {
-  Building2,
-  ChevronRight,
-  Download,
-  MapPin,
-  Plus,
-  Landmark,
-  Trash2,
-  FileText,
-  FileDown,
-  CalendarDays,
-  Tag,
-  TrendingDown,
-  TrendingUp,
-  Upload,
-} from '@lucide/vue'
+import { Building2, ChevronRight, Download, MapPin, Plus, Landmark, Trash2 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
-import AddPropertyBillModal from '@/components/bills/AddPropertyBillModal.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { PROPERTY_TYPE_LABELS, PROPERTY_DOCUMENT_LABELS, formatAreaShare } from '@/types/portfolio'
 import { usePlan } from '@/composables/usePlan'
 import { downloadDocumentsArchive } from '@/composables/useDocuments'
-import { useUtilityBillsStore } from '@/stores/utilityBillsStore'
-import {
-  UTILITY_CRITERION_LABELS,
-  UPLOAD_CRITERIA,
-  type UtilityCriterion,
-  type PropertyBill,
-} from '@/types/utilityBills'
-import { dataUrlToBlob } from '@/api/auth'
 
-type PropertyTab = 'spaces' | 'documents' | 'bills'
+type PropertyTab = 'spaces' | 'documents'
 
 const store = usePortfolioStore()
-const utilityBills = useUtilityBillsStore()
 const { canAddSpace, requireCanAddSpace } = usePlan()
 
 const activeTab = ref<PropertyTab>('spaces')
@@ -46,10 +21,6 @@ const deletingSpaceId = ref<number | null>(null)
 const spaceDeleteError = ref<string | null>(null)
 const deletingProperty = ref(false)
 const propertyDeleteError = ref<string | null>(null)
-
-const billsFilterCriterion = ref<UtilityCriterion | 'all'>('all')
-const billsFilterPeriod = ref<string>('')
-const loadingBills = ref(false)
 
 const property = computed(() =>
   store.propertyDetailId ? store.getPropertyById(store.propertyDetailId) : null,
@@ -79,58 +50,16 @@ const totalCadastralValue = computed(() =>
   property.value ? store.getTotalCadastralValueForProperty(property.value.id) : 0,
 )
 
-const allBills = computed(() =>
-  property.value ? utilityBills.getBillsForProperty(property.value.id) : [],
-)
-
-const filteredBills = computed(() => {
-  let list = [...allBills.value]
-  if (billsFilterCriterion.value !== 'all') {
-    list = list.filter((b) =>
-      b.lines?.some((l) => l.criterion === billsFilterCriterion.value),
-    )
-  }
-  if (billsFilterPeriod.value) {
-    list = list.filter((b) => b.period === billsFilterPeriod.value)
-  }
-  return list.sort((a, b) => (a.period < b.period ? 1 : -1))
-})
-
-const availablePeriods = computed(() => {
-  const set = new Set<string>()
-  for (const b of allBills.value) if (b.period) set.add(b.period)
-  return [...set].sort().reverse()
-})
-
 const TABS: { id: PropertyTab; label: string }[] = [
   { id: 'spaces', label: 'Помещения' },
-  { id: 'bills', label: 'Счета' },
   { id: 'documents', label: 'Документы' },
 ]
-
-watch(
-  () => store.propertyDetailOpen,
-  async (open) => {
-    if (!open) return
-    if (property.value) {
-      loadingBills.value = true
-      try {
-        await utilityBills.loadForProperty(property.value.id)
-      } finally {
-        loadingBills.value = false
-      }
-    }
-  },
-  { immediate: true },
-)
 
 function onClose() {
   activeTab.value = 'spaces'
   downloadError.value = null
   spaceDeleteError.value = null
   propertyDeleteError.value = null
-  billsFilterCriterion.value = 'all'
-  billsFilterPeriod.value = ''
   store.closePropertyDetail()
 }
 
@@ -172,11 +101,6 @@ function onAddSpace() {
   store.openSpaceModal(property.value.id)
 }
 
-function onAddBill() {
-  if (!property.value) return
-  utilityBills.openAddBillModal(property.value.id)
-}
-
 async function onDownloadAllDocuments() {
   if (!property.value || !propertyDocuments.value.length || downloadingAll.value) return
   downloadingAll.value = true
@@ -194,27 +118,6 @@ async function onDownloadAllDocuments() {
   }
 }
 
-function downloadBillFile(bill: PropertyBill) {
-  const doc = bill.document
-  if (!doc?.dataUrl) return
-  const blob = dataUrlToBlob(doc.dataUrl, doc.mimeType)
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = doc.name || `счёт-${bill.period}.${doc.mimeType.split('/')[1] || 'bin'}`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function billCriteriaBadges(bill: PropertyBill) {
-  if (bill.lines?.length) return bill.lines.map((l) => l.criterion)
-  return []
-}
-
-function formatPeriodLabel(period: string) {
-  return utilityBills.formatPeriod(period)
-}
-
 function areaShareLabel(spaceArea: number) {
   if (!property.value) return ''
   return formatAreaShare(spaceArea, property.value.totalArea)
@@ -224,12 +127,6 @@ function occupancyClass(occupied: boolean) {
   return occupied
     ? 'text-emerald-brand bg-emerald-brand/10'
     : 'text-slate-400 bg-panel'
-}
-
-function lossClass(value: number) {
-  if (Math.abs(value) < 0.01) return 'text-slate-500'
-  if (value > 0) return 'text-rose-500'
-  return 'text-emerald-500'
 }
 </script>
 
@@ -294,7 +191,6 @@ function lossClass(value: number) {
           {{ tab.label }}
           <span v-if="tab.id === 'spaces'" class="text-slate-600 font-normal">({{ spaces.length }})</span>
           <span v-if="tab.id === 'documents'" class="text-slate-600 font-normal">({{ propertyDocuments.length }})</span>
-          <span v-if="tab.id === 'bills'" class="text-slate-600 font-normal">({{ allBills.length }})</span>
         </button>
       </nav>
 
@@ -375,139 +271,6 @@ function lossClass(value: number) {
         </div>
       </div>
 
-      <!-- Счета -->
-      <div v-else-if="activeTab === 'bills'" class="space-y-4">
-        <div class="flex flex-wrap items-stretch gap-3 justify-between">
-          <div class="flex flex-wrap items-stretch gap-2 flex-1 min-w-0">
-            <div class="flex items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2 min-w-[12rem]">
-              <Tag class="w-3.5 h-3.5 text-slate-500 shrink-0" />
-              <select
-                v-model="billsFilterCriterion"
-                class="bg-transparent outline-none text-sm text-white w-full"
-              >
-                <option value="all">Все показатели</option>
-                <option v-for="c in UPLOAD_CRITERIA" :key="c" :value="c">
-                  {{ UTILITY_CRITERION_LABELS[c] }}
-                </option>
-              </select>
-            </div>
-
-            <div class="flex items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2 min-w-[11rem]">
-              <CalendarDays class="w-3.5 h-3.5 text-slate-500 shrink-0" />
-              <select
-                v-model="billsFilterPeriod"
-                class="bg-transparent outline-none text-sm text-white w-full"
-              >
-                <option value="">За все месяцы</option>
-                <option v-for="p in availablePeriods" :key="p" :value="p">
-                  {{ formatPeriodLabel(p) }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            class="panel-btn-primary !py-2 text-xs shrink-0"
-            @click="onAddBill"
-          >
-            <Upload class="w-3.5 h-3.5" />
-            Добавить счёт
-          </button>
-        </div>
-
-        <div v-if="loadingBills" class="text-sm text-slate-500 text-center py-6">
-          Загрузка счетов…
-        </div>
-
-        <div v-else-if="filteredBills.length === 0" class="text-sm text-slate-500 text-center py-10 rounded-xl border border-dashed border-border">
-          <FileText class="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-70" />
-          <p>Счётов по этим фильтрам пока нет</p>
-          <button
-            type="button"
-            class="inline-flex items-center gap-1.5 mt-3 text-xs text-emerald-brand hover:underline"
-            @click="onAddBill"
-          >
-            <Plus class="w-3.5 h-3.5" />
-            Добавить первый счёт
-          </button>
-        </div>
-
-        <div v-else class="space-y-2">
-          <div
-            v-for="bill in filteredBills"
-            :key="bill.id"
-            class="rounded-xl border border-border bg-panel/40 p-3 sm:p-4 hover:bg-card-hover/60 transition-colors"
-          >
-            <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-brand/10 text-emerald-brand text-[11px] font-mono">
-                    <CalendarDays class="w-3 h-3" />
-                    {{ formatPeriodLabel(bill.period) }}
-                  </span>
-                  <span
-                    v-for="c in billCriteriaBadges(bill).slice(0, 4)"
-                    :key="c"
-                    class="px-2 py-0.5 rounded-md bg-card border border-border text-[11px] text-slate-300"
-                  >
-                    {{ UTILITY_CRITERION_LABELS[c] || c }}
-                  </span>
-                  <span
-                    v-if="billCriteriaBadges(bill).length > 4"
-                    class="px-2 py-0.5 rounded-md bg-card border border-border text-[11px] text-slate-500"
-                  >
-                    +{{ billCriteriaBadges(bill).length - 4 }}
-                  </span>
-                </div>
-                <p class="text-sm text-white font-medium truncate">{{ bill.title || 'Коммунальный счёт' }}</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-sm font-mono text-white font-semibold">
-                  {{ utilityBills.formatMoney(bill.totalAmount) }}
-                </p>
-                <p
-                  class="text-[11px] font-mono inline-flex items-center gap-1 mt-1"
-                  :class="lossClass(bill.landlordLoss)"
-                >
-                  <TrendingDown v-if="bill.landlordLoss > 0.01" class="w-3 h-3" />
-                  <TrendingUp v-else-if="bill.landlordLoss < -0.01" class="w-3 h-3" />
-                  <span v-else class="w-3 h-3" />
-                  {{
-                    Math.abs(bill.landlordLoss) < 0.01
-                      ? 'Сверка ОК'
-                      : bill.landlordLoss > 0
-                        ? `Убыток ${utilityBills.formatMoney(bill.landlordLoss)}`
-                        : `Прибыль ${utilityBills.formatMoney(-bill.landlordLoss)}`
-                  }}
-                </p>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-mono">
-              <span>Создан: {{ utilityBills.formatDate(bill.issuedAt) }}</span>
-              <span v-if="bill.dueDate">Оплатить до: {{ utilityBills.formatDate(bill.dueDate) }}</span>
-              <span v-if="bill.status" class="uppercase tracking-wide text-slate-600">{{ bill.status }}</span>
-            </div>
-
-            <div v-if="bill.document?.dataUrl" class="mt-3 flex items-center justify-between gap-2 pt-3 border-t border-border/60">
-              <span class="inline-flex items-center gap-1.5 text-[11px] text-slate-400 truncate min-w-0">
-                <FileText class="w-3.5 h-3.5 shrink-0 text-emerald-brand/70" />
-                <span class="truncate">{{ bill.document.name || 'Файл счёта' }}</span>
-              </span>
-              <button
-                type="button"
-                class="inline-flex items-center gap-1 panel-btn-secondary !py-1.5 !px-2.5 text-[11px] shrink-0"
-                @click="downloadBillFile(bill)"
-              >
-                <FileDown class="w-3 h-3" />
-                Скачать
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Документы -->
       <div v-else class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -559,6 +322,4 @@ function lossClass(value: number) {
       </button>
     </template>
   </Modal>
-
-  <AddPropertyBillModal />
 </template>

@@ -54,7 +54,6 @@ const infoForm = ref<SpaceUpdateData>({
 const dealForm = ref<TenantUpdateData>({
   company: '',
   inn: '',
-  email: '',
   rent: 0,
   contract: '',
 })
@@ -219,7 +218,6 @@ function fillDealForm() {
   dealForm.value = {
     company: tenant.value.company,
     inn: tenant.value.inn,
-    email: tenant.value.email ?? '',
     rent: tenant.value.rent,
     contract: tenant.value.contract,
   }
@@ -280,8 +278,6 @@ function validateDeal() {
   dealErrors.value = {}
   if (!dealForm.value.company.trim()) dealErrors.value.company = 'Укажите название'
   if (!/^\d{10}$|^\d{12}$/.test(dealForm.value.inn)) dealErrors.value.inn = 'ИНН: 10 или 12 цифр'
-  const email = dealForm.value.email?.trim() ?? ''
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) dealErrors.value.email = 'Введите корректный e-mail'
   if (dealForm.value.rent <= 0) dealErrors.value.rent = 'Укажите сумму аренды'
   if (!dealForm.value.contract) dealErrors.value.contract = 'Укажите дату окончания'
   return Object.keys(dealErrors.value).length === 0

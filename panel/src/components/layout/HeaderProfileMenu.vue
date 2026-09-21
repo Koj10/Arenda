@@ -41,7 +41,7 @@ function logout() {
       :aria-expanded="open"
       @click="open = !open"
     >
-      <span class="w-9 h-9 rounded-full user-avatar text-sm font-bold flex items-center justify-center shrink-0">
+      <span class="w-9 h-9 rounded-full bg-emerald-brand/20 text-emerald-brand text-sm font-bold flex items-center justify-center shrink-0">
         {{ initial }}
       </span>
       <span class="hidden lg:block text-left min-w-0">
@@ -65,12 +65,7 @@ function logout() {
           <span
             v-if="!auth.isTenant"
             class="text-[10px] px-2 py-0.5 rounded-md border inline-flex items-center gap-1"
-            :style="isPaid ? {
-              borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)',
-              color: 'var(--accent)',
-              backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)',
-            } : {}"
-            :class="!isPaid ? 'border-border text-slate-400 bg-panel' : ''"
+            :class="isPaid ? 'border-emerald-brand/30 text-emerald-brand bg-emerald-brand/10' : 'border-border text-slate-400 bg-panel'"
           >
             <Sparkles class="w-3 h-3" />
             {{ plan.name }}

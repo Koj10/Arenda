@@ -458,8 +458,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               rent: 0,
               contract: '',
               status: 'active',
-              email: detail.email ?? null,
-              registered: Boolean(detail.registered),
             })
             continue
           }
@@ -475,8 +473,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               contract: lease.end_date,
               status: getTenantStatus(lease.end_date),
               leaseId: lease.id,
-              email: detail.email ?? null,
-              registered: Boolean(detail.registered),
             })
           }
         }
@@ -621,13 +617,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     lastError.value = null
     try {
       const inn = data.inn.trim()
-      const email = data.email.trim() || null
       let tenant
       try {
         tenant = await landlordApi.createTenant({
           name: data.company.trim(),
           inn,
-          email,
         })
       } catch (err) {
         if (!(err instanceof ApiError) || err.status !== 409) throw err
@@ -635,14 +629,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         const existingTenant = list.find((row) => row.inn === inn)
         if (!existingTenant) throw err
         tenant = existingTenant
-        if (email) {
-          try {
-            const patched = await landlordApi.updateTenant(tenant.id, { email })
-            if (patched?.email) tenant.email = patched.email
-          } catch {
-            /* не критично */
-          }
-        }
       }
 
       const fileIds = await uploadPending(data.documents, 'contract')
@@ -826,22 +812,24 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   async function splitCadastralParcel(parcelId: number, data: SplitCadastralFormData) {
     const original = getCadastralParcelById(parcelId)
     if (!original) return false
-    if (!data.firstCadastralNumber.trim()) return false
-    if (!data.newCadastralNumber.trim()) return false
+    const firstNumber = data.firstCadastralNumber.trim()
+    const secondNumber = data.newCadastralNumber.trim()
+    if (!firstNumber || !secondNumber) return false
+    if (firstNumber === secondNumber) return false
     if (data.firstCadastralValue <= 0 || data.secondCadastralValue <= 0) return false
     lastError.value = null
     try {
       await landlordApi.updateCadastre(parcelId, {
-        number: data.firstCadastralNumber.trim(),
+        number: firstNumber,
         cadastral_value: data.firstCadastralValue,
         purchase_price: data.firstPurchasePrice,
       })
       const created = await landlordApi.createCadastre(original.propertyId, {
-        number: data.newCadastralNumber.trim(),
+        number: secondNumber,
         cadastral_value: data.secondCadastralValue,
         purchase_price: data.secondPurchasePrice,
       })
-      original.cadastralNumber = data.firstCadastralNumber.trim()
+      original.cadastralNumber = firstNumber
       original.cadastralValue = data.firstCadastralValue
       original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
         ? data.firstPurchasePrice
@@ -868,11 +856,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (!tenant) return false
     lastError.value = null
     try {
-      const email = data.email?.trim() || null
-      const patched = await landlordApi.updateTenant(tenant.id, {
+      await landlordApi.updateTenant(tenant.id, {
         name: data.company.trim(),
         inn: data.inn.trim(),
-        email,
       })
       if (tenant.leaseId) {
         await landlordApi.updateLease(tenant.leaseId, {
@@ -882,8 +868,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       }
       tenant.company = data.company.trim()
       tenant.inn = data.inn.trim()
-      tenant.email = patched?.email ?? email ?? tenant.email
-      tenant.registered = patched?.registered ?? tenant.registered
       tenant.rent = data.rent
       tenant.contract = data.contract
       tenant.status = getTenantStatus(data.contract)

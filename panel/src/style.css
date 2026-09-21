@@ -1,309 +1,27 @@
 @import 'tailwindcss';
-
-/* ============================================================
-   THEME CSS VARIABLES — переопределяются для каждой темы
-   ============================================================ */
-
-:root {
-  /* Цвета фона */
-  --navy: #101214;
-  --graphite: #141618;
-  --panel: #0a0c0e;
-  --card: #1a1d21;
-  --card-hover: #22262c;
-  --surface: #1a1d21;
-  --slate-warm: #101214;
-  --slate-deep: #101214;
-
-  /* Границы */
-  --border: #2a2f36;
-  --border-subtle: #22262c;
-
-  /* Акцент */
-  --accent: #2dd4bf;
-  --accent-dark: #14b8a6;
-
-  /* Текст */
-  --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-muted-2: #475569;
-  --text-secondary-2: #cbd5e1;
-
-  /* Графики */
-  --chart-income: var(--accent);
-  --chart-expense: #ef4444;
-  --chart-net: #fb923c;
-  --chart-grid: var(--border);
-
-  /* Логотип */
-  --logo-color: var(--accent);
-  --logo-text: var(--text-primary);
-
-  /* Тарифная карточка */
-  --plan-bg: linear-gradient(135deg, var(--card) 0%, var(--panel) 100%);
-  --plan-border: var(--accent);
-  --plan-btn-text: #000000;
-}
-
-/* ========== ТЕМА 1: Базовая светлая ========== */
-[data-theme="default-light"] {
-  --navy: #F4F6F7;
-  --graphite: #E2E8EC;
-  --panel: #EEF2F5;
-  --card: #FFFFFF;
-  --card-hover: #F7FAFC;
-  --surface: #FFFFFF;
-  --slate-warm: #EEF2F5;
-  --slate-deep: #D9E2EC;
-
-  --border: #D9E2EC;
-  --border-subtle: #EEF2F5;
-
-  --accent: #0d9488;
-  --accent-dark: #0F766E;
-
-  --text-primary: #0B1220;
-  --text-secondary: #54687A;
-  --text-muted: #8FA0B0;
-  --text-muted-2: #6B7F91;
-  --text-secondary-2: #2C3A4B;
-
-  --chart-income: var(--accent);
-  --chart-expense: #DC2626;
-  --chart-net: #F97316;
-
-  --logo-color: var(--accent);
-  --logo-text: var(--text-primary);
-
-  --plan-bg: linear-gradient(135deg, #0F766E 0%, #134E4A 100%);
-  --plan-border: var(--accent);
-  --plan-btn-text: #FFFFFF;
-}
-
-/* ========== ТЕМА 2: Красная светлая ========== */
-[data-theme="red-light"] {
-  --navy: #FAF7F7;
-  --graphite: #F1ECEC;
-  --panel: #F5F0F0;
-  --card: #FFFFFF;
-  --card-hover: #FBF7F7;
-  --surface: #FFFFFF;
-  --slate-warm: #F5F0F0;
-  --slate-deep: #E6DCDC;
-
-  --border: #E6DCDC;
-  --border-subtle: #F5F0F0;
-
-  --accent: #991B1B;
-  --accent-dark: #7F1D1D;
-
-  --text-primary: #1F0A0A;
-  --text-secondary: #6B5555;
-  --text-muted: #9E8A8A;
-  --text-muted-2: #7F6666;
-  --text-secondary-2: #3E2222;
-
-  --chart-income: var(--accent);
-  --chart-expense: #DC2626;
-  --chart-net: #F97316;
-
-  --logo-color: var(--accent);
-  --logo-text: var(--accent);
-
-  --plan-bg: linear-gradient(135deg, #991B1B 0%, #7F1D1D 100%);
-  --plan-border: var(--accent);
-  --plan-btn-text: #FFFFFF;
-}
-
-/* ========== ТЕМА 3: Красная тёмная ========== */
-[data-theme="red-dark"] {
-  --navy: #0F0F0F;
-  --graphite: #131313;
-  --panel: #161616;
-  --card: #1C1C1C;
-  --card-hover: #252525;
-  --surface: #1A1A1A;
-  --slate-warm: #131313;
-  --slate-deep: #0A0A0A;
-
-  --border: #2D2D2D;
-  --border-subtle: #222222;
-
-  --accent: #DC2626;
-  --accent-dark: #B91C1C;
-
-  --text-primary: #FFFFFF;
-  --text-secondary: #9CA3AF;
-  --text-muted: #6B7280;
-  --text-muted-2: #525252;
-  --text-secondary-2: #D1D5DB;
-
-  --chart-income: var(--accent);
-  --chart-expense: #F87171;
-  --chart-net: #FB923C;
-
-  --logo-color: var(--accent);
-  --logo-text: #FFFFFF;
-
-  --plan-bg: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
-  --plan-border: var(--accent);
-  --plan-btn-text: #FFFFFF;
-}
-
-/* ========== ТЕМА 4: Золотая светлая ========== */
-[data-theme="gold-light"] {
-  --navy: #FAF8F1;
-  --graphite: #F1ECDA;
-  --panel: #F6F1E1;
-  --card: #FFFFFF;
-  --card-hover: #FBF9F2;
-  --surface: #FFFFFF;
-  --slate-warm: #F6F1E1;
-  --slate-deep: #E6DBB8;
-
-  --border: #E6DBB8;
-  --border-subtle: #F6F1E1;
-
-  --accent: #A16207;
-  --accent-dark: #854D0E;
-
-  --text-primary: #1C1206;
-  --text-secondary: #6B5A3A;
-  --text-muted: #9E8F6A;
-  --text-muted-2: #7F6F4D;
-  --text-secondary-2: #3E2F12;
-
-  --chart-income: var(--accent);
-  --chart-expense: #DC2626;
-  --chart-net: #F97316;
-
-  --logo-color: var(--accent);
-  --logo-text: var(--accent);
-
-  --plan-bg: linear-gradient(135deg, #A16207 0%, #713F12 100%);
-  --plan-border: var(--accent);
-  --plan-btn-text: #FFFFFF;
-}
-
-/* ========== ТЕМА 5: Золотая тёмная ========== */
-[data-theme="gold-dark"] {
-  --navy: #0D0D0D;
-  --graphite: #111111;
-  --panel: #141414;
-  --card: #1A1A1A;
-  --card-hover: #222222;
-  --surface: #171717;
-  --slate-warm: #111111;
-  --slate-deep: #080808;
-
-  --border: #262626;
-  --border-subtle: #1F1F1F;
-
-  --accent: #FACC15;
-  --accent-dark: #EAB308;
-
-  --text-primary: #FFFFFF;
-  --text-secondary: #A3A3A3;
-  --text-muted: #737373;
-  --text-muted-2: #525252;
-  --text-secondary-2: #D4D4D4;
-
-  --chart-income: var(--accent);
-  --chart-expense: #F87171;
-  --chart-net: #FB923C;
-
-  --logo-color: var(--accent);
-  --logo-text: #FFFFFF;
-
-  --plan-bg: linear-gradient(135deg, #713F12 0%, #422006 100%);
-  --plan-border: var(--accent);
-  --plan-btn-text: #000000;
-}
-
-/* ========== ТЕМА 6: Синяя светлая ========== */
-[data-theme="blue-light"] {
-  --navy: #F5F8FC;
-  --graphite: #E0E9F2;
-  --panel: #EEF4FB;
-  --card: #FFFFFF;
-  --card-hover: #F7FAFD;
-  --surface: #FFFFFF;
-  --slate-warm: #EEF4FB;
-  --slate-deep: #D2DCE8;
-
-  --border: #D2DCE8;
-  --border-subtle: #EEF4FB;
-
-  --accent: #1D4ED8;
-  --accent-dark: #1E40AF;
-
-  --text-primary: #0A1128;
-  --text-secondary: #546587;
-  --text-muted: #8E9CB6;
-  --text-muted-2: #6B7C9A;
-  --text-secondary-2: #2B3A5C;
-
-  --chart-income: var(--accent);
-  --chart-expense: #DC2626;
-  --chart-net: #F97316;
-
-  --logo-color: var(--accent);
-  --logo-text: var(--accent);
-
-  --plan-bg: linear-gradient(135deg, #1E40AF 0%, #172554 100%);
-  --plan-border: var(--accent);
-  --plan-btn-text: #FFFFFF;
-}
-
-/* ============================================================
-   TAILWIND THEME — все цвета ссылаются на CSS-переменные выше
-   ============================================================ */
+@import './themes.css';
 
 @theme {
-  --color-navy: var(--navy);
-  --color-graphite: var(--graphite);
-  --color-panel: var(--panel);
-  --color-card: var(--card);
-  --color-card-hover: var(--card-hover);
-  --color-border: var(--border);
-  --color-border-subtle: var(--border-subtle);
-  --color-surface: var(--surface);
-  --color-slate-warm: var(--slate-warm);
-  --color-slate-deep: var(--slate-deep);
-
-  --color-bronze: var(--accent);
-  --color-bronze-dark: var(--accent-dark);
-  --color-emerald-brand: var(--accent);
-  --color-accent-green: var(--accent);
-  --color-accent-amber: var(--accent);
-  --color-accent-teal: var(--accent);
-
-  --color-chart-income: var(--chart-income);
-  --color-chart-expense: var(--chart-expense);
-  --color-chart-net: var(--chart-net);
-  --color-chart-grid: var(--chart-grid);
-
-  --color-logo: var(--logo-color);
-  --color-logo-text: var(--logo-text);
-
-  /* Семантические цвета текста — подстроены под светлые/тёмные темы */
-  --color-white: var(--text-primary);
-  --color-slate-50: var(--text-primary);
-  --color-slate-100: var(--text-secondary-2);
-  --color-slate-200: var(--text-secondary-2);
-  --color-slate-300: var(--text-secondary-2);
-  --color-slate-400: var(--text-secondary);
-  --color-slate-500: var(--text-muted);
-  --color-slate-600: var(--text-muted-2);
-
+  /* Match landing palette */
+  --color-navy: #101214;
+  --color-graphite: #141618;
+  --color-panel: #0a0c0e;
+  --color-card: #1a1d21;
+  --color-card-hover: #22262c;
+  --color-border: #2a2f36;
+  --color-border-subtle: #22262c;
+  --color-surface: #1a1d21;
+  --color-slate-warm: #101214;
+  --color-bronze: #2dd4bf;
+  --color-bronze-dark: #14b8a6;
+  --color-emerald-brand: #2dd4bf;
+  --color-accent-green: #2dd4bf;
+  --color-accent-amber: #2dd4bf;
+  --color-accent-teal: #2dd4bf;
+  --color-slate-deep: #101214;
   --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
 }
-
-/* ============================================================
-   BASE STYLES
-   ============================================================ */
 
 @layer base {
   body {
@@ -311,10 +29,6 @@
     @apply antialiased bg-navy text-white;
   }
 }
-
-/* ============================================================
-   COMPONENTS
-   ============================================================ */
 
 @layer components {
   .panel-page-title {
@@ -328,24 +42,26 @@
 
   .panel-page {
     @apply w-full mx-auto;
-    max-width: min(100%, 96rem);
+    max-width: min(100%, 96rem); /* ~1536px, растёт на больших мониторах */
   }
 
   .panel-page-wide {
     @apply w-full mx-auto;
-    max-width: min(100%, 112rem);
+    max-width: min(100%, 112rem); /* ~1792px */
   }
 
   .panel-page-narrow {
     @apply w-full mx-auto;
-    max-width: min(100%, 42rem);
+    max-width: min(100%, 42rem); /* settings / help */
   }
 
+  /* Контентная колонка с ровными полями на всех брейкпоинтах */
   .panel-main-inner {
     @apply w-full mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4 sm:py-6 lg:py-8;
-    max-width: 120rem;
+    max-width: 120rem; /* 1920px — потолок всей рабочей области */
   }
 
+  /* Хедер: три равные зоны — поиск визуально по центру (YouTube) */
   .panel-header-bar {
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   }
@@ -369,12 +85,11 @@
   }
 
   .panel-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-brand text-sm font-semibold hover:bg-bronze-dark transition-all whitespace-nowrap;
-    color: var(--plan-btn-text);
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-all whitespace-nowrap;
   }
 
   .panel-btn-primary:hover {
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 25%, transparent);
+    box-shadow: 0 8px 24px rgba(45, 212, 191, 0.25);
   }
 
   .panel-btn-secondary {
@@ -389,6 +104,7 @@
     @apply border-b border-border-subtle hover:bg-card-hover/60 transition-colors;
   }
 
+  /* Горизонтальный скролл таблиц на узких экранах */
   .panel-table-wrap {
     @apply w-full overflow-x-auto overscroll-x-contain -mx-0;
   }
@@ -397,6 +113,7 @@
     @apply min-w-[36rem] w-full;
   }
 
+  /* Тулбар: поиск + CTA */
   .panel-toolbar {
     @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6;
   }
@@ -414,6 +131,7 @@
     @apply w-full sm:w-auto;
   }
 
+  /* Вкладки с горизонтальным скроллом */
   .panel-tabs {
     @apply flex items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 -mx-1 px-1;
     scrollbar-width: none;
@@ -435,18 +153,13 @@
     @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6;
   }
 
+  /* Пункты сайдбара — одинаковая высота с/без active (border всегда) */
   .panel-nav-item {
     @apply w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border border-transparent text-slate-400 hover:text-white hover:bg-card transition-colors text-left;
   }
 
   .panel-nav-item-active {
-    @apply bg-emerald-brand/10 border-emerald-brand/20 hover:bg-emerald-brand/10;
-    color: var(--accent);
-  }
-
-  .panel-nav-item-active svg,
-  .panel-nav-item-active:hover {
-    color: var(--accent);
+    @apply text-emerald-brand bg-emerald-brand/10 border-emerald-brand/20 hover:text-emerald-brand hover:bg-emerald-brand/10;
   }
 
   .panel-search {
@@ -465,38 +178,10 @@
     @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors;
   }
 
+  /* Выпадашки хедера на мобиле не обрезаются краем экрана */
   .panel-popover {
     @apply absolute z-50 mt-2 rounded-xl border border-border bg-card shadow-2xl overflow-hidden;
     right: 0;
     width: min(22rem, calc(100vw - 1.5rem));
-  }
-
-  /* Карточка тарифа в сайдбаре */
-  .plan-card {
-    background: var(--plan-bg);
-    border-color: color-mix(in srgb, var(--plan-border) 35%, transparent);
-  }
-
-  .plan-card .plan-name-text {
-    color: #FFFFFF;
-  }
-
-  .plan-card .plan-desc {
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  /* Акцентная иконка пользователя */
-  .user-avatar {
-    background-color: color-mix(in srgb, var(--accent) 20%, transparent);
-    color: var(--accent);
-  }
-
-  /* Accent текст / Plan Sparkles */
-  .accent-text {
-    color: var(--accent);
-  }
-
-  .accent-bg {
-    background-color: var(--accent);
   }
 }

@@ -1,7 +1,6 @@
 name: PropCount
 
-# Сайт в Docker на :3005. :3001 на сервере занят API (uvicorn).
-# Снаружи HTTPS — хостовый nginx (deploy/host-nginx-proxy.conf).
+# Сайт в Docker. API — отдельный проект на https://api.propcount.ru
 services:
   app:
     image: ghcr.io/koj10/arenda:${TAG:-latest}

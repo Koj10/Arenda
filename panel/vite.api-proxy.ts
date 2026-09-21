@@ -1,8 +1,8 @@
 import type { ProxyOptions } from 'vite'
 
-/** Рабочее API. Браузер ходит на /__api/*, Vite/nginx пересылают сюда. */
+/** Рабочее API. Браузер ходит на /__api/*, Vite пересылает сюда. */
 export const LIVE_API =
-  process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000'
+  process.env.VITE_API_PROXY_TARGET || 'https://api.propcount.ru'
 
 const proxy: ProxyOptions = {
   target: LIVE_API,

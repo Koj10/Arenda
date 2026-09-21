@@ -28,8 +28,10 @@ const themeHex = computed(() => {
     case 'default-light': return '#0d9488'
     case 'red-light':     return '#7F1D1D'
     case 'red-dark':      return '#DC2626'
+    case 'gold-light':    return '#A16207'
     case 'gold-dark':     return '#FACC15'
     case 'blue-light':    return '#1E40AF'
+    case 'blue-dark':     return '#3B82F6'
     default:              return '#2dd4bf'
   }
 })

@@ -97,7 +97,7 @@ export async function getTenant(tenantId: number) {
   return apiRequest<TenantDetailOut>(`/landlord/tenants/${tenantId}`)
 }
 
-export async function createTenant(body: { name: string; inn: string; email?: string | null }) {
+export async function createTenant(body: { name: string; inn: string }) {
   return apiRequest<TenantOut>('/landlord/tenants', { method: 'POST', body })
 }
 
@@ -127,7 +127,7 @@ export async function terminateLease(leaseId: number) {
   return apiRequest(`/landlord/leases/${leaseId}/terminate`, { method: 'POST' })
 }
 
-export async function updateTenant(tenantId: number, body: { name?: string; inn?: string; email?: string | null }) {
+export async function updateTenant(tenantId: number, body: { name?: string; inn?: string }) {
   return apiRequest<TenantOut>(`/landlord/tenants/${tenantId}`, { method: 'PATCH', body })
 }
 

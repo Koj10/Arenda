@@ -67,12 +67,7 @@ export interface Tenant {
   contract: string
   status: TenantStatus
   leaseId?: number
-  email?: string | null
-  registered?: boolean
 }
-
-/** Указывает, приглашён ли арендатор и зарегистрировался ли он в системе */
-export type TenantInviteStatus = 'invited' | 'registered' | 'not_invited'
 
 export interface AttachedDocument {
   id: number
@@ -223,21 +218,20 @@ export interface SplitCadastralFormData {
   secondPurchasePrice?: number
 }
 
-export function createSplitCadastralFormData(source: CadastralParcel): SplitCadastralFormData {
+export function createSplitCadastralFormData(_source: CadastralParcel): SplitCadastralFormData {
   return {
-    firstCadastralNumber: source.cadastralNumber,
-    firstCadastralValue: Math.round(source.cadastralValue / 2),
-    firstPurchasePrice: source.purchasePrice ? Math.round(source.purchasePrice / 2) : undefined,
+    firstCadastralNumber: '',
+    firstCadastralValue: 0,
+    firstPurchasePrice: undefined,
     newCadastralNumber: '',
-    secondCadastralValue: Math.round(source.cadastralValue / 2),
-    secondPurchasePrice: source.purchasePrice ? source.purchasePrice - Math.round(source.purchasePrice / 2) : undefined,
+    secondCadastralValue: 0,
+    secondPurchasePrice: undefined,
   }
 }
 
 export interface TenantFormData {
   company: string
   inn: string
-  email: string
   propertyId: number | null
   space: string
   rent: number
@@ -260,7 +254,6 @@ export interface SpaceUpdateData {
 export interface TenantUpdateData {
   company: string
   inn: string
-  email: string
   rent: number
   contract: string
 }

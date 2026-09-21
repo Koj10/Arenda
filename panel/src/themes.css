@@ -1,0 +1,175 @@
+html {
+  --logo-text: #e2e8f0;
+}
+
+html[data-theme='default'] {
+  --color-navy: #101214;
+  --color-graphite: #141618;
+  --color-panel: #0a0c0e;
+  --color-card: #1a1d21;
+  --color-card-hover: #22262c;
+  --color-border: #2a2f36;
+  --color-border-subtle: #22262c;
+  --color-surface: #1a1d21;
+  --color-slate-warm: #101214;
+  --color-bronze: #2dd4bf;
+  --color-bronze-dark: #14b8a6;
+  --color-emerald-brand: #2dd4bf;
+  --color-accent-green: #2dd4bf;
+  --color-accent-amber: #2dd4bf;
+  --color-accent-teal: #2dd4bf;
+  --color-slate-deep: #101214;
+  --logo-text: #e2e8f0;
+}
+
+html[data-theme='default-light'] {
+  --color-navy: #f4f6f7;
+  --color-graphite: #eef1f3;
+  --color-panel: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #eef1f3;
+  --color-border: #d5dbe3;
+  --color-border-subtle: #e8edf2;
+  --color-surface: #ffffff;
+  --color-slate-warm: #f4f6f7;
+  --color-bronze: #0d9488;
+  --color-bronze-dark: #0f766e;
+  --color-emerald-brand: #0d9488;
+  --color-accent-green: #0d9488;
+  --color-accent-amber: #0d9488;
+  --color-accent-teal: #0d9488;
+  --color-slate-deep: #f4f6f7;
+  --logo-text: #0b1220;
+}
+
+html[data-theme='red-light'] {
+  --color-navy: #f5f5f7;
+  --color-graphite: #eeeef2;
+  --color-panel: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #f3f0f0;
+  --color-border: #e4d8d8;
+  --color-border-subtle: #efe8e8;
+  --color-surface: #ffffff;
+  --color-slate-warm: #f5f5f7;
+  --color-bronze: #7f1d1d;
+  --color-bronze-dark: #991b1b;
+  --color-emerald-brand: #7f1d1d;
+  --color-accent-green: #7f1d1d;
+  --color-accent-amber: #7f1d1d;
+  --color-accent-teal: #7f1d1d;
+  --color-slate-deep: #f5f5f7;
+  --logo-text: #111827;
+}
+
+html[data-theme='red-dark'] {
+  --color-navy: #0f0f0f;
+  --color-graphite: #141414;
+  --color-panel: #0a0a0a;
+  --color-card: #1c1c1c;
+  --color-card-hover: #262626;
+  --color-border: #333333;
+  --color-border-subtle: #262626;
+  --color-surface: #1c1c1c;
+  --color-slate-warm: #0f0f0f;
+  --color-bronze: #dc2626;
+  --color-bronze-dark: #b91c1c;
+  --color-emerald-brand: #dc2626;
+  --color-accent-green: #dc2626;
+  --color-accent-amber: #dc2626;
+  --color-accent-teal: #dc2626;
+  --color-slate-deep: #0f0f0f;
+  --logo-text: #fecaca;
+}
+
+html[data-theme='gold-light'] {
+  --color-navy: #faf8f1;
+  --color-graphite: #f3efe4;
+  --color-panel: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #f4efe3;
+  --color-border: #e6dcc3;
+  --color-border-subtle: #efe8d6;
+  --color-surface: #ffffff;
+  --color-slate-warm: #faf8f1;
+  --color-bronze: #a16207;
+  --color-bronze-dark: #854d0e;
+  --color-emerald-brand: #a16207;
+  --color-accent-green: #a16207;
+  --color-accent-amber: #a16207;
+  --color-accent-teal: #a16207;
+  --color-slate-deep: #faf8f1;
+  --logo-text: #1c1206;
+}
+
+html[data-theme='gold-dark'] {
+  --color-navy: #0d0d0d;
+  --color-graphite: #121212;
+  --color-panel: #080808;
+  --color-card: #1a1a1a;
+  --color-card-hover: #242424;
+  --color-border: #333333;
+  --color-border-subtle: #242424;
+  --color-surface: #1a1a1a;
+  --color-slate-warm: #0d0d0d;
+  --color-bronze: #facc15;
+  --color-bronze-dark: #eab308;
+  --color-emerald-brand: #facc15;
+  --color-accent-green: #facc15;
+  --color-accent-amber: #facc15;
+  --color-accent-teal: #facc15;
+  --color-slate-deep: #0d0d0d;
+  --logo-text: #fde68a;
+}
+
+html[data-theme='blue-light'] {
+  --color-navy: #f5f7fa;
+  --color-graphite: #eef2f7;
+  --color-panel: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #e8eef7;
+  --color-border: #d5dde8;
+  --color-border-subtle: #e5ebf3;
+  --color-surface: #ffffff;
+  --color-slate-warm: #f5f7fa;
+  --color-bronze: #1e40af;
+  --color-bronze-dark: #1e3a8a;
+  --color-emerald-brand: #1e40af;
+  --color-accent-green: #1e40af;
+  --color-accent-amber: #1e40af;
+  --color-accent-teal: #1e40af;
+  --color-slate-deep: #f5f7fa;
+  --logo-text: #0f172a;
+}
+
+html[data-theme='blue-dark'] {
+  --color-navy: #0b1220;
+  --color-graphite: #10182a;
+  --color-panel: #080e1a;
+  --color-card: #151e30;
+  --color-card-hover: #1b2740;
+  --color-border: #27344d;
+  --color-border-subtle: #1b2740;
+  --color-surface: #151e30;
+  --color-slate-warm: #0b1220;
+  --color-bronze: #3b82f6;
+  --color-bronze-dark: #2563eb;
+  --color-emerald-brand: #3b82f6;
+  --color-accent-green: #3b82f6;
+  --color-accent-amber: #3b82f6;
+  --color-accent-teal: #3b82f6;
+  --color-slate-deep: #0b1220;
+  --logo-text: #bfdbfe;
+}
+
+html[data-theme='default-light'],
+html[data-theme='red-light'],
+html[data-theme='gold-light'],
+html[data-theme='blue-light'] {
+  --color-white: #0f172a;
+  --color-black: #ffffff;
+}
+
+html[data-theme='gold-dark'] .panel-btn-primary {
+  color: #1c1206;
+}
