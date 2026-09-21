@@ -46,9 +46,9 @@ export const THEMES: Record<ThemeId, ThemePalette> = {
   'red-dark': {
     id: 'red-dark',
     name: 'Красная тёмная',
-    description: 'Тёмная тема с мягким красным акцентом',
+    description: 'Тёмная тема в духе Альфа-Банка',
     mode: 'dark',
-    preview: { bg: '#120e0e', accent: '#e86a6a', card: '#1c1515', text: '#ece4e4' },
+    preview: { bg: '#111111', accent: '#ef3124', card: '#1a1a1a', text: '#f2f2f2' },
   },
   'gold-light': {
     id: 'gold-light',
@@ -60,9 +60,9 @@ export const THEMES: Record<ThemeId, ThemePalette> = {
   'gold-dark': {
     id: 'gold-dark',
     name: 'Золотая тёмная',
-    description: 'Тёмная тема с античным золотом',
+    description: 'Тёмная тема в духе Т-Банка',
     mode: 'dark',
-    preview: { bg: '#100f0c', accent: '#d4af5b', card: '#1a1813', text: '#ebe6d6' },
+    preview: { bg: '#111111', accent: '#ffdd2d', card: '#1c1c1c', text: '#f6f7f8' },
   },
   'blue-light': {
     id: 'blue-light',
