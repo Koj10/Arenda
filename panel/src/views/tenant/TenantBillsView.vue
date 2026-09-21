@@ -12,9 +12,15 @@ import { METERED_CRITERIA, UTILITY_CRITERION_LABELS } from '@/types/utilityBills
 import type { UtilityCriterion } from '@/types/utilityBills'
 import { formatApiError } from '@/api/http'
 import { useTenantPanelStore } from '@/stores/tenantPanelStore'
+import { useToastStore } from '@/stores/toastStore'
+import { useBankRequisitesStore } from '@/stores/bankRequisitesStore'
+import Modal from '@/components/ui/Modal.vue'
+import BankRequisitesCard from '@/components/ui/BankRequisitesCard.vue'
 
 const billing = useBillingStore()
 const tenantPanel = useTenantPanelStore()
+const toast = useToastStore()
+const requisites = useBankRequisitesStore()
 
 const statusFilter = ref<InvoiceStatus | 'all'>('all')
 const payTarget = ref<number | null>(null)
@@ -121,6 +127,22 @@ function statusClass(status: string) {
 }
 
 const payBill = computed(() => tenantPanel.invoices.find((item) => item.id === payTarget.value) ?? null)
+const showRequisites = ref(false)
+
+function objectIdForBill(unitId: number | null) {
+  if (unitId == null) return null
+  return tenantPanel.spaces.find((space) => space.unitId === unitId)?.objectId ?? null
+}
+
+const payRequisites = computed(() =>
+  requisites.getForObject(objectIdForBill(payBill.value?.unitId ?? null)),
+)
+
+watch(payMethod, (method) => {
+  if (method === 'in_app') {
+    toast.show('Оплата в приложении', 'Этот способ пока не доступен')
+  }
+})
 
 function openPay(id: number) {
   payTarget.value = id
@@ -137,6 +159,10 @@ function onPayFile(event: Event) {
 async function submitPay() {
   if (!payBill.value) return
   payError.value = ''
+  if (payMethod.value === 'in_app') {
+    toast.show('Оплата в приложении', 'Этот способ пока не доступен')
+    return
+  }
   if (payMethod.value === 'bank' && !payFile.value) {
     payError.value = 'Прикрепите чек или квитанцию'
     return
@@ -314,7 +340,8 @@ async function submitPay() {
 
       <p class="text-xs text-slate-600 mt-4 text-center">
         Счёт на аренду появляется после того, как арендодатель добавил вас и указал сумму.
-        Безнал — с чеком, наличные и оплата в приложении — без файла. В приложении оплата подтверждается сразу.
+        Безнал — с чеком, наличные — без файла. Оплата в приложении пока недоступна.
+        Реквизиты арендодателя можно открыть при оплате счёта.
       </p>
 
       <div
@@ -337,21 +364,42 @@ async function submitPay() {
             <span class="text-xs text-slate-500 mb-1.5 block">Чек / квитанция</span>
             <input type="file" accept="image/*,.pdf" class="text-xs text-slate-400" @change="onPayFile" />
           </label>
-          <p v-if="payMethod === 'in_app'" class="text-xs text-slate-500 mb-4">
-            Оплата в приложении подтверждается автоматически и сразу попадает в доходы арендодателя.
+          <p v-if="payMethod === 'in_app'" class="text-xs text-amber-400 mb-4">
+            Этот способ пока не доступен. Выберите наличные или безнал.
           </p>
           <p v-else class="text-xs text-slate-500 mb-4">
             Арендодатель получит уведомление и подтвердит оплату. После этого сумма попадёт в доходы.
           </p>
           <p v-if="payError" class="text-sm text-rose-400 mb-3">{{ payError }}</p>
-          <div class="flex gap-2">
-            <button type="button" class="panel-btn-primary text-xs" :disabled="paySaving" @click="submitPay">
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="panel-btn-primary text-xs"
+              :disabled="paySaving || payMethod === 'in_app'"
+              @click="submitPay"
+            >
               {{ paySaving ? 'Отправка...' : 'Отправить' }}
+            </button>
+            <button type="button" class="panel-btn-secondary text-xs" @click="showRequisites = true">
+              Показать реквизиты
             </button>
             <button type="button" class="panel-btn-secondary text-xs" @click="payTarget = null">Отмена</button>
           </div>
         </div>
       </div>
+
+      <Modal :open="showRequisites" title="Реквизиты для оплаты" size="md" :z-index="140" @close="showRequisites = false">
+        <p v-if="payBill" class="text-xs text-slate-500 mb-3">
+          {{ payBill.objectAddress }} · {{ payBill.unitNumber }}
+        </p>
+        <BankRequisitesCard
+          :data="payRequisites"
+          empty-text="Арендодатель ещё не указал реквизиты. Когда они появятся в его настройках, вы увидите их здесь."
+        />
+        <template #footer>
+          <button type="button" class="panel-btn-secondary" @click="showRequisites = false">Закрыть</button>
+        </template>
+      </Modal>
     </div>
   </TenantLayout>
 </template>

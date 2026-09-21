@@ -30,7 +30,7 @@ export interface CadastralParcel {
   id: number
   propertyId: number
   cadastralNumber: string
-  /** Площадь по кадастру, м² — считается автоматически по привязанным помещениям */
+  /** Площадь по кадастру, м² — задаётся при создании/разделении, помещения не должны её превышать */
   area: number
   /** Кадастровая стоимость */
   cadastralValue: number
@@ -211,9 +211,11 @@ export function createEmptyCadastralParcelFormData(): CadastralParcelFormData {
 /** Разделение одного кадастрового номера на два */
 export interface SplitCadastralFormData {
   firstCadastralNumber: string
+  firstArea: number
   firstCadastralValue: number
   firstPurchasePrice?: number
   newCadastralNumber: string
+  secondArea: number
   secondCadastralValue: number
   secondPurchasePrice?: number
 }
@@ -221,9 +223,11 @@ export interface SplitCadastralFormData {
 export function createSplitCadastralFormData(_source: CadastralParcel): SplitCadastralFormData {
   return {
     firstCadastralNumber: '',
+    firstArea: 0,
     firstCadastralValue: 0,
     firstPurchasePrice: undefined,
     newCadastralNumber: '',
+    secondArea: 0,
     secondCadastralValue: 0,
     secondPurchasePrice: undefined,
   }

@@ -180,7 +180,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   function syncParcelAreaFromSpaces(parcelId: number) {
     const parcel = getCadastralParcelById(parcelId)
     if (!parcel) return
-    parcel.area = getSpacesAreaForParcel(parcelId)
+    const spacesArea = getSpacesAreaForParcel(parcelId)
+    if (parcel.area > 0) return
+    parcel.area = spacesArea
   }
 
   function getAvailableAreaForParcel(parcelId: number, excludeSpaceId?: number) {
@@ -814,9 +816,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (!original) return false
     const firstNumber = data.firstCadastralNumber.trim()
     const secondNumber = data.newCadastralNumber.trim()
+    const firstArea = Number(data.firstArea) || 0
+    const secondArea = Number(data.secondArea) || 0
     if (!firstNumber || !secondNumber) return false
     if (firstNumber === secondNumber) return false
     if (data.firstCadastralValue <= 0 || data.secondCadastralValue <= 0) return false
+    if (firstArea <= 0 || secondArea <= 0) return false
+    if (original.area > 0 && Math.abs(firstArea + secondArea - original.area) > 0.01) return false
     lastError.value = null
     try {
       await landlordApi.updateCadastre(parcelId, {
@@ -830,6 +836,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         purchase_price: data.secondPurchasePrice,
       })
       original.cadastralNumber = firstNumber
+      original.area = firstArea
       original.cadastralValue = data.firstCadastralValue
       original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
         ? data.firstPurchasePrice
@@ -838,7 +845,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         id: created.id,
         propertyId: created.object_id,
         cadastralNumber: created.number,
-        area: 0,
+        area: secondArea,
         cadastralValue: num(created.cadastral_value),
         purchasePrice: created.purchase_price ? num(created.purchase_price) : undefined,
       })

@@ -25,9 +25,31 @@ const property = computed(() =>
   sourceParcel.value ? store.getPropertyById(sourceParcel.value.propertyId) : null,
 )
 
+const sourceArea = computed(() => sourceParcel.value?.area ?? 0)
+
 const spacesOnParcel = computed(() =>
   sourceParcel.value ? store.getSpacesForParcel(sourceParcel.value.id).length : 0,
 )
+
+const firstArea = computed(() => Number(form.value.firstArea) || 0)
+const secondArea = computed(() => Number(form.value.secondArea) || 0)
+const allocatedArea = computed(() => roundArea(firstArea.value + secondArea.value))
+const remainingArea = computed(() => roundArea(sourceArea.value - allocatedArea.value))
+
+function roundArea(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+function fillOtherArea(edited: 'first' | 'second') {
+  if (sourceArea.value <= 0) return
+  if (edited === 'first') {
+    const rest = roundArea(sourceArea.value - firstArea.value)
+    form.value.secondArea = rest > 0 ? rest : 0
+  } else {
+    const rest = roundArea(sourceArea.value - secondArea.value)
+    form.value.firstArea = rest > 0 ? rest : 0
+  }
+}
 
 watch(
   () => store.splitCadastralModalOpen,
@@ -68,6 +90,16 @@ function validate() {
     errors.value.secondCadastralValue = 'Укажите новую кадастровую стоимость'
   }
 
+  if (firstArea.value <= 0) errors.value.firstArea = 'Укажите площадь'
+  if (secondArea.value <= 0) errors.value.secondArea = 'Укажите площадь'
+  if (sourceArea.value > 0 && firstArea.value > 0 && secondArea.value > 0) {
+    if (Math.abs(allocatedArea.value - sourceArea.value) > 0.01) {
+      const message = `Сумма площадей должна быть ${store.formatArea(sourceArea.value)}`
+      errors.value.firstArea = message
+      errors.value.secondArea = message
+    }
+  }
+
   return Object.keys(errors.value).length === 0
 }
 
@@ -105,9 +137,10 @@ function onClose() {
         <p class="font-medium text-white mb-1">{{ property.address }}</p>
         <p>
           Исходный номер <span class="font-mono">{{ sourceParcel.cadastralNumber }}</span>
-          · площадь <span class="font-mono text-emerald-brand">{{ store.formatArea(sourceParcel.area) }}</span>
+          · площадь <span class="font-mono text-emerald-brand">{{ store.formatArea(sourceArea) }}</span>
           ({{ spacesOnParcel }} пом.).
-          Укажите два разных кадастровых номера и новую стоимость каждого. Площадь считается по привязанным помещениям.
+          Укажите два разных кадастровых номера, площадь и стоимость каждого.
+          <template v-if="sourceArea > 0"> Сумма площадей должна быть {{ store.formatArea(sourceArea) }}.</template>
         </p>
       </div>
 
@@ -125,6 +158,18 @@ function onClose() {
               :class="[inputClass, 'font-mono', { 'border-red-500': errors.firstCadastralNumber }]"
             />
             <p v-if="errors.firstCadastralNumber" class="text-xs text-red-400 mt-1">{{ errors.firstCadastralNumber }}</p>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Площадь, м²</label>
+            <input
+              v-model.number="form.firstArea"
+              type="number"
+              min="0.01"
+              step="0.01"
+              :class="[inputClass, 'font-mono', { 'border-red-500': errors.firstArea }]"
+              @input="fillOtherArea('first')"
+            />
+            <p v-if="errors.firstArea" class="text-xs text-red-400 mt-1">{{ errors.firstArea }}</p>
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Новая кадастровая стоимость, ₽</label>
@@ -145,7 +190,7 @@ function onClose() {
         <section class="rounded-xl border border-border bg-panel/30 p-4 space-y-3">
           <h3 class="text-sm font-semibold text-white">2. Второй кадастр</h3>
           <p class="text-xs text-slate-500">
-            После разделения перетащите сюда нужные помещения — площадь пересчитается автоматически.
+            После разделения перетащите сюда нужные помещения.
           </p>
 
           <div>
@@ -157,6 +202,18 @@ function onClose() {
               :class="[inputClass, 'font-mono', { 'border-red-500': errors.newCadastralNumber }]"
             />
             <p v-if="errors.newCadastralNumber" class="text-xs text-red-400 mt-1">{{ errors.newCadastralNumber }}</p>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Площадь, м²</label>
+            <input
+              v-model.number="form.secondArea"
+              type="number"
+              min="0.01"
+              step="0.01"
+              :class="[inputClass, 'font-mono', { 'border-red-500': errors.secondArea }]"
+              @input="fillOtherArea('second')"
+            />
+            <p v-if="errors.secondArea" class="text-xs text-red-400 mt-1">{{ errors.secondArea }}</p>
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Новая кадастровая стоимость, ₽</label>
@@ -174,6 +231,18 @@ function onClose() {
           </div>
         </section>
       </div>
+
+      <p
+        v-if="sourceArea > 0"
+        class="text-xs font-mono"
+        :class="Math.abs(remainingArea) <= 0.01 ? 'text-emerald-brand' : 'text-amber-400'"
+      >
+        Распределено {{ store.formatArea(allocatedArea) }} из {{ store.formatArea(sourceArea) }}
+        <template v-if="Math.abs(remainingArea) > 0.01">
+          · осталось {{ store.formatArea(Math.abs(remainingArea)) }}
+          {{ remainingArea < 0 ? 'сверх исходной' : '' }}
+        </template>
+      </p>
     </div>
 
     <template #footer>

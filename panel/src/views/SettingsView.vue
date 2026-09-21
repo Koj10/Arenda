@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TenantLayout from '@/components/layout/TenantLayout.vue'
@@ -7,11 +7,16 @@ import { useAuthStore } from '@/stores/authStore'
 import { usePlan } from '@/composables/usePlan'
 import { SITE } from '@/config/site'
 import ThemePicker from '@/components/ui/ThemePicker.vue'
-import { Mail, Bell, Shield, Sparkles } from '@lucide/vue'
+import BankRequisitesCard from '@/components/ui/BankRequisitesCard.vue'
+import { useBankRequisitesStore } from '@/stores/bankRequisitesStore'
+import { useTenantPanelStore } from '@/stores/tenantPanelStore'
+import { Mail, Bell, Shield, Sparkles, Landmark } from '@lucide/vue'
 
 const auth = useAuthStore()
 const router = useRouter()
 const { plan, nextPlan, startCheckout, usage, limits } = usePlan()
+const requisites = useBankRequisitesStore()
+const tenantPanel = useTenantPanelStore()
 
 const Layout = computed(() => (auth.isTenant ? TenantLayout : AppLayout))
 
@@ -21,6 +26,7 @@ const profileError = ref('')
 const emailNotify = ref(true)
 const pushNotify = ref(true)
 const saved = ref(false)
+const requisitesSaved = ref(false)
 
 async function saveProfile() {
   profileError.value = ''
@@ -38,9 +44,33 @@ async function saveProfile() {
   }, 2000)
 }
 
+function saveRequisites() {
+  requisites.saveLandlord()
+  requisitesSaved.value = true
+  setTimeout(() => {
+    requisitesSaved.value = false
+  }, 2000)
+}
+
 function goPricing() {
   window.open(`${SITE.url}/#pricing`, '_blank', 'noopener')
 }
+
+const tenantObjects = computed(() => {
+  const map = new Map<number, string>()
+  for (const space of tenantPanel.spaces) {
+    if (!map.has(space.objectId)) map.set(space.objectId, space.objectAddress)
+  }
+  return [...map.entries()].map(([id, address]) => ({
+    id,
+    address,
+    data: requisites.getForObject(id),
+  }))
+})
+
+onMounted(() => {
+  if (auth.isTenant) void tenantPanel.loadFromApi()
+})
 </script>
 
 <template>
@@ -86,6 +116,82 @@ function goPricing() {
       </section>
 
       <ThemePicker />
+
+      <section v-if="auth.isTenant" class="panel-card p-5 sm:p-6">
+        <div class="flex items-center gap-2 mb-2">
+          <Landmark class="w-4 h-4 text-emerald-brand" />
+          <h2 class="text-base font-semibold text-white">Реквизиты арендодателя</h2>
+        </div>
+        <p class="text-sm text-slate-400 mb-4">
+          Их же можно открыть кнопкой «Показать реквизиты» при оплате счёта.
+        </p>
+        <p v-if="tenantObjects.length === 0" class="text-sm text-slate-500">
+          Помещения появятся после того, как арендодатель добавит ваш ИНН.
+        </p>
+        <div v-else class="space-y-4">
+          <div
+            v-for="item in tenantObjects"
+            :key="item.id"
+            class="rounded-xl border border-border bg-panel/30 p-4"
+          >
+            <p class="text-sm font-medium text-white mb-3">{{ item.address }}</p>
+            <BankRequisitesCard :data="item.data" />
+          </div>
+        </div>
+      </section>
+
+      <section v-if="!auth.isTenant" class="panel-card p-5 sm:p-6">
+        <div class="flex items-center gap-2 mb-2">
+          <Landmark class="w-4 h-4 text-emerald-brand" />
+          <h2 class="text-base font-semibold text-white">Реквизиты для оплаты</h2>
+        </div>
+        <p class="text-sm text-slate-400 mb-4 leading-relaxed">
+          Арендатор увидит эти данные по кнопке «Показать реквизиты» при оплате счёта.
+          Пока API не хранит реквизиты — они сохраняются в этом браузере и будут подключены к серверу позже.
+        </p>
+        <div class="space-y-3">
+          <label class="block">
+            <span class="text-xs text-slate-500 mb-1.5 block">Получатель</span>
+            <input v-model="requisites.draft.recipient" type="text" class="panel-input" placeholder="ООО «Компания»" />
+          </label>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs text-slate-500 mb-1.5 block">ИНН</span>
+              <input v-model="requisites.draft.inn" type="text" inputmode="numeric" class="panel-input font-mono" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-slate-500 mb-1.5 block">КПП</span>
+              <input v-model="requisites.draft.kpp" type="text" inputmode="numeric" class="panel-input font-mono" />
+            </label>
+          </div>
+          <label class="block">
+            <span class="text-xs text-slate-500 mb-1.5 block">Банк</span>
+            <input v-model="requisites.draft.bankName" type="text" class="panel-input" />
+          </label>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs text-slate-500 mb-1.5 block">БИК</span>
+              <input v-model="requisites.draft.bik" type="text" inputmode="numeric" class="panel-input font-mono" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-slate-500 mb-1.5 block">Расчётный счёт</span>
+              <input v-model="requisites.draft.account" type="text" class="panel-input font-mono" />
+            </label>
+          </div>
+          <label class="block">
+            <span class="text-xs text-slate-500 mb-1.5 block">Корр. счёт</span>
+            <input v-model="requisites.draft.corrAccount" type="text" class="panel-input font-mono" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-slate-500 mb-1.5 block">Комментарий к платежу</span>
+            <textarea v-model="requisites.draft.notes" rows="2" class="panel-input resize-none" placeholder="Назначение платежа, доп. сведения" />
+          </label>
+          <div class="flex items-center gap-3">
+            <button type="button" class="panel-btn-primary" @click="saveRequisites">Сохранить реквизиты</button>
+            <span v-if="requisitesSaved" class="text-xs text-emerald-brand">Сохранено</span>
+          </div>
+        </div>
+      </section>
 
       <section v-if="!auth.isTenant" class="panel-card p-5 sm:p-6">
         <div class="flex items-center gap-2 mb-4">

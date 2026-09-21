@@ -5,9 +5,11 @@ import AppSidebar from '@/components/layout/AppSidebar.vue'
 import UpgradeModal from '@/components/plan/UpgradeModal.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePlanStore } from '@/stores/planStore'
+import { useBankRequisitesStore } from '@/stores/bankRequisitesStore'
 
 const portfolio = usePortfolioStore()
 const plan = usePlanStore()
+const requisites = useBankRequisitesStore()
 
 watchEffect(() => {
   plan.setUsage({
@@ -15,6 +17,7 @@ watchEffect(() => {
     spaces: portfolio.spaces.length,
     tenants: portfolio.tenants.length,
   })
+  if (portfolio.properties.length) requisites.publishToObjects()
 })
 </script>
 
