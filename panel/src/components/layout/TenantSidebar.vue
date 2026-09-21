@@ -46,7 +46,7 @@ function logout() {
     </div>
 
     <div class="px-3 sm:px-4 mb-2">
-      <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Кабинет</p>
+      <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Меню</p>
       <nav class="space-y-0.5">
         <RouterLink
           v-for="item in items"
@@ -63,7 +63,7 @@ function logout() {
 
     <div class="flex-1 min-h-4" />
 
-    <div class="px-3 sm:px-4 mb-5">
+    <div class="px-3 sm:px-4 mb-3">
       <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Общее</p>
       <nav class="space-y-0.5">
         <button type="button" :class="navClass(isActive('/settings'))" @click="go('/settings')">
@@ -79,8 +79,12 @@ function logout() {
           <span class="truncate">Выйти</span>
         </button>
       </nav>
-      <p class="px-3 mt-4 text-[10px] text-slate-600 leading-relaxed">
-        Только просмотр. Изменения вносит арендодатель.
+    </div>
+
+    <div class="mx-3 sm:mx-4 mb-4 p-3.5 rounded-xl bg-card border border-border">
+      <p class="text-sm font-semibold text-white mb-1">Кабинет арендатора</p>
+      <p class="text-xs text-slate-500 leading-relaxed">
+        Показания и оплата счетов — здесь. Остальные изменения вносит арендодатель.
       </p>
     </div>
   </aside>

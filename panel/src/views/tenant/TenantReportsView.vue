@@ -106,7 +106,7 @@ function navBtnClass(active: boolean) {
     <template #header-action>
       <button
         type="button"
-        class="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-colors disabled:opacity-50"
+        class="panel-btn-primary"
         :disabled="!selectedColumns.length || !displayRows.length || exporting"
         @click="handleExport"
       >
@@ -254,7 +254,7 @@ function navBtnClass(active: boolean) {
               <span class="text-xs text-slate-500 font-mono">{{ displayRows.length }} строк</span>
             </div>
 
-            <div class="overflow-auto max-h-[480px]">
+            <div class="overflow-auto max-h-[min(480px,60vh)]">
               <table v-if="selectedColumns.length && displayRows.length" class="w-full text-sm">
                 <thead class="sticky top-0 bg-card z-10">
                   <tr class="panel-table-head">

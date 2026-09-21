@@ -14,6 +14,7 @@ import {
 import { usePanelSearchStore, type PanelSearchHit } from '@/stores/panelSearchStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useAccountingStore } from '@/stores/accountingStore'
+import { useAuthStore } from '@/stores/authStore'
 
 withDefaults(
   defineProps<{
@@ -26,6 +27,11 @@ const router = useRouter()
 const search = usePanelSearchStore()
 const portfolio = usePortfolioStore()
 const accounting = useAccountingStore()
+const auth = useAuthStore()
+
+const placeholder = computed(() =>
+  auth.isTenant ? 'Поиск: помещения, счета...' : 'Поиск: объекты, арендаторы, счета...',
+)
 
 const focused = ref(false)
 const root = ref<HTMLElement | null>(null)
@@ -164,7 +170,7 @@ onBeforeUnmount(() => {
         ref="inputEl"
         :value="search.query"
         type="search"
-        placeholder="Поиск: объекты, арендаторы, счета..."
+        :placeholder="placeholder"
         autocomplete="off"
         class="w-full bg-transparent border-0 pl-10 sm:pl-11 pr-10 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none rounded-full"
         @input="onInput"

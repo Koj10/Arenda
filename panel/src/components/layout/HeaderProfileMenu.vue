@@ -5,6 +5,7 @@ import { ChevronDown, User, Settings, HelpCircle, LogOut, Sparkles } from '@luci
 import { useAuthStore } from '@/stores/authStore'
 import { usePlan } from '@/composables/usePlan'
 import { useDismissable } from '@/composables/useDismissable'
+import { useAnchoredPopover } from '@/composables/useAnchoredPopover'
 import { redirectToLandingLogin } from '@/utils/authRedirect'
 
 const auth = useAuthStore()
@@ -13,10 +14,13 @@ const { plan, isPaid } = usePlan()
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
 
 useDismissable(root, open, () => {
   open.value = false
-})
+}, [panel])
+
+const { style: popoverStyle } = useAnchoredPopover(root, open, 256)
 
 const initial = computed(() => auth.user?.name?.charAt(0)?.toUpperCase() ?? 'U')
 const roleLabel = computed(() => (auth.isTenant ? 'Арендатор' : 'Арендодатель'))
@@ -51,14 +55,17 @@ function logout() {
       <ChevronDown class="w-3.5 h-3.5 text-slate-500 hidden lg:block shrink-0" :class="open && 'rotate-180'" />
     </button>
 
-    <div
-      v-if="open"
-      class="panel-popover !w-64"
-    >
+    <Teleport to="body">
+      <div
+        v-if="open"
+        ref="panel"
+        class="panel-popover overflow-y-auto"
+        :style="popoverStyle"
+      >
       <div class="px-4 py-3 border-b border-border">
         <p class="text-sm font-semibold text-white truncate">{{ auth.user?.name }}</p>
         <p class="text-xs text-slate-500 truncate">{{ auth.user?.email }}</p>
-        <div class="mt-2 flex items-center gap-2">
+        <div class="mt-2 flex flex-wrap items-center gap-2">
           <span class="text-[10px] px-2 py-0.5 rounded-md bg-panel text-slate-400 border border-border">
             {{ roleLabel }}
           </span>
@@ -110,6 +117,7 @@ function logout() {
           Выйти
         </button>
       </div>
-    </div>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -205,18 +205,18 @@ async function submitPay() {
   <TenantLayout>
     <div class="panel-page">
       <div class="panel-card p-5 mb-6">
-        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
-          <div>
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+          <div class="min-w-0">
             <h2 class="text-sm font-semibold text-white">Показания счётчиков</h2>
             <p class="text-xs text-slate-500 mt-1">
               «Было» подставляется из «стало» прошлого месяца. Если показания уже внёс арендодатель, изменить их нельзя.
             </p>
           </div>
-          <div class="flex items-center gap-2">
-            <input v-model="metersPeriod" type="month" class="panel-input font-mono text-xs py-1.5 w-40" />
+          <div class="flex items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <input v-model="metersPeriod" type="month" class="panel-input font-mono text-xs py-1.5 flex-1 sm:flex-none sm:w-40" />
             <button
               type="button"
-              class="panel-btn-primary text-xs"
+              class="panel-btn-primary text-xs shrink-0"
               :disabled="metersSaving || !tenantCanSaveMeters"
               @click="saveMeters"
             >
@@ -318,20 +318,20 @@ async function submitPay() {
         <div class="panel-table-wrap">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-800">
-              <th class="px-5 py-3 font-medium">Счёт</th>
+            <tr class="panel-table-head">
+              <th class="px-4 sm:px-5 py-3 font-medium">Счёт</th>
               <th class="px-5 py-3 font-medium hidden sm:table-cell">Период</th>
               <th class="px-5 py-3 font-medium hidden md:table-cell">Помещение</th>
-              <th class="px-5 py-3 font-medium">Сумма</th>
-              <th class="px-5 py-3 font-medium">Статус</th>
-              <th class="px-5 py-3 font-medium">Оплата</th>
+              <th class="px-4 sm:px-5 py-3 font-medium">Сумма</th>
+              <th class="px-4 sm:px-5 py-3 font-medium">Статус</th>
+              <th class="px-4 sm:px-5 py-3 font-medium">Оплата</th>
             </tr>
           </thead>
           <tbody>
             <tr
               v-for="bill in bills"
               :key="bill.id"
-              class="border-b border-slate-800/80"
+              class="panel-table-row"
             >
               <td class="px-5 py-3.5">
                 <div class="flex items-center gap-2">
@@ -376,49 +376,48 @@ async function submitPay() {
         Реквизиты арендодателя можно открыть при оплате счёта.
       </p>
 
-      <div
-        v-if="payBill"
-        class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
-        @click.self="payTarget = null"
+      <Modal
+        :open="!!payBill"
+        title="Оплата счёта"
+        size="md"
+        :z-index="130"
+        @close="payTarget = null"
       >
-        <div class="panel-card w-full max-w-md p-5">
-          <h3 class="text-base font-semibold text-white mb-1">Оплата счёта</h3>
-          <p class="text-xs text-slate-500 mb-4">
-            {{ INVOICE_TYPE_LABELS[payBill.kind] }} · {{ billing.formatMoney(payBill.amount) }} · {{ payBill.unitNumber }}
-          </p>
-          <div class="space-y-2 mb-4">
-            <label v-for="method in (['cash', 'bank', 'in_app'] as const)" :key="method" class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-              <input v-model="payMethod" type="radio" :value="method" class="accent-emerald-brand" />
-              {{ PAYMENT_METHOD_LABELS[method] }}
-            </label>
-          </div>
-          <label v-if="payMethod === 'bank'" class="block mb-4">
-            <span class="text-xs text-slate-500 mb-1.5 block">Чек / квитанция</span>
-            <input type="file" accept="image/*,.pdf" class="text-xs text-slate-400" @change="onPayFile" />
+        <p v-if="payBill" class="text-xs text-slate-500 mb-4">
+          {{ INVOICE_TYPE_LABELS[payBill.kind] }} · {{ billing.formatMoney(payBill.amount) }} · {{ payBill.unitNumber }}
+        </p>
+        <div class="space-y-2 mb-4">
+          <label v-for="method in (['cash', 'bank', 'in_app'] as const)" :key="method" class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+            <input v-model="payMethod" type="radio" :value="method" class="accent-emerald-brand" />
+            {{ PAYMENT_METHOD_LABELS[method] }}
           </label>
-          <p v-if="payMethod === 'in_app'" class="text-xs text-amber-400 mb-4">
-            Этот способ пока не доступен. Выберите наличные или безнал.
-          </p>
-          <p v-else class="text-xs text-slate-500 mb-4">
-            Арендодатель получит уведомление и подтвердит оплату. После этого сумма попадёт в доходы.
-          </p>
-          <p v-if="payError" class="text-sm text-rose-400 mb-3">{{ payError }}</p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="panel-btn-primary text-xs"
-              :disabled="paySaving || payMethod === 'in_app'"
-              @click="submitPay"
-            >
-              {{ paySaving ? 'Отправка...' : 'Отправить' }}
-            </button>
-            <button type="button" class="panel-btn-secondary text-xs" @click="showRequisites = true">
-              Показать реквизиты
-            </button>
-            <button type="button" class="panel-btn-secondary text-xs" @click="payTarget = null">Отмена</button>
-          </div>
         </div>
-      </div>
+        <label v-if="payMethod === 'bank'" class="block mb-4">
+          <span class="text-xs text-slate-500 mb-1.5 block">Чек / квитанция</span>
+          <input type="file" accept="image/*,.pdf" class="text-xs text-slate-400 w-full" @change="onPayFile" />
+        </label>
+        <p v-if="payMethod === 'in_app'" class="text-xs text-amber-400 mb-1">
+          Этот способ пока не доступен. Выберите наличные или безнал.
+        </p>
+        <p v-else class="text-xs text-slate-500 mb-1">
+          Арендодатель получит уведомление и подтвердит оплату. После этого сумма попадёт в доходы.
+        </p>
+        <p v-if="payError" class="text-sm text-rose-400 mt-3">{{ payError }}</p>
+        <template #footer>
+          <button type="button" class="panel-btn-secondary text-xs" @click="payTarget = null">Отмена</button>
+          <button type="button" class="panel-btn-secondary text-xs" @click="showRequisites = true">
+            Показать реквизиты
+          </button>
+          <button
+            type="button"
+            class="panel-btn-primary text-xs"
+            :disabled="paySaving || payMethod === 'in_app'"
+            @click="submitPay"
+          >
+            {{ paySaving ? 'Отправка...' : 'Отправить' }}
+          </button>
+        </template>
+      </Modal>
 
       <Modal :open="showRequisites" title="Реквизиты для оплаты" size="md" :z-index="140" @close="showRequisites = false">
         <p v-if="payBill" class="text-xs text-slate-500 mb-3">

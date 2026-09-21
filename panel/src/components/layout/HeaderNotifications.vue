@@ -5,6 +5,7 @@ import { Bell, CheckCheck } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useDismissable } from '@/composables/useDismissable'
+import { useAnchoredPopover } from '@/composables/useAnchoredPopover'
 
 const auth = useAuthStore()
 const store = useNotificationsStore()
@@ -12,10 +13,13 @@ const router = useRouter()
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
 
 useDismissable(root, open, () => {
   open.value = false
-})
+}, [panel])
+
+const { style: popoverStyle } = useAnchoredPopover(root, open, 352)
 
 watch(
   () => [auth.user?.email, auth.user?.role] as const,
@@ -62,11 +66,14 @@ function openItem(id: string, href?: string) {
       />
     </button>
 
-    <div
-      v-if="open"
-      class="panel-popover"
-    >
-      <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+    <Teleport to="body">
+      <div
+        v-if="open"
+        ref="panel"
+        class="panel-popover overflow-y-auto"
+        :style="popoverStyle"
+      >
+      <div class="flex items-center justify-between px-4 py-3 border-b border-border gap-2">
         <p class="text-sm font-semibold text-white">Уведомления</p>
         <button
           v-if="unread > 0"
@@ -97,6 +104,7 @@ function openItem(id: string, href?: string) {
         </li>
       </ul>
       <p v-else class="px-4 py-8 text-center text-sm text-slate-500">Пока нет уведомлений</p>
-    </div>
+      </div>
+    </Teleport>
   </div>
 </template>

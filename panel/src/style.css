@@ -61,15 +61,19 @@
     max-width: 120rem; /* 1920px — потолок всей рабочей области */
   }
 
-  /* Хедер: три равные зоны — поиск визуально по центру (YouTube) */
+  /* Хедер: поиск по центру на десктопе; до lg — две колонки, поиск строкой ниже */
   .panel-header-bar {
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 1023px) {
     .panel-header-bar {
       grid-template-columns: minmax(0, 1fr) auto;
     }
+  }
+
+  .panel-empty {
+    @apply rounded-xl border border-dashed border-border bg-panel/30 py-12 sm:py-16 text-center px-4 sm:px-6;
   }
 
   .panel-card {
@@ -178,10 +182,8 @@
     @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors;
   }
 
-  /* Выпадашки хедера на мобиле не обрезаются краем экрана */
+  /* Выпадашки хедера: базовый вид; позиция задаётся JS (fixed), чтобы не уезжали за край */
   .panel-popover {
-    @apply absolute z-50 mt-2 rounded-xl border border-border bg-card shadow-2xl overflow-hidden;
-    right: 0;
-    width: min(22rem, calc(100vw - 1.5rem));
+    @apply rounded-xl border border-border bg-card shadow-2xl overflow-hidden;
   }
 }

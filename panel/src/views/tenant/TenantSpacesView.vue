@@ -51,16 +51,16 @@ function statusClass(status: string) {
           v-for="lease in leases"
           :key="lease.leaseId"
           type="button"
-          class="w-full text-left panel-card p-4 sm:p-5 hover:border-emerald-brand/30 transition-all group"
+          class="w-full text-left panel-card p-4 sm:p-5 hover:border-emerald-brand/40 transition-all group"
           @click="openLease(lease.leaseId)"
         >
-          <div class="flex items-start justify-between gap-4">
+          <div class="flex items-start justify-between gap-3 sm:gap-4">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-2">
-                <MapPin class="w-4 h-4 text-slate-500 group-hover:text-accent-teal shrink-0" />
+                <MapPin class="w-4 h-4 text-slate-500 group-hover:text-emerald-brand shrink-0" />
                 <span class="text-sm text-slate-200 truncate">{{ lease.objectAddress }}</span>
               </div>
-              <div class="flex flex-wrap items-center gap-3">
+              <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 <span class="text-lg font-mono font-semibold text-white">{{ lease.unitNumber }}</span>
                 <span class="text-xs text-slate-500">{{ portfolio.formatArea(lease.unitArea) }}</span>
                 <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(lease.status)">
@@ -68,17 +68,17 @@ function statusClass(status: string) {
                 </span>
               </div>
               <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
-                <Building2 class="w-3.5 h-3.5" />
+                <Building2 class="w-3.5 h-3.5 shrink-0" />
                 аренда {{ portfolio.formatMoney(lease.rentMonthly) }}/мес
               </p>
             </div>
-            <ChevronRight class="w-5 h-5 text-slate-600 group-hover:text-accent-teal shrink-0 mt-1" />
+            <ChevronRight class="w-5 h-5 text-slate-600 group-hover:text-emerald-brand shrink-0 mt-1" />
           </div>
         </button>
       </div>
 
-      <div v-else class="rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 py-16 text-center px-6">
-        <p class="text-slate-400 mb-2">{{ tenantPanel.loading ? 'Загрузка...' : 'Помещения не найдены' }}</p>
+      <div v-else class="panel-empty">
+        <p class="text-slate-300 mb-2">{{ tenantPanel.loading ? 'Загрузка...' : 'Помещения не найдены' }}</p>
         <p class="text-sm text-slate-500">
           {{ tenantPanel.message || 'Арендодатель должен добавить вашу компанию по ИНН в своей панели. После этого помещения появятся здесь автоматически.' }}
         </p>
