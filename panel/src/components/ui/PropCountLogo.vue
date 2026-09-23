@@ -32,6 +32,8 @@ const themeHex = computed(() => {
     case 'gold-dark':     return '#ffdd2d'
     case 'blue-light':    return '#1d4ed8'
     case 'blue-dark':     return '#6ba3f5'
+    case 'purple-light':  return '#7c3aed'
+    case 'purple-dark':   return '#c4b5fd'
     default:              return '#2dd4bf'
   }
 })

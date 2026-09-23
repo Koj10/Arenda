@@ -229,6 +229,58 @@ html[data-theme='blue-dark'] {
   --logo-text: #bfdbfe;
 }
 
+html[data-theme='purple-light'] {
+  --color-navy: #f3eef8;
+  --color-graphite: #e8e0f0;
+  --color-panel: #eee6f5;
+  --color-card: #ffffff;
+  --color-card-hover: #f6f1fb;
+  --color-border: #d0c0e0;
+  --color-border-subtle: #e0d4eb;
+  --color-surface: #ffffff;
+  --color-slate-warm: #f3eef8;
+  --color-bronze: #7c3aed;
+  --color-bronze-dark: #6d28d9;
+  --color-emerald-brand: #7c3aed;
+  --color-accent-green: #7c3aed;
+  --color-accent-amber: #7c3aed;
+  --color-accent-teal: #7c3aed;
+  --color-slate-deep: #f3eef8;
+  --color-white: #1c1228;
+  --color-slate-200: #2a1b3d;
+  --color-slate-300: #43305a;
+  --color-slate-400: #5c4774;
+  --color-slate-500: #74608c;
+  --color-slate-600: #917ca8;
+  --logo-text: #5b21b6;
+}
+
+html[data-theme='purple-dark'] {
+  color-scheme: dark;
+  --color-navy: #100a18;
+  --color-graphite: #16101f;
+  --color-panel: #0b0712;
+  --color-card: #1a1326;
+  --color-card-hover: #241a35;
+  --color-border: #3d2f54;
+  --color-border-subtle: #2a203c;
+  --color-surface: #1a1326;
+  --color-slate-warm: #100a18;
+  --color-bronze: #c4b5fd;
+  --color-bronze-dark: #a78bfa;
+  --color-emerald-brand: #c4b5fd;
+  --color-accent-green: #c4b5fd;
+  --color-accent-amber: #c4b5fd;
+  --color-accent-teal: #c4b5fd;
+  --color-slate-deep: #100a18;
+  --color-slate-200: #e9e0f7;
+  --color-slate-300: #cbbfe0;
+  --color-slate-400: #a394b8;
+  --color-slate-500: #7e6f94;
+  --color-slate-600: #5e5270;
+  --logo-text: #ddd6fe;
+}
+
 html[data-theme='gold-dark'] .panel-btn-primary {
   color: #111111;
 }
@@ -247,6 +299,10 @@ html[data-theme='red-dark'] .panel-btn-primary:hover {
 
 html[data-theme='blue-dark'] .panel-btn-primary:hover {
   box-shadow: 0 8px 24px rgba(107, 163, 245, 0.22);
+}
+
+html[data-theme='purple-dark'] .panel-btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(196, 181, 253, 0.28);
 }
 
 html[data-theme='default'] .panel-btn-primary:hover {

@@ -7,6 +7,8 @@ export type ThemeId =
   | 'gold-dark'
   | 'blue-light'
   | 'blue-dark'
+  | 'purple-light'
+  | 'purple-dark'
 
 export interface ThemePalette {
   id: ThemeId
@@ -78,6 +80,20 @@ export const THEMES: Record<ThemeId, ThemePalette> = {
     mode: 'dark',
     preview: { bg: '#0c111a', accent: '#6ba3f5', card: '#151c2b', text: '#dbe6f5' },
   },
+  'purple-light': {
+    id: 'purple-light',
+    name: 'Фиолетовая светлая',
+    description: 'Светлая тема с фиолетовым акцентом',
+    mode: 'light',
+    preview: { bg: '#f3eef8', accent: '#7c3aed', card: '#ffffff', text: '#1c1228' },
+  },
+  'purple-dark': {
+    id: 'purple-dark',
+    name: 'Фиолетовая тёмная',
+    description: 'Тёмная тема с фиолетовым акцентом',
+    mode: 'dark',
+    preview: { bg: '#100a18', accent: '#c4b5fd', card: '#1a1326', text: '#e9e0f7' },
+  },
 }
 
 export const THEME_ORDER: ThemeId[] = [
@@ -89,6 +105,8 @@ export const THEME_ORDER: ThemeId[] = [
   'gold-dark',
   'blue-light',
   'blue-dark',
+  'purple-light',
+  'purple-dark',
 ]
 
 export const THEME_STORAGE_KEY = 'propcount.panel.theme'
