@@ -13,6 +13,7 @@ const store = usePortfolioStore()
 const form = ref<TenantFormData>({
   company: '',
   inn: '',
+  email: '',
   propertyId: null,
   space: '',
   rent: 0,
@@ -34,7 +35,7 @@ const spaceOptions = computed(() => {
 })
 
 function resetForm() {
-  form.value = { company: '', inn: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
+  form.value = { company: '', inn: '', email: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
   errors.value = {}
 }
 
@@ -105,6 +106,9 @@ function validate() {
   errors.value = {}
   if (!form.value.company.trim()) errors.value.company = 'Укажите название'
   if (!/^\d{10}$|^\d{12}$/.test(form.value.inn)) errors.value.inn = 'ИНН: 10 или 12 цифр'
+  if (form.value.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())) {
+    errors.value.email = 'Некорректный email'
+  }
   if (!form.value.propertyId) errors.value.propertyId = 'Выберите объект'
   if (!form.value.space.trim()) errors.value.space = 'Укажите помещение'
   if (form.value.rent <= 0) errors.value.rent = 'Укажите сумму аренды'
@@ -159,6 +163,21 @@ function onClose() {
             </button>
           </li>
         </ul>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Эл. почта</label>
+        <input
+          v-model="form.email"
+          type="email"
+          placeholder="buh@company.ru"
+          class="panel-input"
+          :class="{ 'border-red-500': errors.email }"
+        />
+        <p v-if="errors.email" class="text-xs text-red-400 mt-1">{{ errors.email }}</p>
+        <p v-else class="text-xs text-slate-500 mt-1">
+          Если арендатор не зарегистрирован в приложении, счета на аренду и коммуналку будут уходить на этот адрес.
+        </p>
       </div>
 
       <div>

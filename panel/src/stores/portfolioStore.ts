@@ -38,6 +38,11 @@ function cadastreAreaKey(propertyId: number, number: string) {
   return `${propertyId}:${number.trim()}`
 }
 
+function emailOrNull(value?: string | null) {
+  const trimmed = (value ?? '').trim()
+  return trimmed || null
+}
+
 function readStoredCadastreAreas(): Record<string, number> {
   try {
     const raw = sessionStorage.getItem(CADASTRE_AREA_STORAGE)
@@ -762,12 +767,14 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         const tenantList = await landlordApi.listTenants()
         for (const row of tenantList) {
           const detail = await landlordApi.getTenant(row.id)
+          const email = (detail.email ?? row.email)?.trim() ?? ''
           const leases = detail.leases ?? []
           if (!leases.length) {
             tenants.value.push({
               id: row.id,
               company: row.name,
               inn: row.inn,
+              email,
               propertyId: 0,
               space: '',
               rent: 0,
@@ -782,6 +789,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               id: row.id,
               company: row.name,
               inn: row.inn,
+              email,
               propertyId: space?.propertyId ?? lease.object_id ?? 0,
               space: space?.name ?? lease.unit_number ?? '',
               rent: num(lease.rent_monthly),
@@ -941,6 +949,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         tenant = await landlordApi.createTenant({
           name: data.company.trim(),
           inn,
+          email: emailOrNull(data.email),
         })
       } catch (err) {
         if (!(err instanceof ApiError) || err.status !== 409) throw err
@@ -948,6 +957,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         const existingTenant = list.find((row) => row.inn === inn)
         if (!existingTenant) throw err
         tenant = existingTenant
+        if (emailOrNull(data.email) && emailOrNull(data.email) !== (existingTenant.email ?? '').trim()) {
+          tenant = await landlordApi.updateTenant(existingTenant.id, { email: emailOrNull(data.email) })
+        }
       }
 
       const uploadedFiles = await uploadPending(data.documents, 'contract')
@@ -1310,9 +1322,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (!tenant) return false
     lastError.value = null
     try {
-      await landlordApi.updateTenant(tenant.id, {
+      const updated = await landlordApi.updateTenant(tenant.id, {
         name: data.company.trim(),
         inn: data.inn.trim(),
+        email: emailOrNull(data.email),
       })
       if (tenant.leaseId) {
         await landlordApi.updateLease(tenant.leaseId, {
@@ -1320,8 +1333,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           end_date: data.contract,
         })
       }
-      tenant.company = data.company.trim()
-      tenant.inn = data.inn.trim()
+      const email = (updated.email ?? data.email).trim()
+      for (const item of tenants.value) {
+        if (item.id !== tenant.id) continue
+        item.company = data.company.trim()
+        item.inn = data.inn.trim()
+        item.email = email
+      }
       tenant.rent = data.rent
       tenant.contract = data.contract
       tenant.status = getTenantStatus(data.contract)

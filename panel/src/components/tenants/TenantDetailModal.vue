@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Building2, MapPin, User } from '@lucide/vue'
+import { computed, ref, watch } from 'vue'
+import { Building2, MapPin, Mail, User } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -9,6 +9,9 @@ import { PROPERTY_TYPE_LABELS, TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
 const store = usePortfolioStore()
 const terminating = ref(false)
 const terminateError = ref<string | null>(null)
+const emailDraft = ref('')
+const emailError = ref('')
+const savingEmail = ref(false)
 
 const tenant = computed(() => {
   if (store.tenantDetailLeaseId) {
@@ -30,6 +33,15 @@ const canTerminate = computed(() =>
   Boolean(tenant.value?.leaseId && tenant.value.status !== 'overdue'),
 )
 
+watch(
+  () => tenant.value?.id,
+  () => {
+    emailDraft.value = tenant.value?.email ?? ''
+    emailError.value = ''
+  },
+  { immediate: true },
+)
+
 function statusLabel(status: string) {
   const map: Record<string, string> = { active: 'Активен', expiring: 'Истекает', overdue: 'Просрочен' }
   return map[status] ?? status
@@ -42,6 +54,30 @@ function statusClass(status: string) {
     overdue: 'text-rose-400 bg-rose-500/10',
   }
   return map[status] ?? ''
+}
+
+async function saveEmail() {
+  if (!tenant.value || savingEmail.value) return
+  const value = emailDraft.value.trim()
+  if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    emailError.value = 'Некорректный email'
+    return
+  }
+  savingEmail.value = true
+  emailError.value = ''
+  const ok = await store.updateTenant(
+    tenant.value.id,
+    {
+      company: tenant.value.company,
+      inn: tenant.value.inn,
+      email: value,
+      rent: tenant.value.rent,
+      contract: tenant.value.contract,
+    },
+    tenant.value.leaseId,
+  )
+  savingEmail.value = false
+  if (!ok) emailError.value = store.lastError || 'Не удалось сохранить email'
 }
 
 function onClose() {
@@ -83,6 +119,34 @@ async function terminateLease() {
           {{ statusLabel(tenant.status) }}
         </span>
         <span class="text-xs text-slate-500 font-mono">ИНН {{ tenant.inn }}</span>
+      </div>
+
+      <div class="rounded-xl border border-border bg-panel/40 p-4 mb-5">
+        <div class="flex items-center gap-2 text-xs text-slate-500 uppercase tracking-wide mb-2">
+          <Mail class="w-3.5 h-3.5" />
+          Эл. почта
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input
+            v-model="emailDraft"
+            type="email"
+            placeholder="Для счетов, если нет кабинета в приложении"
+            class="panel-input"
+            :class="{ 'border-red-500': emailError }"
+          />
+          <button
+            type="button"
+            class="panel-btn-primary shrink-0"
+            :disabled="savingEmail || emailDraft.trim() === (tenant.email ?? '').trim()"
+            @click="saveEmail"
+          >
+            {{ savingEmail ? 'Сохранение...' : 'Сохранить' }}
+          </button>
+        </div>
+        <p v-if="emailError" class="text-xs text-red-400 mt-1">{{ emailError }}</p>
+        <p v-else class="text-xs text-slate-500 mt-1">
+          На этот адрес будут уходить счета на аренду и коммуналку, если арендатор не зарегистрирован.
+        </p>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4 mb-5">

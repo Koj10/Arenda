@@ -54,6 +54,7 @@ const infoForm = ref<SpaceUpdateData>({
 const dealForm = ref<TenantUpdateData>({
   company: '',
   inn: '',
+  email: '',
   rent: 0,
   contract: '',
 })
@@ -218,6 +219,7 @@ function fillDealForm() {
   dealForm.value = {
     company: tenant.value.company,
     inn: tenant.value.inn,
+    email: tenant.value.email ?? '',
     rent: tenant.value.rent,
     contract: tenant.value.contract,
   }
@@ -278,6 +280,9 @@ function validateDeal() {
   dealErrors.value = {}
   if (!dealForm.value.company.trim()) dealErrors.value.company = 'Укажите название'
   if (!/^\d{10}$|^\d{12}$/.test(dealForm.value.inn)) dealErrors.value.inn = 'ИНН: 10 или 12 цифр'
+  if (dealForm.value.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dealForm.value.email.trim())) {
+    dealErrors.value.email = 'Некорректный email'
+  }
   if (dealForm.value.rent <= 0) dealErrors.value.rent = 'Укажите сумму аренды'
   if (!dealForm.value.contract) dealErrors.value.contract = 'Укажите дату окончания'
   return Object.keys(dealErrors.value).length === 0
@@ -497,6 +502,12 @@ watch(
                     <input v-model="dealForm.inn" type="text" :class="[INPUT_CLASS, { 'border-red-500': dealErrors.inn }]" />
                     <p v-if="dealErrors.inn" class="text-xs text-red-400 mt-1">{{ dealErrors.inn }}</p>
                   </div>
+                  <div class="sm:col-span-2">
+                    <label class="block text-xs text-slate-500 mb-1">Эл. почта</label>
+                    <input v-model="dealForm.email" type="email" :class="[INPUT_CLASS, { 'border-red-500': dealErrors.email }]" />
+                    <p v-if="dealErrors.email" class="text-xs text-red-400 mt-1">{{ dealErrors.email }}</p>
+                    <p v-else class="text-xs text-slate-500 mt-1">Для счетов, если нет кабинета в приложении</p>
+                  </div>
                   <div>
                     <label class="block text-xs text-slate-500 mb-1">Аренда / мес, ₽</label>
                     <input v-model.number="dealForm.rent" type="number" min="0" :class="[INPUT_CLASS, { 'border-red-500': dealErrors.rent }]" />
@@ -525,6 +536,10 @@ watch(
                   <div>
                     <p class="text-xs text-slate-500 mb-1">ИНН</p>
                     <p class="text-sm font-mono text-slate-200">{{ tenant.inn }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-slate-500 mb-1">Эл. почта</p>
+                    <p class="text-sm text-slate-200 break-all">{{ tenant.email || '—' }}</p>
                   </div>
                   <div>
                     <p class="text-xs text-slate-500 mb-1">Аренда / мес</p>
@@ -610,6 +625,10 @@ watch(
             <div>
               <p class="text-xs text-slate-500 mb-1">ИНН</p>
               <p class="text-sm font-mono text-slate-200">{{ tenant.inn }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 mb-1">Эл. почта</p>
+              <p class="text-sm text-slate-200 break-all">{{ tenant.email || '—' }}</p>
             </div>
           </div>
           <p class="text-xs text-slate-500 mt-4">Подробные контакты физических лиц — в карточке арендатора</p>

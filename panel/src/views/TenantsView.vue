@@ -22,7 +22,10 @@ const filtered = computed(() => {
   if (!search.value) return store.tenants
   const q = search.value.toLowerCase()
   return store.tenants.filter(
-    (t) => t.company.toLowerCase().includes(q) || t.inn.includes(q),
+    (t) =>
+      t.company.toLowerCase().includes(q) ||
+      t.inn.includes(q) ||
+      t.email.toLowerCase().includes(q),
   )
 })
 
@@ -177,7 +180,10 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
                     <span class="w-8 h-8 rounded-lg bg-emerald-brand/10 text-emerald-brand flex items-center justify-center shrink-0">
                       <User class="w-4 h-4" />
                     </span>
-                    <span class="text-white truncate">{{ t.company }}</span>
+                    <div class="min-w-0">
+                      <span class="text-white truncate block">{{ t.company }}</span>
+                      <span v-if="t.email" class="block text-xs text-slate-500 truncate">{{ t.email }}</span>
+                    </div>
                   </div>
                 </td>
                 <td class="px-5 py-3.5 font-mono text-slate-500 hidden sm:table-cell">{{ t.inn }}</td>

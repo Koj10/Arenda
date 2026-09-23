@@ -121,8 +121,10 @@ export interface TenantOut {
   id: number
   name: string
   inn: string
+  email?: string | null
   created_at: string
   active_leases_count?: number
+  is_registered?: boolean
 }
 
 export interface LeaseInTenantDetail {

@@ -165,7 +165,7 @@ export const usePanelSearchStore = defineStore('panelSearch', () => {
       }
 
       for (const t of portfolio.tenants) {
-        const hay = `${t.company} ${t.inn} ${t.space}`
+        const hay = `${t.company} ${t.inn} ${t.email} ${t.space}`
         if (match(hay, q)) {
           hits.push({
             id: `tenant:${t.id}`,

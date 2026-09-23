@@ -142,7 +142,7 @@ export async function getTenant(tenantId: number) {
   return apiRequest<TenantDetailOut>(`/landlord/tenants/${tenantId}`)
 }
 
-export async function createTenant(body: { name: string; inn: string }) {
+export async function createTenant(body: { name: string; inn: string; email?: string | null }) {
   return apiRequest<TenantOut>('/landlord/tenants', { method: 'POST', body })
 }
 
@@ -177,7 +177,7 @@ export async function deleteLease(leaseId: number) {
   return apiRequest<void>(`/landlord/leases/${leaseId}`, { method: 'DELETE' })
 }
 
-export async function updateTenant(tenantId: number, body: { name?: string; inn?: string }) {
+export async function updateTenant(tenantId: number, body: { name?: string; inn?: string; email?: string | null }) {
   return apiRequest<TenantOut>(`/landlord/tenants/${tenantId}`, { method: 'PATCH', body })
 }
 

@@ -61,6 +61,7 @@ export interface Tenant {
   id: number
   company: string
   inn: string
+  email: string
   propertyId: number
   space: string
   rent: number
@@ -236,6 +237,7 @@ export function createSplitCadastralFormData(_source: CadastralParcel): SplitCad
 export interface TenantFormData {
   company: string
   inn: string
+  email: string
   propertyId: number | null
   space: string
   rent: number
@@ -258,6 +260,7 @@ export interface SpaceUpdateData {
 export interface TenantUpdateData {
   company: string
   inn: string
+  email: string
   rent: number
   contract: string
 }
