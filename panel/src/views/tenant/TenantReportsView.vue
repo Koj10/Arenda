@@ -193,8 +193,8 @@ function navBtnClass(active: boolean) {
         </template>
       </div>
 
-      <div class="grid lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-3 panel-card p-4">
+      <div class="grid xl:grid-cols-12 gap-6">
+        <div class="xl:col-span-3 panel-card p-4">
           <div class="text-sm font-medium text-white mb-4">
             {{ reportKind === 'leases' ? 'По помещениям' : 'Фильтр' }}
           </div>
@@ -221,8 +221,8 @@ function navBtnClass(active: boolean) {
           </div>
         </div>
 
-        <div class="lg:col-span-9 grid lg:grid-cols-4 gap-6">
-          <div class="lg:col-span-1 panel-card p-5">
+        <div class="xl:col-span-9 grid xl:grid-cols-4 gap-6">
+          <div class="xl:col-span-1 panel-card p-5">
             <div class="flex items-center gap-2 text-sm font-medium text-white mb-4">
               <Settings2 class="w-4 h-4 text-emerald-brand" />
               Поля
@@ -254,7 +254,7 @@ function navBtnClass(active: boolean) {
             </button>
           </div>
 
-          <div class="lg:col-span-3 panel-card overflow-hidden">
+          <div class="xl:col-span-3 panel-card overflow-hidden">
             <div class="px-5 py-4 border-b border-border flex items-center justify-between">
               <div>
                 <div class="flex items-center gap-2 text-sm font-medium text-white">

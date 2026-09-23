@@ -27,7 +27,7 @@ const pageTitle = computed(() => (route.meta.pageTitle as string) ?? 'PropCount'
 const pageSubtitle = computed(() => (route.meta.pageSubtitle as string) ?? '')
 
 function syncViewport() {
-  isNarrow.value = window.matchMedia('(max-width: 1023px)').matches
+  isNarrow.value = window.matchMedia('(max-width: 1279px)').matches
 }
 
 watch(
@@ -68,7 +68,7 @@ function closeMobile() {
     />
 
     <aside
-      class="fixed inset-y-0 left-0 z-50 w-[min(100vw-2.5rem,260px)] transition-transform duration-300 ease-out"
+      class="fixed inset-y-0 left-0 z-50 w-[min(100vw-2.5rem,260px)] lg:w-[220px] xl:w-[260px] transition-transform duration-300 ease-out"
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
       :style="{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }"
     >
@@ -85,15 +85,15 @@ function closeMobile() {
       </div>
     </aside>
 
-    <div class="flex flex-col min-w-0 min-h-screen lg:pl-[260px]">
+    <div class="flex flex-col min-w-0 min-h-screen lg:pl-[220px] xl:pl-[260px]">
       <header
         class="sticky top-0 z-30 border-b border-border bg-navy/95 backdrop-blur-md"
         :style="{ paddingTop: 'env(safe-area-inset-top)' }"
       >
         <div
-          class="panel-header-bar grid items-center gap-x-2 sm:gap-x-4 min-h-[56px] sm:min-h-[64px] lg:min-h-[72px] px-3 sm:px-5 lg:px-8 py-2"
+          class="panel-header-bar min-h-[56px] sm:min-h-[64px] lg:min-h-[72px] px-3 sm:px-5 lg:px-6 xl:px-8 py-2"
         >
-          <div class="flex items-center gap-2 sm:gap-3 min-w-0 justify-self-start">
+          <div class="panel-header-title flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               type="button"
               class="lg:hidden shrink-0 p-2 rounded-xl text-slate-400 hover:bg-card border border-transparent hover:border-border"
@@ -111,27 +111,28 @@ function closeMobile() {
               </h1>
               <p
                 v-if="pageSubtitle"
-                class="text-[11px] text-slate-500 truncate mt-0.5 hidden xl:block max-w-[16rem] 2xl:max-w-[20rem]"
+                class="text-[11px] text-slate-500 truncate mt-0.5 hidden 2xl:block max-w-[20rem]"
               >
                 {{ pageSubtitle }}
               </p>
             </div>
           </div>
 
-          <div v-if="!isNarrow" class="flex justify-center justify-self-center w-full min-w-0 px-2">
+          <div v-if="!isNarrow" class="panel-header-search flex justify-center w-full min-w-0 px-1">
             <HeaderSearch />
           </div>
 
-          <div class="flex items-center justify-end gap-1 sm:gap-1.5 lg:gap-2 justify-self-end shrink-0">
-            <div class="hidden lg:flex items-center min-w-0 [&_.panel-btn-primary]:!px-3 lg:[&_.panel-btn-primary]:!px-4 [&_.panel-btn-primary]:text-sm">
-              <slot name="header-action" />
-            </div>
+          <div class="panel-header-cta">
+            <slot name="header-action" />
+          </div>
+
+          <div class="panel-header-tools flex items-center justify-end gap-1 sm:gap-1.5 shrink-0">
             <HeaderNotifications />
             <HeaderProfileMenu />
           </div>
         </div>
 
-        <div v-if="isNarrow" class="px-3 pb-3">
+        <div v-if="isNarrow" class="px-3 sm:px-5 pb-3">
           <HeaderSearch mobile />
         </div>
       </header>

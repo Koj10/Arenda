@@ -169,7 +169,7 @@ function chipClass(spaceId: number) {
 
       <p v-if="assignError" class="text-sm text-rose-400 px-1">{{ assignError }}</p>
 
-      <div class="grid lg:grid-cols-[minmax(240px,300px)_1fr] gap-5">
+      <div class="grid xl:grid-cols-[minmax(220px,280px)_1fr] gap-5">
         <div class="panel-card overflow-hidden">
           <div class="p-3 border-b border-border">
             <div class="relative">
@@ -287,7 +287,7 @@ function chipClass(spaceId: number) {
                         · {{ store.formatMoney(parcel.cadastralValue) }}
                       </p>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         class="inline-flex items-center gap-1 text-xs text-emerald-brand hover:underline"

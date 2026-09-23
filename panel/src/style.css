@@ -24,9 +24,12 @@
 }
 
 @layer base {
+  html,
   body {
     font-family: var(--font-sans);
     @apply antialiased bg-navy text-white;
+    overflow-x: hidden;
+    max-width: 100%;
   }
 }
 
@@ -55,20 +58,38 @@
     max-width: min(100%, 42rem); /* settings / help */
   }
 
-  /* Контентная колонка с ровными полями на всех брейкпоинтах */
+  /* Контентная колонка: запас снизу под чат поддержки */
   .panel-main-inner {
-    @apply w-full mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4 sm:py-6 lg:py-8;
-    max-width: 120rem; /* 1920px — потолок всей рабочей области */
+    @apply w-full mx-auto px-3 sm:px-5 lg:px-6 xl:px-8 2xl:px-12 py-4 sm:py-6 lg:py-8;
+    padding-bottom: max(5.5rem, calc(1.5rem + env(safe-area-inset-bottom)));
+    max-width: 120rem;
   }
 
-  /* Хедер: поиск по центру на десктопе; до lg — две колонки, поиск строкой ниже */
+  /* Хедер: на узких — заголовок + иконки, CTA строкой ниже; поиск с xl */
   .panel-header-bar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+    display: grid;
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title tools'
+      'cta cta';
   }
 
-  @media (max-width: 1023px) {
+  .panel-header-title { grid-area: title; }
+  .panel-header-search { grid-area: search; }
+  .panel-header-tools { grid-area: tools; }
+  .panel-header-cta { grid-area: cta; }
+
+  .panel-header-cta:not(:has(*)) {
+    display: none;
+  }
+
+  @media (min-width: 1280px) {
     .panel-header-bar {
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1.1fr) minmax(12rem, 2fr) auto auto;
+      grid-template-areas: 'title search cta tools';
     }
   }
 
@@ -89,7 +110,7 @@
   }
 
   .panel-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-all whitespace-nowrap;
+    @apply inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-all whitespace-nowrap max-w-full;
   }
 
   .panel-btn-primary:hover {
@@ -97,7 +118,7 @@
   }
 
   .panel-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-border text-slate-300 text-sm hover:bg-card-hover hover:border-emerald-brand/40 transition-colors whitespace-nowrap;
+    @apply inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl border border-border text-slate-300 text-sm hover:bg-card-hover hover:border-emerald-brand/40 transition-colors whitespace-nowrap max-w-full;
   }
 
   .panel-table-head {
@@ -114,7 +135,7 @@
   }
 
   .panel-table-wrap > table {
-    @apply min-w-[36rem] w-full;
+    @apply min-w-[20rem] sm:min-w-[28rem] md:min-w-[36rem] w-full;
   }
 
   /* Тулбар: поиск + CTA */
@@ -127,7 +148,24 @@
   }
 
   .panel-toolbar-actions {
-    @apply flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto sm:shrink-0;
+    @apply flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto sm:shrink-0;
+  }
+
+  .panel-header-cta {
+    @apply flex flex-wrap items-stretch sm:items-center gap-2 min-w-0;
+  }
+
+  .panel-header-cta > * {
+    @apply min-w-0 max-w-full;
+  }
+
+  .panel-header-cta > .panel-btn-primary,
+  .panel-header-cta > .panel-btn-secondary {
+    @apply w-full sm:w-auto justify-center;
+  }
+
+  .panel-row-actions {
+    @apply inline-flex flex-wrap justify-end gap-1.5;
   }
 
   .panel-toolbar-actions > .panel-btn-primary,
@@ -179,7 +217,7 @@
   }
 
   .panel-btn-danger {
-    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl border border-rose-500/30 text-rose-400 text-sm hover:bg-rose-500/10 transition-colors max-w-full;
   }
 
   /* Выпадашки хедера: базовый вид; позиция задаётся JS (fixed), чтобы не уезжали за край */

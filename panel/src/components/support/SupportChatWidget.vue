@@ -34,12 +34,12 @@ function onKeydown(event: KeyboardEvent) {
 <template>
   <Teleport to="body">
     <div
-      class="fixed right-4 z-[200] flex flex-col items-end gap-3"
-      style="bottom: max(1rem, env(safe-area-inset-bottom))"
+      class="fixed z-[200] flex flex-col items-end gap-3"
+      style="right: max(0.75rem, env(safe-area-inset-right)); bottom: max(0.75rem, env(safe-area-inset-bottom))"
     >
       <section
         v-if="chat.open"
-        class="w-[min(calc(100vw-2rem),360px)] h-[min(70vh,480px)] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden"
+        class="w-[min(calc(100vw-1.5rem),360px)] h-[min(62vh,480px)] sm:h-[min(70vh,480px)] rounded-2xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden"
         role="dialog"
         aria-label="Чат поддержки"
       >
@@ -106,7 +106,7 @@ function onKeydown(event: KeyboardEvent) {
 
       <button
         type="button"
-        class="w-14 h-14 rounded-full bg-emerald-brand text-black shadow-lg shadow-emerald-brand/30 flex items-center justify-center hover:brightness-110 transition-transform"
+        class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-brand text-black shadow-lg shadow-emerald-brand/30 flex items-center justify-center hover:brightness-110 transition-transform"
         :class="chat.open ? 'rotate-0' : ''"
         :aria-label="chat.open ? 'Закрыть чат поддержки' : 'Открыть чат поддержки'"
         @click="chat.toggle()"

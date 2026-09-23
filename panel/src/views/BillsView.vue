@@ -133,7 +133,7 @@ function tenantName(spaceName: string) {
         </ol>
       </div>
 
-      <div class="grid lg:grid-cols-[minmax(240px,300px)_1fr] gap-5">
+      <div class="grid xl:grid-cols-[minmax(220px,280px)_1fr] gap-5">
         <div class="panel-card overflow-hidden">
           <div class="p-3 border-b border-border">
             <div class="relative">

@@ -171,12 +171,14 @@ onMounted(() => {
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
           <input v-model="search" type="search" placeholder="Поиск по имени или объекту..." class="panel-search" />
         </div>
-        <select v-model="typeFilter" class="panel-input w-full sm:w-auto sm:min-w-[180px]">
-          <option value="all">Все привязки</option>
-          <option v-for="type in typeOptions" :key="type" :value="type">
-            {{ type === 'none' ? 'Без привязки' : linkLabel(type) }}
-          </option>
-        </select>
+        <div class="panel-toolbar-actions">
+          <select v-model="typeFilter" class="panel-input w-full sm:w-auto sm:min-w-[180px]">
+            <option value="all">Все привязки</option>
+            <option v-for="type in typeOptions" :key="type" :value="type">
+              {{ type === 'none' ? 'Без привязки' : linkLabel(type) }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <p v-if="error" class="mb-4 text-sm text-rose-400">{{ error }}</p>
@@ -225,20 +227,21 @@ onMounted(() => {
                 <td class="px-5 py-3.5 font-mono text-xs text-slate-500 hidden lg:table-cell">
                   {{ file.created_at ? formatDateRu(file.created_at) : '—' }}
                 </td>
-                <td class="px-5 py-3.5">
-                  <div class="flex justify-end gap-2">
-                    <button type="button" class="panel-btn-secondary !px-2.5 !py-1.5" @click="preview = file">
+                <td class="px-3 sm:px-5 py-3.5">
+                  <div class="panel-row-actions">
+                    <button type="button" class="panel-btn-secondary !px-2.5 !py-1.5" aria-label="Смотреть" @click="preview = file">
                       <Eye class="w-3.5 h-3.5" />
-                      Смотреть
+                      <span class="hidden sm:inline">Смотреть</span>
                     </button>
                     <button
                       type="button"
                       class="panel-btn-primary !px-2.5 !py-1.5"
+                      aria-label="Скачать"
                       :disabled="downloadingId === file.id"
                       @click="download(file)"
                     >
                       <Download class="w-3.5 h-3.5" />
-                      {{ downloadingId === file.id ? '...' : 'Скачать' }}
+                      <span class="hidden sm:inline">{{ downloadingId === file.id ? '...' : 'Скачать' }}</span>
                     </button>
                   </div>
                 </td>

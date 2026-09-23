@@ -143,7 +143,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="grid lg:grid-cols-3 gap-4 mb-4">
+        <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
           <div class="lg:col-span-2">
             <CashFlowChart />
           </div>

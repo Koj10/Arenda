@@ -48,11 +48,11 @@ function logout() {
       <span class="w-9 h-9 rounded-full bg-emerald-brand/20 text-emerald-brand text-sm font-bold flex items-center justify-center shrink-0">
         {{ initial }}
       </span>
-      <span class="hidden lg:block text-left min-w-0">
-        <span class="block text-sm font-medium truncate max-w-[120px]">{{ auth.user?.name ?? 'Пользователь' }}</span>
-        <span class="block text-[11px] text-slate-500 truncate max-w-[120px]">{{ auth.user?.email ?? '' }}</span>
+      <span class="hidden xl:block text-left min-w-0">
+        <span class="block text-sm font-medium truncate max-w-[7rem] 2xl:max-w-[10rem]">{{ auth.user?.name ?? 'Пользователь' }}</span>
+        <span class="block text-[11px] text-slate-500 truncate max-w-[7rem] 2xl:max-w-[10rem]">{{ auth.user?.email ?? '' }}</span>
       </span>
-      <ChevronDown class="w-3.5 h-3.5 text-slate-500 hidden lg:block shrink-0" :class="open && 'rotate-180'" />
+      <ChevronDown class="w-3.5 h-3.5 text-slate-500 hidden xl:block shrink-0" :class="open && 'rotate-180'" />
     </button>
 
     <Teleport to="body">

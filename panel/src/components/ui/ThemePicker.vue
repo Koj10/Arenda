@@ -15,7 +15,7 @@ const theme = useThemeStore()
       Выберите тему, которая вам больше нравится. Цвета логотипа и акценты автоматически подстраиваются под тему.
     </p>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
       <button
         v-for="item in theme.allThemes"
         :key="item.id"

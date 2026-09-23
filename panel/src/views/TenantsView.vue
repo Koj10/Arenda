@@ -145,7 +145,8 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
           >
             <Lock v-if="!canAddTenant()" class="w-4 h-4" />
             <Plus v-else class="w-4 h-4" />
-            Добавить арендатора
+            <span class="sm:hidden">Арендатор</span>
+            <span class="hidden sm:inline">Добавить арендатора</span>
           </button>
         </div>
       </div>
@@ -162,7 +163,7 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
                 <th class="px-5 py-3 font-medium">Компания</th>
                 <th class="px-5 py-3 font-medium hidden sm:table-cell">ИНН</th>
                 <th class="px-5 py-3 font-medium hidden md:table-cell">Помещение</th>
-                <th class="px-5 py-3 font-medium">Аренда/мес</th>
+                <th class="px-5 py-3 font-medium hidden sm:table-cell">Аренда/мес</th>
                 <th class="px-5 py-3 font-medium">Оплата аренды</th>
                 <th class="px-5 py-3 font-medium hidden lg:table-cell">Договор до</th>
                 <th class="px-5 py-3 font-medium">Договор</th>
@@ -188,7 +189,7 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
                 </td>
                 <td class="px-5 py-3.5 font-mono text-slate-500 hidden sm:table-cell">{{ t.inn }}</td>
                 <td class="px-5 py-3.5 text-slate-400 hidden md:table-cell">{{ getSpaceLabel(t) }}</td>
-                <td class="px-5 py-3.5 font-mono text-emerald-brand">{{ store.formatMoney(t.rent) }}</td>
+                <td class="px-5 py-3.5 font-mono text-emerald-brand hidden sm:table-cell">{{ store.formatMoney(t.rent) }}</td>
                 <td class="px-5 py-3.5">
                   <span
                     class="inline-flex px-2 py-0.5 rounded text-xs font-medium"

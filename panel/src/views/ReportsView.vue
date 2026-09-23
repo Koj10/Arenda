@@ -220,12 +220,13 @@ function navBtnClass(active: boolean) {
     <template #header-action>
       <button
         type="button"
-        class="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-brand text-black text-sm font-semibold hover:bg-bronze-dark transition-colors disabled:opacity-50"
+        class="panel-btn-primary"
         :disabled="selectedColumns.length === 0 || displayRows.length === 0 || exporting"
         @click="handleExport"
       >
         <Download class="w-4 h-4" />
-        {{ exporting ? 'Экспорт...' : 'Экспорт Excel' }}
+        <span class="sm:hidden">{{ exporting ? '...' : 'Excel' }}</span>
+        <span class="hidden sm:inline">{{ exporting ? 'Экспорт...' : 'Экспорт Excel' }}</span>
       </button>
     </template>
 
@@ -248,8 +249,8 @@ function navBtnClass(active: boolean) {
         </div>
       </div>
 
-      <div class="grid lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-3 panel-card p-4">
+      <div class="grid xl:grid-cols-12 gap-6">
+        <div class="xl:col-span-3 panel-card p-4">
           <div class="flex items-center gap-2 text-sm font-medium text-white mb-4">
             <MapPin class="w-4 h-4 text-emerald-brand" />
             Отчёты по объектам
@@ -304,8 +305,8 @@ function navBtnClass(active: boolean) {
           </div>
         </div>
 
-        <div class="lg:col-span-9 grid lg:grid-cols-4 gap-6">
-          <div class="lg:col-span-1 panel-card p-5">
+        <div class="xl:col-span-9 grid xl:grid-cols-4 gap-6">
+          <div class="xl:col-span-1 panel-card p-5">
             <div class="flex items-center gap-2 text-sm font-medium text-white mb-1">
               <Settings2 class="w-4 h-4 text-emerald-brand" />
               Поля отчёта
@@ -339,7 +340,7 @@ function navBtnClass(active: boolean) {
             </button>
           </div>
 
-          <div class="lg:col-span-3 panel-card overflow-hidden">
+          <div class="xl:col-span-3 panel-card overflow-hidden">
             <div class="px-5 py-4 border-b border-border">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div>

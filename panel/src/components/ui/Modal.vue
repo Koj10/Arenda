@@ -17,20 +17,20 @@ const emit = defineEmits<{ close: [] }>()
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 flex items-center justify-center p-4"
+      class="fixed inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4"
       :style="{ zIndex }"
     >
       <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="emit('close')" />
       <div
-        class="relative w-full rounded-xl border border-border bg-card shadow-2xl animate-[fadeIn_0.2s_ease]"
+        class="relative w-full rounded-t-2xl sm:rounded-xl border border-border bg-card shadow-2xl animate-[fadeIn_0.2s_ease] max-h-[min(92dvh,920px)] flex flex-col mx-auto"
         :class="
-          size === '3xl' ? 'max-w-5xl'
-          : size === 'xl' ? 'max-w-2xl'
-          : size === 'lg' ? 'max-w-lg'
-          : 'max-w-md'
+          size === '3xl' ? 'sm:max-w-5xl'
+          : size === 'xl' ? 'sm:max-w-2xl'
+          : size === 'lg' ? 'sm:max-w-lg'
+          : 'sm:max-w-md'
         "
       >
-        <div class="flex items-center justify-between px-6 py-4 border-b border-border gap-3">
+        <div class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border gap-3 shrink-0">
           <slot name="header">
             <h2 class="text-lg font-semibold text-white truncate">{{ title }}</h2>
           </slot>
@@ -43,12 +43,12 @@ const emit = defineEmits<{ close: [] }>()
             ✕
           </button>
         </div>
-        <div class="px-6 py-5 max-h-[78vh] overflow-y-auto text-slate-300">
+        <div class="px-4 sm:px-6 py-4 sm:py-5 min-h-0 flex-1 overflow-y-auto text-slate-300">
           <slot />
         </div>
         <div
           v-if="$slots.footer"
-          class="px-6 py-4 border-t border-border flex flex-wrap items-center justify-end gap-2 bg-panel/50"
+          class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border flex flex-wrap items-center justify-end gap-2 bg-panel/50 shrink-0"
         >
           <slot name="footer" />
         </div>

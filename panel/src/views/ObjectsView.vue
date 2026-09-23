@@ -101,7 +101,7 @@ async function onDeleteProperty(p: (typeof store.properties)[number]) {
             <Lock v-if="!canAddObject()" class="w-4 h-4" />
             <Plus v-else class="w-4 h-4" />
             <span>Добавить объект</span>
-            <span v-if="limits.maxObjects != null" class="text-xs opacity-70 tabular-nums">
+            <span v-if="limits.maxObjects != null" class="hidden sm:inline text-xs opacity-70 tabular-nums">
               {{ usage?.objects ?? 0 }}/{{ limits.maxObjects }}
             </span>
           </button>
@@ -127,7 +127,7 @@ async function onDeleteProperty(p: (typeof store.properties)[number]) {
 
               <th class="px-5 py-3 font-medium">Помещения</th>
 
-              <th class="px-5 py-3 font-medium">Занятость</th>
+              <th class="px-5 py-3 font-medium hidden sm:table-cell">Занятость</th>
 
               <th class="px-5 py-3 font-medium hidden md:table-cell">Доход/мес</th>
 
@@ -158,7 +158,7 @@ async function onDeleteProperty(p: (typeof store.properties)[number]) {
 
               <td class="px-5 py-3.5 font-mono text-slate-500">{{ p.spacesOccupied }} / {{ p.spacesTotal }}</td>
 
-              <td class="px-5 py-3.5">
+              <td class="px-5 py-3.5 hidden sm:table-cell">
 
                 <span class="inline-flex px-2 py-0.5 rounded font-mono text-xs font-medium" :class="occupancyClass(p.occupancy)">
 
