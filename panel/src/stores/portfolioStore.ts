@@ -32,6 +32,7 @@ import type { CadastreSplitOut, ObjectDetailOut } from '@/api/types'
 import { daysUntil, formatDateRu, todayISODate } from '@/utils/dates'
 
 const CADASTRE_AREA_STORAGE = 'propcount.cadastreSplitAreas'
+const RETIRED_CADASTRE_STORAGE = 'propcount.retiredCadastres'
 
 function cadastreAreaKey(propertyId: number, number: string) {
   return `${propertyId}:${number.trim()}`
@@ -62,6 +63,32 @@ function rememberCadastreArea(propertyId: number, number: string, area: number) 
 function recalledCadastreArea(propertyId: number, number: string): number | undefined {
   const value = readStoredCadastreAreas()[cadastreAreaKey(propertyId, number)]
   return value && value > 0 ? value : undefined
+}
+
+function readRetiredCadastreIds(): number[] {
+  try {
+    const raw = localStorage.getItem(RETIRED_CADASTRE_STORAGE)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? parsed.filter((id): id is number => typeof id === 'number') : []
+  } catch {
+    return []
+  }
+}
+
+function retireCadastre(id: number) {
+  if (!id) return
+  const ids = new Set(readRetiredCadastreIds())
+  ids.add(id)
+  try {
+    localStorage.setItem(RETIRED_CADASTRE_STORAGE, JSON.stringify([...ids]))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function isRetiredCadastre(id: number) {
+  return readRetiredCadastreIds().includes(id)
 }
 
 function recalcPropertyStats(property: Property, propertyTenants: Tenant[]) {
@@ -411,7 +438,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     else properties.value.push(nextProperty)
 
     const prevParcels = cadastralParcels.value.filter((p) => p.propertyId === detail.id)
-    const cadastreEntries = detail.cadastre_entries ?? []
+    const cadastreEntries = (detail.cadastre_entries ?? []).filter((entry) => !isRetiredCadastre(entry.id))
     cadastralParcels.value = cadastralParcels.value.filter((p) => p.propertyId !== detail.id)
     for (const entry of cadastreEntries) {
       const prev = prevParcels.find((p) => p.id === entry.id)
@@ -426,12 +453,14 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       })
     }
 
+    const validParcelIds = new Set(cadastreEntries.map((entry) => entry.id))
     spaces.value = spaces.value.filter((s) => s.propertyId !== detail.id)
     for (const unit of units) {
+      const cadastreId = unit.cadastre_id ?? undefined
       spaces.value.push({
         id: unit.id,
         propertyId: unit.object_id,
-        cadastralParcelId: unit.cadastre_id ?? undefined,
+        cadastralParcelId: cadastreId && validParcelIds.has(cadastreId) ? cadastreId : undefined,
         name: unit.number,
         area: num(unit.area),
         monthlyRate: num(unit.rent_rate),
@@ -475,17 +504,44 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     return byNumber
   }
 
+  function retireSplitParents(entries: { id: number; number: string }[], history?: CadastreSplitOut[]) {
+    const byNumber = new Map(entries.map((entry) => [entry.number.trim(), entry.id]))
+    const entryIds = new Set(entries.map((entry) => entry.id))
+    for (const split of history ?? []) {
+      const childId = byNumber.get(split.new_cadastre_number.trim())
+      if (entryIds.has(split.original_cadastre_id) && childId && childId !== split.original_cadastre_id) {
+        retireCadastre(split.original_cadastre_id)
+      }
+    }
+  }
+
+  function detachOrphanSpaces(propertyId: number) {
+    const valid = new Set(getCadastralParcelsForProperty(propertyId).map((p) => p.id))
+    for (const space of spaces.value) {
+      if (space.propertyId === propertyId && space.cadastralParcelId && !valid.has(space.cadastralParcelId)) {
+        space.cadastralParcelId = undefined
+      }
+    }
+  }
+
   function applyCadastralDetail(detail: import('@/api/types').CadastralObjectDetail) {
     const property = getPropertyById(detail.object_id)
     const objectArea = property?.totalArea ?? 0
-    const parcelsOnObject = (detail.cadastre_entries ?? []).length
     const historyAreas = ingestSplitHistory(detail.object_id, detail.split_history)
-    for (const entry of detail.cadastre_entries ?? []) {
+    retireSplitParents(detail.cadastre_entries ?? [], detail.split_history)
+    const visibleEntries = (detail.cadastre_entries ?? []).filter((entry) => !isRetiredCadastre(entry.id))
+    const visibleIds = new Set(visibleEntries.map((entry) => entry.id))
+
+    cadastralParcels.value = cadastralParcels.value.filter(
+      (p) => p.propertyId !== detail.object_id || visibleIds.has(p.id),
+    )
+
+    for (const entry of visibleEntries) {
       const existing = getCadastralParcelById(entry.id)
       const area = resolveCadastreArea(
         detail.object_id,
         entry.number,
-        parcelsOnObject,
+        visibleEntries.length,
         objectArea,
         existing?.area,
         historyAreas.get(entry.number.trim()),
@@ -506,6 +562,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         })
       }
     }
+    detachOrphanSpaces(detail.object_id)
   }
 
   async function refreshCadastral(objectId: number) {
@@ -996,6 +1053,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       ])
       leftoverIds.delete(first.id)
       leftoverIds.delete(second.id)
+      for (const leftoverId of leftoverIds) retireCadastre(leftoverId)
 
       const leftoverSpaceIds = [
         ...spacesToUnassign,
@@ -1056,7 +1114,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         (p) => p.propertyId === original.propertyId && p.cadastralNumber.trim() === originalNumber,
       )
       if (stillOriginal && stillOriginal.id !== firstAfter?.id && stillOriginal.id !== secondAfter?.id) {
+        retireCadastre(stillOriginal.id)
         cadastralParcels.value = cadastralParcels.value.filter((p) => p.id !== stillOriginal.id)
+        detachOrphanSpaces(original.propertyId)
       }
 
       splitCadastralModalOpen.value = false
