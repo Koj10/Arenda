@@ -92,7 +92,7 @@ export const THEMES: Record<ThemeId, ThemePalette> = {
     name: 'Фиолетовая тёмная',
     description: 'Тёмная тема с фиолетовым акцентом',
     mode: 'dark',
-    preview: { bg: '#100a18', accent: '#c4b5fd', card: '#1a1326', text: '#e9e0f7' },
+    preview: { bg: '#160824', accent: '#5b21b6', card: '#24103c', text: '#eee6f8' },
   },
 }
 
