@@ -97,7 +97,7 @@ const router = createRouter({
       path: '/help',
       name: 'help',
       component: () => import('@/views/HelpView.vue'),
-      meta: { requiresAuth: true, pageTitle: 'Помощь', pageSubtitle: 'FAQ и контакты поддержки' },
+      meta: { requiresAuth: true, pageTitle: 'Помощь', pageSubtitle: 'FAQ и чат поддержки' },
     },
 
     // Tenant portal (read-only)

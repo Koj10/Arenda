@@ -7,6 +7,7 @@ import { Menu, X } from '@lucide/vue'
 import HeaderNotifications from '@/components/layout/HeaderNotifications.vue'
 import HeaderProfileMenu from '@/components/layout/HeaderProfileMenu.vue'
 import HeaderSearch from '@/components/layout/HeaderSearch.vue'
+import SupportChatWidget from '@/components/support/SupportChatWidget.vue'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { usePanelSearchStore } from '@/stores/panelSearchStore'
 
@@ -141,5 +142,6 @@ function closeMobile() {
         </div>
       </main>
     </div>
+    <SupportChatWidget />
   </div>
 </template>

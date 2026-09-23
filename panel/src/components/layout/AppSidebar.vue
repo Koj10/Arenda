@@ -13,7 +13,7 @@ const emit = defineEmits<{ navigate: [] }>()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const { plan, isPaid, nextPlan, openUpgrade, startCheckout, usage, limits } = usePlan()
+const { plan, isPaid, nextPlan, openUpgrade, usage, limits } = usePlan()
 
 const menuItems = [
   { to: '/landlord/accounting', label: 'Аналитика', icon: BarChart2 },
@@ -46,10 +46,10 @@ function logout() {
 function onUpgradeClick() {
   emit('navigate')
   if (nextPlan.value) {
-    void startCheckout(nextPlan.value.id)
-  } else {
-    openUpgrade({ reason: 'Вы уже на максимальном тарифе' })
+    openUpgrade({ reason: `Переход на ${nextPlan.value.name}` })
+    return
   }
+  openUpgrade({ reason: 'Вы уже на максимальном тарифе' })
 }
 
 const objectsLabel = () => {
