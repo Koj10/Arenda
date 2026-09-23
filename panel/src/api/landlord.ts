@@ -9,6 +9,7 @@ import type {
   InvoiceUpdateBody,
   LandlordAnalyticsResponse,
   LandlordInvoiceOut,
+  LeaseDetailOut,
   ObjectDetailOut,
   ObjectListItem,
   PayersMatrixOut,
@@ -152,7 +153,7 @@ export async function createLease(body: {
   end_date: string
   file_ids?: number[]
 }) {
-  return apiRequest('/landlord/leases', { method: 'POST', body })
+  return apiRequest<LeaseDetailOut>('/landlord/leases', { method: 'POST', body })
 }
 
 export async function updateLease(

@@ -144,6 +144,18 @@ export interface TenantDetailOut extends TenantOut {
   leases?: LeaseInTenantDetail[]
 }
 
+export interface LeaseDetailOut {
+  id: number
+  tenant_id: number
+  unit_id: number
+  rent_monthly: string
+  start_date?: string | null
+  end_date: string
+  status?: string
+  files?: FileOut[]
+  documents?: FileOut[]
+}
+
 export interface TransactionOut {
   id: number
   user_id: number

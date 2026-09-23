@@ -65,6 +65,48 @@ function recalledCadastreArea(propertyId: number, number: string): number | unde
   return value && value > 0 ? value : undefined
 }
 
+const LEASE_FILES_STORAGE = 'propcount.leaseFiles'
+
+function readStoredLeaseFilesMap(): Record<string, FileOut[]> {
+  try {
+    const raw = localStorage.getItem(LEASE_FILES_STORAGE)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, FileOut[]>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function rememberLeaseFiles(leaseId: number, files: FileOut[]) {
+  if (!leaseId || !files.length) return
+  const stored = readStoredLeaseFilesMap()
+  const key = String(leaseId)
+  const merged = new Map((stored[key] ?? []).map((file) => [file.id, file]))
+  for (const file of files) merged.set(file.id, file)
+  stored[key] = [...merged.values()]
+  try {
+    localStorage.setItem(LEASE_FILES_STORAGE, JSON.stringify(stored))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function storedLeaseFiles(leaseId: number): FileOut[] {
+  return readStoredLeaseFilesMap()[String(leaseId)] ?? []
+}
+
+function forgetStoredLeaseFile(leaseId: number, fileId: number) {
+  const stored = readStoredLeaseFilesMap()
+  const key = String(leaseId)
+  stored[key] = (stored[key] ?? []).filter((file) => file.id !== fileId)
+  try {
+    localStorage.setItem(LEASE_FILES_STORAGE, JSON.stringify(stored))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 function readRetiredCadastreIds(): number[] {
   try {
     const raw = localStorage.getItem(RETIRED_CADASTRE_STORAGE)
@@ -405,6 +447,16 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  async function hydrateLeaseDocuments(leaseId: number, apiFiles: FileOut[] = []) {
+    const merged = new Map<number, FileOut>()
+    for (const file of apiFiles) merged.set(file.id, file)
+    for (const file of storedLeaseFiles(leaseId)) merged.set(file.id, file)
+    for (const file of await loadLinkedFiles('lease', leaseId)) merged.set(file.id, file)
+    const files = [...merged.values()]
+    if (files.length) rememberLeaseFiles(leaseId, files)
+    replaceEntityDocuments('tenant', leaseId, files, 'lease')
+  }
+
   function addDocument(data: Omit<AttachedDocument, 'id' | 'uploadedAt'> & { id?: number }) {
     documents.value.push({
       ...data,
@@ -430,11 +482,14 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         linked_id: entityId,
       })
       if (entityType === 'tenant') {
-        const currentIds = getDocuments('tenant', entityId, 'lease').map((d) => d.id)
+        const currentIds = getDocuments('tenant', entityId, 'lease')
+          .map((d) => d.id)
+          .filter((id) => Number.isInteger(id) && id > 0)
+        rememberLeaseFiles(entityId, [uploaded])
         try {
           await landlordApi.updateLease(entityId, { file_ids: [...currentIds, uploaded.id] })
-        } catch {
-          /* linked_type/id on upload may be enough */
+        } catch (err) {
+          lastError.value = formatApiError(err, 'Файл загружен, но не привязался к договору')
         }
       }
       addDocument({
@@ -455,11 +510,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   async function removeDocument(id: number) {
+    const existing = documents.value.find((d) => d.id === id)
     try {
       await deleteFileApi(id)
     } catch {
       /* API может не отдавать DELETE — убираем из списка */
     }
+    if (existing?.entityType === 'tenant') forgetStoredLeaseFile(existing.entityId, id)
     documents.value = documents.value.filter((d) => d.id !== id)
   }
 
@@ -534,6 +591,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       })
     }
     replaceEntityDocuments('property', detail.id, detail.documents ?? [], 'title')
+    for (const file of detail.documents ?? []) {
+      if (file.linked_type === 'lease' && file.linked_id) {
+        rememberLeaseFiles(file.linked_id, [file])
+      }
+    }
   }
 
   function resolveCadastreArea(
@@ -647,7 +709,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     linkedType?: string,
     linkedId?: number,
   ) {
-    const ids: number[] = []
+    const uploadedFiles: FileOut[] = []
     for (const doc of docs) {
       const blob = dataUrlToBlob(doc.dataUrl, doc.mimeType)
       const uploaded = await uploadFileApi(blob, {
@@ -657,9 +719,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           ? { linked_type: linkedType, linked_id: linkedId }
           : {}),
       })
-      ids.push(uploaded.id)
+      uploadedFiles.push(uploaded)
     }
-    return ids
+    return uploadedFiles
   }
 
   function reset() {
@@ -728,12 +790,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               leaseId: lease.id,
             })
             const leaseFiles = lease.documents ?? lease.files ?? []
-            if (leaseFiles.length) {
-              replaceEntityDocuments('tenant', lease.id, leaseFiles, 'lease')
-            } else {
-              const files = await loadLinkedFiles('lease', lease.id)
-              if (files.length) replaceEntityDocuments('tenant', lease.id, files, 'lease')
-            }
+            await hydrateLeaseDocuments(lease.id, leaseFiles)
           }
         }
 
@@ -788,9 +845,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       return false
     }
     try {
-      const titleIds = await uploadPending(data.titleDocuments, 'title')
-      const serviceIds = await uploadPending(data.serviceDocuments, 'service')
-      const fileIds = [...titleIds, ...serviceIds]
+      const titleFiles = await uploadPending(data.titleDocuments, 'title')
+      const serviceFiles = await uploadPending(data.serviceDocuments, 'service')
+      const fileIds = [...titleFiles, ...serviceFiles].map((file) => file.id)
       const created = await landlordApi.createObject({
         address: data.address.trim(),
         type: data.type,
@@ -893,7 +950,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         tenant = existingTenant
       }
 
-      const fileIds = await uploadPending(data.documents, 'contract')
+      const uploadedFiles = await uploadPending(data.documents, 'contract')
       const today = todayISODate()
       const endDate = data.contract
       const rent = Number(data.rent)
@@ -902,14 +959,15 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         return false
       }
 
-      await landlordApi.createLease({
+      const lease = await landlordApi.createLease({
         tenant_id: tenant.id,
         unit_id: space.id,
         rent_monthly: rent,
         start_date: endDate < today ? endDate : today,
         end_date: endDate,
-        file_ids: fileIds.length ? fileIds : undefined,
+        file_ids: uploadedFiles.length ? uploadedFiles.map((file) => file.id) : undefined,
       })
+      if (lease?.id && uploadedFiles.length) rememberLeaseFiles(lease.id, uploadedFiles)
       await loadFromApi()
       tenantModalOpen.value = false
       tenantModalPrefill.value = null
