@@ -5,6 +5,8 @@ import type { TenantFormData } from '@/types/portfolio'
 import { TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
+import { suggestTenants } from '@/api/landlord'
+import type { TenantSuggestItem } from '@/api/types'
 
 const store = usePortfolioStore()
 
@@ -19,6 +21,8 @@ const form = ref<TenantFormData>({
 })
 
 const errors = ref<Partial<Record<string, string>>>({})
+const suggestions = ref<TenantSuggestItem[]>([])
+let suggestTimer: ReturnType<typeof setTimeout> | null = null
 
 const propertyOptions = computed(() => store.properties)
 const lockedProperty = computed(() => !!store.tenantModalPrefill?.propertyId)
@@ -44,6 +48,27 @@ function applyPrefill() {
     if (space) form.value.rent = space.monthlyRate
   }
 }
+
+watch(
+  () => form.value.inn,
+  (inn) => {
+    if (suggestTimer) clearTimeout(suggestTimer)
+    const value = inn.trim()
+    if (value.length < 4) {
+      suggestions.value = []
+      return
+    }
+    suggestTimer = setTimeout(() => {
+      void suggestTenants(value)
+        .then((rows) => {
+          suggestions.value = rows
+        })
+        .catch(() => {
+          suggestions.value = []
+        })
+    }, 250)
+  },
+)
 
 watch(
   () => form.value.space,
@@ -97,6 +122,12 @@ async function submit() {
   resetForm()
 }
 
+function applySuggestion(item: TenantSuggestItem) {
+  form.value.company = item.name
+  form.value.inn = item.inn
+  suggestions.value = []
+}
+
 function onClose() {
   store.closeTenantModal()
   resetForm()
@@ -116,6 +147,18 @@ function onClose() {
         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">ИНН</label>
         <input v-model="form.inn" type="text" placeholder="7707083893" class="panel-input font-mono" :class="{ 'border-red-500': errors.inn }" />
         <p v-if="errors.inn" class="text-xs text-red-400 mt-1">{{ errors.inn }}</p>
+        <ul v-if="suggestions.length" class="mt-2 rounded-xl border border-border overflow-hidden">
+          <li v-for="item in suggestions" :key="`${item.inn}-${item.source}`">
+            <button
+              type="button"
+              class="w-full text-left px-3 py-2 text-sm hover:bg-card-hover"
+              @click="applySuggestion(item)"
+            >
+              <span class="text-white">{{ item.name }}</span>
+              <span class="text-xs text-slate-500 font-mono ml-2">{{ item.inn }}</span>
+            </button>
+          </li>
+        </ul>
       </div>
 
       <div>

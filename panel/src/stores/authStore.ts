@@ -9,6 +9,7 @@ import {
   fetchMe,
   logoutApi,
   selectRoleApi,
+  updateMeApi,
   updateTenantProfileApi,
 } from '@/api/auth'
 
@@ -223,24 +224,24 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function saveProfile(patch: Partial<Pick<AuthUser, 'name' | 'inn'>>): Promise<CompleteRoleResult> {
     if (!user.value) return { ok: false, error: 'Нет сессии' }
-    if (user.value.role === 'tenant') {
-      const inn = patch.inn?.trim()
-      if (inn) {
-        if (!isValidInn(inn)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
-        try {
-          const profile = await updateTenantProfileApi({
-            company_name: (patch.name ?? user.value.name).trim() || user.value.name,
-            inn,
-          })
-          updateProfile({ name: patch.name ?? user.value.name, inn: profile.inn })
-          return { ok: true }
-        } catch (err) {
-          return { ok: false, error: formatApiError(err, 'Не удалось сохранить ИНН') }
-        }
+    const name = (patch.name ?? user.value.name).trim() || user.value.name
+    const inn = patch.inn?.trim()
+    if (inn && !isValidInn(inn)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
+    try {
+      const me = await updateMeApi({ name, inn: inn || undefined })
+      if (user.value.role === 'tenant' && inn) {
+        const profile = await updateTenantProfileApi({
+          company_name: name,
+          inn,
+        })
+        updateProfile({ name: me.name || name, inn: profile.inn })
+        return { ok: true }
       }
+      updateProfile({ name: me.name || name, inn: inn || user.value.inn })
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: formatApiError(err, 'Не удалось сохранить профиль') }
     }
-    updateProfile({ name: patch.name ?? user.value.name, inn: patch.inn?.trim() || user.value.inn })
-    return { ok: true }
   }
 
   async function hydrateFromApi() {

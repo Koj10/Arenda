@@ -1,5 +1,5 @@
-import { apiRequest, apiUpload, clearTokens, getApiBaseUrl, setTokens } from '@/api/http'
-import type { AuthResponse, FileOut, MeResponse, TenantProfileOut } from '@/api/types'
+import { apiRequest, apiUpload, clearTokens, getApiBaseUrl, queryString, setTokens } from '@/api/http'
+import type { AuthResponse, FileOut, MeResponse, TenantProfileOut, UserPublic } from '@/api/types'
 
 export function persistAuth(session: AuthResponse) {
   setTokens(session.access_token, session.refresh_token)
@@ -74,6 +74,22 @@ export async function forgotPasswordApi(email: string) {
     skipAuth: true,
     body: { email },
   })
+}
+
+export async function resetPasswordApi(data: {
+  token: string
+  password: string
+  password_confirm: string
+}) {
+  return apiRequest<{ message?: string }>('/auth/reset-password', {
+    method: 'POST',
+    skipAuth: true,
+    body: data,
+  })
+}
+
+export async function updateMeApi(params: { name?: string; inn?: string }) {
+  return apiRequest<UserPublic>(`/me${queryString(params)}`, { method: 'PATCH' })
 }
 
 export function oauthUrl(provider: 'google' | 'apple'): string {

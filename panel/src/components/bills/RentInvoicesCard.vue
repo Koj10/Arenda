@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { Check, FileText } from '@lucide/vue'
-import { confirmInvoicePayment, getLandlordInvoice, listLandlordInvoices } from '@/api/landlord'
+import { confirmInvoicePayment, generateLandlordInvoices, getLandlordInvoice, listLandlordInvoices, sendLandlordInvoice } from '@/api/landlord'
 import { downloadFileBlob, formatApiError } from '@/api/http'
 import { num, type FileOut, type LandlordInvoiceOut } from '@/api/types'
 import { INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types/billing'
 import type { InvoiceStatus, PaymentMethod } from '@/types/billing'
+import { currentPeriod } from '@/utils/dates'
 
 const invoices = ref<LandlordInvoiceOut[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const confirmingId = ref<number | null>(null)
+const sendingId = ref<number | null>(null)
+const generating = ref(false)
 const filesByInvoice = ref<Record<number, FileOut[]>>({})
 
 function statusOf(row: LandlordInvoiceOut): InvoiceStatus {
@@ -63,6 +66,32 @@ async function confirm(id: number) {
   }
 }
 
+async function generate() {
+  generating.value = true
+  error.value = null
+  try {
+    await generateLandlordInvoices(currentPeriod())
+    await load()
+  } catch (err) {
+    error.value = formatApiError(err, 'Не удалось сгенерировать счета')
+  } finally {
+    generating.value = false
+  }
+}
+
+async function send(id: number) {
+  sendingId.value = id
+  error.value = null
+  try {
+    await sendLandlordInvoice(id)
+    await load()
+  } catch (err) {
+    error.value = formatApiError(err, 'Не удалось отправить счёт')
+  } finally {
+    sendingId.value = null
+  }
+}
+
 async function openFile(file: FileOut) {
   const blob = await downloadFileBlob(file.id)
   const url = URL.createObjectURL(blob)
@@ -78,12 +107,15 @@ onMounted(() => {
   <section class="panel-card overflow-hidden">
     <div class="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-sm font-semibold text-white">Счета на аренду</h2>
+        <h2 class="text-sm font-semibold text-white">Счета арендаторам</h2>
         <p class="text-xs text-slate-500 mt-1">
           Счёт появляется, как только вы добавили арендатора. Арендатор может оплатить в любой день месяца.
           Если оплата не в приложении — подтвердите её здесь. В новом месяце счёт снова станет неоплаченным.
         </p>
       </div>
+      <button type="button" class="panel-btn-primary text-xs shrink-0" :disabled="generating" @click="generate">
+        {{ generating ? 'Генерация...' : 'Сгенерировать за месяц' }}
+      </button>
     </div>
     <p v-if="error" class="px-5 py-3 text-sm text-rose-400">{{ error }}</p>
     <p v-else-if="loading" class="px-5 py-8 text-sm text-slate-500 text-center">Загрузка...</p>
@@ -132,17 +164,28 @@ onMounted(() => {
               </div>
             </td>
             <td class="px-5 py-3.5">
-              <button
-                v-if="statusOf(row) === 'awaiting_confirmation'"
-                type="button"
-                class="panel-btn-primary text-xs"
-                :disabled="confirmingId === row.id"
-                @click="confirm(row.id)"
-              >
-                <Check class="w-3.5 h-3.5" />
-                {{ confirmingId === row.id ? 'Подтверждение...' : 'Подтвердить оплату' }}
-              </button>
-              <span v-else class="text-xs text-slate-600">—</span>
+              <div class="flex flex-col gap-2 items-start">
+                <button
+                  v-if="statusOf(row) === 'awaiting_confirmation'"
+                  type="button"
+                  class="panel-btn-primary text-xs"
+                  :disabled="confirmingId === row.id"
+                  @click="confirm(row.id)"
+                >
+                  <Check class="w-3.5 h-3.5" />
+                  {{ confirmingId === row.id ? 'Подтверждение...' : 'Подтвердить оплату' }}
+                </button>
+                <button
+                  v-if="statusOf(row) !== 'paid'"
+                  type="button"
+                  class="panel-btn-secondary text-xs"
+                  :disabled="sendingId === row.id"
+                  @click="send(row.id)"
+                >
+                  {{ sendingId === row.id ? 'Отправка...' : 'Отправить арендатору' }}
+                </button>
+                <span v-if="statusOf(row) === 'paid'" class="text-xs text-slate-600">—</span>
+              </div>
             </td>
           </tr>
         </tbody>

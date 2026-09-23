@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useAccountingStore } from '@/stores/accountingStore'
@@ -7,6 +7,8 @@ import { useTenantPanelStore } from '@/stores/tenantPanelStore'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
 import { INVOICE_STATUS_LABELS } from '@/types/billing'
+import { searchLandlord } from '@/api/landlord'
+import { num } from '@/api/types'
 
 export type PanelSearchKind = 'property' | 'tenant' | 'space' | 'expense' | 'invoice' | 'page'
 
@@ -53,6 +55,50 @@ function match(hay: string, q: string) {
 export const usePanelSearchStore = defineStore('panelSearch', () => {
   const query = ref('')
   const open = ref(false)
+  const remoteHits = ref<PanelSearchHit[]>([])
+  let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+  watch(query, (value) => {
+    if (searchTimer) clearTimeout(searchTimer)
+    const q = value.trim()
+    if (q.length < 2) {
+      remoteHits.value = []
+      return
+    }
+    searchTimer = setTimeout(() => {
+      void (async () => {
+        const auth = useAuthStore()
+        if (auth.isTenant) return
+        try {
+          const data = await searchLandlord(q)
+          const hits: PanelSearchHit[] = []
+          for (const row of data.objects ?? []) {
+            hits.push({
+              id: `api-prop:${row.id}`,
+              kind: 'property',
+              title: row.address,
+              subtitle: `${row.type} · ${num(row.total_area)} м²`,
+              to: '/landlord/objects',
+              propertyId: row.id,
+            })
+          }
+          for (const row of data.tenants ?? []) {
+            hits.push({
+              id: `api-tenant:${row.id}`,
+              kind: 'tenant',
+              title: row.name,
+              subtitle: `ИНН ${row.inn}`,
+              to: '/landlord/tenants',
+              tenantId: row.id,
+            })
+          }
+          remoteHits.value = hits
+        } catch {
+          remoteHits.value = []
+        }
+      })()
+    }, 280)
+  })
 
   const results = computed<PanelSearchHit[]>(() => {
     const q = norm(query.value)
@@ -163,7 +209,13 @@ export const usePanelSearchStore = defineStore('panelSearch', () => {
       }
     }
 
-    return hits.slice(0, 12)
+    const merged = [...hits]
+    for (const hit of remoteHits.value) {
+      if (!merged.some((item) => item.kind === hit.kind && item.propertyId === hit.propertyId && item.tenantId === hit.tenantId && item.title === hit.title)) {
+        merged.push(hit)
+      }
+    }
+    return merged.slice(0, 12)
   })
 
   const hasQuery = computed(() => norm(query.value).length > 0)

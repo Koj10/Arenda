@@ -18,6 +18,8 @@ import {
   TENANT_LEASE_COLUMNS,
   TENANT_BILL_COLUMNS,
 } from '@/types/tenantReports'
+import { exportTenantReports } from '@/api/tenant'
+import { saveBlobFile } from '@/api/http'
 
 const auth = useAuthStore()
 const { exportReport } = useExport()
@@ -31,7 +33,7 @@ const billColumns = ref(TENANT_BILL_COLUMNS.map((c) => ({ ...c })))
 
 const exporting = ref(false)
 
-const { leases, displayRows, summary, portfolio, billing } = useTenantReports(
+const { leases, displayRows, summary, portfolio, billing, period } = useTenantReports(
   () => scope.value,
   () => reportKind.value,
 )
@@ -79,19 +81,29 @@ function sumColumn(key: string) {
   return displayRows.value.reduce((s, row) => s + (Number(row[key]) || 0), 0)
 }
 
-function handleExport() {
+async function handleExport() {
   if (!requireTenantReports()) return
   if (!selectedColumns.value.length || !displayRows.value.length) return
   exporting.value = true
-  const exportRows = displayRows.value.map((row) => {
-    const obj: Record<string, string | number> = {}
-    activeColumns.value.forEach((col) => {
-      obj[col.key] = getRowValue(row, col.key)
+  try {
+    const downloaded = await exportTenantReports(
+      reportKind.value,
+      period.value,
+      selectedColumns.value.map((col) => col.key).join(','),
+    )
+    saveBlobFile(downloaded.blob, downloaded.filename || `tenant-report-${reportKind.value}.xlsx`)
+  } catch {
+    const exportRows = displayRows.value.map((row) => {
+      const obj: Record<string, string | number> = {}
+      activeColumns.value.forEach((col) => {
+        obj[col.key] = getRowValue(row, col.key)
+      })
+      return obj
     })
-    return obj
-  })
-  exportReport(exportRows, activeColumns.value, `tenant-report-${reportKind.value}-${Date.now()}`)
-  setTimeout(() => { exporting.value = false }, 600)
+    exportReport(exportRows, activeColumns.value, `tenant-report-${reportKind.value}-${Date.now()}`)
+  } finally {
+    exporting.value = false
+  }
 }
 
 function navBtnClass(active: boolean) {

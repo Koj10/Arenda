@@ -173,11 +173,49 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   return apiRequest<T>(path, { method: 'POST', body: form })
 }
 
-export async function downloadFileBlob(fileId: number): Promise<Blob> {
+export function queryString(params: Record<string, string | number | boolean | null | undefined> = {}): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === '') continue
+    search.set(key, String(value))
+  }
+  const query = search.toString()
+  return query ? `?${query}` : ''
+}
+
+function filenameFromDisposition(header: string | null): string | null {
+  if (!header) return null
+  const utf = /filename\*=UTF-8''([^;]+)/i.exec(header)
+  if (utf?.[1]) return decodeURIComponent(utf[1])
+  const plain = /filename="?([^";]+)"?/i.exec(header)
+  return plain?.[1] ?? null
+}
+
+export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string | null }> {
   const token = getAccessToken()
-  const res = await fetch(`${getApiBaseUrl()}/files/${fileId}`, {
+  const res = await fetch(`${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   })
-  if (!res.ok) throw new ApiError('Не удалось скачать файл', res.status)
-  return res.blob()
+  if (!res.ok) {
+    const body = await parseBody(res)
+    throw new ApiError(formatApiError(new ApiError(`API ${res.status}`, res.status, body), `API ${res.status}`), res.status, body)
+  }
+  return {
+    blob: await res.blob(),
+    filename: filenameFromDisposition(res.headers.get('content-disposition')),
+  }
+}
+
+export function saveBlobFile(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function downloadFileBlob(fileId: number): Promise<Blob> {
+  const { blob } = await apiDownload(`/files/${fileId}`)
+  return blob
 }

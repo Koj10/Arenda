@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import {
   ChevronDown,
@@ -13,6 +13,10 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useExport } from '@/composables/useExport'
 import { usePlan } from '@/composables/usePlan'
 import type { ExportColumn, ReportColumn, SpaceReportColumn, ReportRow, SpaceReportRow } from '@/types/portfolio'
+import { exportLandlordReports, getLandlordReports } from '@/api/landlord'
+import { saveBlobFile } from '@/api/http'
+import { num, type ApiReportRow } from '@/api/types'
+import { currentPeriod } from '@/utils/dates'
 
 type ReportScope =
   | { kind: 'portfolio' }
@@ -46,6 +50,8 @@ const detailColumns = ref<SpaceReportColumn[]>([
 ])
 
 const exporting = ref(false)
+const apiRows = ref<ApiReportRow[] | null>(null)
+const period = ref(currentPeriod())
 
 const isPortfolioScope = computed(() => scope.value.kind === 'portfolio')
 
@@ -59,7 +65,23 @@ function getRowValue(row: ReportRow | SpaceReportRow, key: string): string | num
   return (row as unknown as Record<string, string | number>)[key] ?? ''
 }
 
+function mapApiRow(row: ApiReportRow): ReportRow & SpaceReportRow {
+  const income = num(row.rent_income) + num(row.utility_income) + num(row.transaction_income)
+  return {
+    address: row.object_address || row.name,
+    tenant: row.entity_type === 'tenant' ? row.name : '—',
+    income,
+    expense: num(row.expenses),
+    type: row.entity_type,
+    occupancy: Math.round(row.occupancy_percent ?? 0),
+    space: row.name,
+    monthlyRate: 0,
+    area: num(row.total_area),
+  }
+}
+
 const displayRows = computed(() => {
+  if (apiRows.value) return apiRows.value.map(mapApiRow)
   if (scope.value.kind === 'portfolio') {
     return store.reportRows
   }
@@ -68,6 +90,23 @@ const displayRows = computed(() => {
   }
   return store.getSpaceReportRows({ spaceId: scope.value.spaceId })
 })
+
+watch(
+  [scope, period],
+  async () => {
+    try {
+      const data = await getLandlordReports({
+        period: period.value,
+        object_id: scope.value.kind === 'portfolio' ? undefined : scope.value.propertyId,
+        unit_id: scope.value.kind === 'space' ? scope.value.spaceId : undefined,
+      })
+      apiRows.value = data.rows ?? []
+    } catch {
+      apiRows.value = null
+    }
+  },
+  { immediate: true },
+)
 
 const scopeTitle = computed(() => {
   if (scope.value.kind === 'portfolio') return 'Все объекты'
@@ -130,24 +169,35 @@ function sumColumn(key: string) {
   return displayRows.value.reduce((s, row) => s + (Number(getRowValue(row, key)) || 0), 0)
 }
 
-function handleExport() {
+async function handleExport() {
   if (!requireFeature('exportReports', 'Экспорт отчётов доступен на тарифе Profi и выше')) return
   if (selectedColumns.value.length === 0 || displayRows.value.length === 0) return
   exporting.value = true
-  const suffix = scope.value.kind === 'portfolio'
-    ? 'portfolio'
-    : scope.value.kind === 'property'
-      ? `property-${scope.value.propertyId}`
-      : `space-${scope.value.spaceId}`
-  const exportRows = displayRows.value.map((row) => {
-    const obj: Record<string, string | number> = {}
-    activeColumns.value.forEach((col) => {
-      obj[col.key] = getRowValue(row, col.key)
+  try {
+    const downloaded = await exportLandlordReports({
+      period: period.value,
+      object_id: scope.value.kind === 'portfolio' ? undefined : scope.value.propertyId,
+      unit_id: scope.value.kind === 'space' ? scope.value.spaceId : undefined,
+      fields: selectedColumns.value.map((col) => col.key).join(','),
     })
-    return obj
-  })
-  exportReport(exportRows, activeColumns.value, `propcount-report-${suffix}-${Date.now()}`)
-  setTimeout(() => { exporting.value = false }, 600)
+    saveBlobFile(downloaded.blob, downloaded.filename || `propcount-report-${period.value}.xlsx`)
+  } catch {
+    const suffix = scope.value.kind === 'portfolio'
+      ? 'portfolio'
+      : scope.value.kind === 'property'
+        ? `property-${scope.value.propertyId}`
+        : `space-${scope.value.spaceId}`
+    const exportRows = displayRows.value.map((row) => {
+      const obj: Record<string, string | number> = {}
+      activeColumns.value.forEach((col) => {
+        obj[col.key] = getRowValue(row, col.key)
+      })
+      return obj
+    })
+    exportReport(exportRows, activeColumns.value, `propcount-report-${suffix}-${Date.now()}`)
+  } finally {
+    exporting.value = false
+  }
 }
 
 function toggleAll(selected: boolean) {
@@ -180,6 +230,9 @@ function navBtnClass(active: boolean) {
     </template>
 
     <div class="panel-page-wide">
+      <div class="flex items-center justify-end mb-4">
+        <input v-model="period" type="month" class="panel-input font-mono text-xs py-1.5 w-40" />
+      </div>
       <div class="grid sm:grid-cols-3 gap-4 mb-6">
         <div class="panel-stat-card">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Строк в отчёте</p>

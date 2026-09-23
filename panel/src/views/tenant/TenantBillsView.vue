@@ -150,7 +150,7 @@ const payRequisites = computed(() =>
 
 watch(payMethod, (method) => {
   if (method === 'in_app') {
-    toast.show('Оплата в приложении', 'Этот способ пока не доступен')
+    toast.show('Оплата в приложении', 'Этот способ пока обрабатывается как заглушка API')
   }
 })
 
@@ -169,10 +169,6 @@ function onPayFile(event: Event) {
 async function submitPay() {
   if (!payBill.value) return
   payError.value = ''
-  if (payMethod.value === 'in_app') {
-    toast.show('Оплата в приложении', 'Этот способ пока не доступен')
-    return
-  }
   if (payMethod.value === 'bank' && !payFile.value) {
     payError.value = 'Прикрепите чек или квитанцию'
     return
@@ -191,6 +187,9 @@ async function submitPay() {
       method: payMethod.value,
       file_ids: fileIds,
     })
+    if (payMethod.value === 'in_app') {
+      toast.show('Оплата в приложении', 'Этот способ пока не доступен')
+    }
     payTarget.value = null
     await tenantPanel.loadFromApi()
   } catch (err) {
@@ -411,7 +410,7 @@ async function submitPay() {
           <button
             type="button"
             class="panel-btn-primary text-xs"
-            :disabled="paySaving || payMethod === 'in_app'"
+            :disabled="paySaving"
             @click="submitPay"
           >
             {{ paySaving ? 'Отправка...' : 'Отправить' }}

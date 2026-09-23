@@ -1,7 +1,8 @@
 import { PLAN_CATALOG } from '@/config/plans'
 import type { PlanEntitlements, PlanId, PlanUsage } from '@/types/plan'
-import { apiRequest, getAccessToken } from '@/api/http'
+import { getAccessToken } from '@/api/http'
 import { getSubscription, upgradeSubscription } from '@/api/landlord'
+import { getTenantSubscription, upgradeTenantSubscription } from '@/api/tenant'
 
 const emptyUsage = (): PlanUsage => ({
   objects: 0,
@@ -64,12 +65,7 @@ export async function fetchEntitlements(params: {
 
   try {
     if (params.role === 'tenant') {
-      const sub = await apiRequest<{
-        plan: string
-        status: string
-        expires_at?: string | null
-        can_export?: boolean
-      }>('/tenant/subscription', { token: params.token })
+      const sub = await getTenantSubscription()
       return entitlementsFromPlan('start', {
         renewsAt: sub.expires_at ?? null,
         tenantReportsUnlocked: Boolean(sub.can_export) || sub.plan === 'tenant_reports',
@@ -111,12 +107,17 @@ export async function fetchEntitlements(params: {
 export async function createCheckoutSession(
   planId: PlanId,
   _token?: string | null,
+  role?: 'landlord' | 'tenant',
 ): Promise<{ url: string } | null> {
   try {
-    const result = await upgradeSubscription(planId) as { url?: string }
-    if (result?.url) return { url: result.url }
+    if (role === 'tenant') {
+      await upgradeTenantSubscription()
+      return { url: '' }
+    }
+    const apiPlan = planId === 'elite' ? 'profi' : planId
+    const result = await upgradeSubscription(apiPlan) as { url?: string }
+    return { url: result?.url ?? '' }
   } catch {
-    /* no billing url */
+    return null
   }
-  return null
 }

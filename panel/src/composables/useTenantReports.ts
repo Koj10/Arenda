@@ -1,10 +1,13 @@
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useBillingStore } from '@/stores/billingStore'
 import { useTenantPanelStore } from '@/stores/tenantPanelStore'
 import { INVOICE_TYPE_LABELS, INVOICE_STATUS_LABELS } from '@/types/billing'
 import type { TenantBillReportRow, TenantLeaseReportRow, TenantReportScope } from '@/types/tenantReports'
+import { getTenantReports } from '@/api/tenant'
+import { num } from '@/api/types'
+import { currentPeriod } from '@/utils/dates'
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Активен',
@@ -17,10 +20,34 @@ export function useTenantReports(scope: () => TenantReportScope, reportKind: () 
   const portfolio = usePortfolioStore()
   const billing = useBillingStore()
   const tenantPanel = useTenantPanelStore()
+  const apiRows = ref<Record<string, string | number>[]>([])
+  const period = ref(currentPeriod())
 
   onMounted(() => {
     void tenantPanel.loadFromApi()
   })
+
+  watch(
+    reportKind,
+    async (tab) => {
+      try {
+        const data = await getTenantReports(tab, period.value)
+        apiRows.value = (data.rows ?? []).map((row) => {
+          const next: Record<string, string | number> = {}
+          for (const [key, value] of Object.entries(row)) {
+            next[key] = value == null ? '' : typeof value === 'number' ? value : String(value)
+          }
+          if (next.amount != null) next.amount = num(next.amount)
+          if (next.rent != null) next.rent = num(next.rent)
+          if (next.area != null) next.area = num(next.area)
+          return next
+        })
+      } catch {
+        apiRows.value = []
+      }
+    },
+    { immediate: true },
+  )
 
   const leases = computed(() => tenantPanel.spaces)
 
@@ -63,6 +90,7 @@ export function useTenantReports(scope: () => TenantReportScope, reportKind: () 
   })
 
   const displayRows = computed(() => {
+    if (apiRows.value.length) return apiRows.value
     const rows = reportKind() === 'leases' ? leaseRows.value : billRows.value
     return rows as unknown as Record<string, string | number>[]
   })
@@ -82,7 +110,7 @@ export function useTenantReports(scope: () => TenantReportScope, reportKind: () 
     }
   })
 
-  return { leases, leaseRows, billRows, displayRows, summary, portfolio, billing, auth }
+  return { leases, leaseRows, billRows, displayRows, summary, portfolio, billing, auth, period }
 }
 
 export function formatTenantCell(key: string, value: string | number, portfolio: ReturnType<typeof usePortfolioStore>) {

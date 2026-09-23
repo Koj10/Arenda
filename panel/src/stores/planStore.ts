@@ -145,9 +145,21 @@ export const usePlanStore = defineStore('plan', () => {
     const id = target ?? nextPlanId.value
     if (!id) return
     try {
-      const session = await createCheckoutSession(id)
+      const { useAuthStore } = await import('@/stores/authStore')
+      const session = await createCheckoutSession(id, undefined, useAuthStore().user?.role)
       if (session?.url) {
         window.location.href = session.url
+        return
+      }
+      if (session) {
+        const auth = useAuthStore()
+        if (auth.user) {
+          await loadForUser({
+            email: auth.user.email,
+            role: auth.user.role,
+          })
+        }
+        closeUpgrade()
         return
       }
     } catch {

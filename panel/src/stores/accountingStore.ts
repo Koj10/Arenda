@@ -9,6 +9,7 @@ import {
   deleteTransaction,
   getLandlordAnalytics,
   listTransactions,
+  updateTransaction,
 } from '@/api/landlord'
 import { num } from '@/api/types'
 import { currentPeriod, formatDateRu, parseDateOnly } from '@/utils/dates'
@@ -231,10 +232,35 @@ export const useAccountingStore = defineStore('accounting', () => {
     }
   }
 
-  function updateExpense(id: number, data: Partial<Omit<Expense, 'id' | 'documents'>>) {
+  async function updateExpense(id: number, data: Partial<Omit<Expense, 'id' | 'documents'>>) {
     const expense = getExpenseById(id)
-    if (!expense) return
-    Object.assign(expense, data)
+    if (!expense) return false
+    lastError.value = null
+    try {
+      const updated = await updateTransaction(id, {
+        title: data.title,
+        amount: data.amount,
+        category: data.category,
+        object_id: data.propertyId,
+        comment: data.note,
+        transaction_date: data.date,
+      })
+      Object.assign(expense, {
+        title: updated.title,
+        amount: num(updated.amount),
+        category: asCategory(updated.category),
+        propertyId: updated.object_id ?? null,
+        note: updated.comment ?? '',
+        date: updated.transaction_date,
+        ...data,
+      })
+      syncPropertyExpenses()
+      void loadAnalytics()
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось сохранить расход')
+      return false
+    }
   }
 
   async function removeExpense(id: number) {
