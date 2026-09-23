@@ -110,6 +110,22 @@ export async function uploadFileApi(file: Blob, extra: {
   return apiUpload<FileOut>('/files', form)
 }
 
+export async function listFiles(params: {
+  linked_type?: string
+  linked_id?: number
+  kind?: string
+} = {}) {
+  return apiRequest<FileOut[]>(`/files${queryString(params)}`)
+}
+
+export async function deleteFileApi(fileId: number) {
+  return apiRequest<void>(`/files/${fileId}`, { method: 'DELETE' })
+}
+
+export function fileDisplayName(file: FileOut) {
+  return file.original_name || file.name || file.filename || 'Файл'
+}
+
 export function dataUrlToBlob(dataUrl: string, mimeType = 'application/octet-stream'): Blob {
   const [header, payload] = dataUrl.split(',')
   const mime = header?.match(/data:(.*?);/)?.[1] || mimeType

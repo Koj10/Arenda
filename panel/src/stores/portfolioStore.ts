@@ -25,10 +25,10 @@ import type {
 } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
 import { ApiError, formatApiError, getAccessToken, isPaymentRequired } from '@/api/http'
-import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
+import { dataUrlToBlob, deleteFileApi, fileDisplayName, listFiles, uploadFileApi } from '@/api/auth'
 import * as landlordApi from '@/api/landlord'
 import { num } from '@/api/types'
-import type { CadastreSplitOut, ObjectDetailOut } from '@/api/types'
+import type { CadastreSplitOut, FileOut, ObjectDetailOut } from '@/api/types'
 import { daysUntil, formatDateRu, todayISODate } from '@/utils/dates'
 
 const CADASTRE_AREA_STORAGE = 'propcount.cadastreSplitAreas'
@@ -99,24 +99,6 @@ function recalcPropertyStats(property: Property, propertyTenants: Tenant[]) {
     ? Math.round((property.spacesOccupied / property.spacesTotal) * 100)
     : 0
   property.income = occupying.reduce((sum, t) => sum + t.rent, 0)
-}
-
-function attachPendingDocuments(
-  docs: PendingDocument[],
-  entityType: DocumentEntityType,
-  entityId: number,
-  category: DocumentCategory,
-) {
-  const store_docs: Omit<AttachedDocument, 'id' | 'uploadedAt'>[] = docs.map((d) => ({
-    entityType,
-    entityId,
-    category,
-    name: d.name,
-    mimeType: d.mimeType,
-    size: d.size,
-    dataUrl: d.dataUrl,
-  }))
-  return store_docs
 }
 
 export const usePortfolioStore = defineStore('portfolio', () => {
@@ -380,19 +362,104 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     )
   }
 
-  function addDocument(data: Omit<AttachedDocument, 'id' | 'uploadedAt'>) {
+  function fileToAttached(
+    file: FileOut,
+    entityType: DocumentEntityType,
+    entityId: number,
+    fallback: DocumentCategory,
+  ): AttachedDocument {
+    const kind = file.kind
+    const category: DocumentCategory =
+      kind === 'title' || kind === 'service' ? kind : fallback
+    return {
+      id: file.id,
+      entityType,
+      entityId,
+      category,
+      name: fileDisplayName(file),
+      mimeType: file.mime_type || 'application/octet-stream',
+      size: file.size ?? 0,
+      uploadedAt: file.created_at || new Date().toISOString(),
+    }
+  }
+
+  function replaceEntityDocuments(
+    entityType: DocumentEntityType,
+    entityId: number,
+    files: FileOut[],
+    fallback: DocumentCategory,
+  ) {
+    documents.value = documents.value.filter(
+      (d) => !(d.entityType === entityType && d.entityId === entityId),
+    )
+    for (const file of files) {
+      documents.value.push(fileToAttached(file, entityType, entityId, fallback))
+    }
+  }
+
+  async function loadLinkedFiles(linkedType: string, linkedId: number) {
+    try {
+      return await listFiles({ linked_type: linkedType, linked_id: linkedId })
+    } catch {
+      return [] as FileOut[]
+    }
+  }
+
+  function addDocument(data: Omit<AttachedDocument, 'id' | 'uploadedAt'> & { id?: number }) {
     documents.value.push({
       ...data,
-      id: Date.now() + Math.random(),
+      id: data.id ?? Date.now() + Math.random(),
       uploadedAt: new Date().toISOString(),
     })
   }
 
-  function addDocumentsBatch(items: Omit<AttachedDocument, 'id' | 'uploadedAt'>[]) {
-    items.forEach((item) => addDocument(item))
+  async function uploadAndAttachDocument(
+    entityType: DocumentEntityType,
+    entityId: number,
+    category: DocumentCategory,
+    pending: PendingDocument,
+  ) {
+    lastError.value = null
+    const kind = category === 'lease' ? 'contract' : category
+    const linkedType = entityType === 'property' ? 'object' : 'lease'
+    try {
+      const uploaded = await uploadFileApi(dataUrlToBlob(pending.dataUrl, pending.mimeType), {
+        filename: pending.name,
+        kind,
+        linked_type: linkedType,
+        linked_id: entityId,
+      })
+      if (entityType === 'tenant') {
+        const currentIds = getDocuments('tenant', entityId, 'lease').map((d) => d.id)
+        try {
+          await landlordApi.updateLease(entityId, { file_ids: [...currentIds, uploaded.id] })
+        } catch {
+          /* linked_type/id on upload may be enough */
+        }
+      }
+      addDocument({
+        id: uploaded.id,
+        entityType,
+        entityId,
+        category,
+        name: fileDisplayName(uploaded) || pending.name,
+        mimeType: uploaded.mime_type || pending.mimeType,
+        size: uploaded.size ?? pending.size,
+        dataUrl: pending.dataUrl,
+      })
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось сохранить файл')
+      return false
+    }
   }
 
-  function removeDocument(id: number) {
+  async function removeDocument(id: number) {
+    try {
+      await deleteFileApi(id)
+    } catch {
+      /* API может не отдавать DELETE — убираем из списка */
+    }
     documents.value = documents.value.filter((d) => d.id !== id)
   }
 
@@ -466,6 +533,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         monthlyRate: num(unit.rent_rate),
       })
     }
+    replaceEntityDocuments('property', detail.id, detail.documents ?? [], 'title')
   }
 
   function resolveCadastreArea(
@@ -618,9 +686,14 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         spaces.value = []
         cadastralParcels.value = []
         tenants.value = []
+        documents.value = []
         for (const item of list) {
           const detail = await landlordApi.getObject(item.id)
           applyObjectDetail(detail)
+          if (!(detail.documents ?? []).length) {
+            const files = await loadLinkedFiles('object', item.id)
+            if (files.length) replaceEntityDocuments('property', item.id, files, 'title')
+          }
           await refreshCadastral(item.id)
         }
 
@@ -654,6 +727,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               status: getTenantStatus(lease.end_date),
               leaseId: lease.id,
             })
+            const leaseFiles = lease.documents ?? lease.files ?? []
+            if (leaseFiles.length) {
+              replaceEntityDocuments('tenant', lease.id, leaseFiles, 'lease')
+            } else {
+              const files = await loadLinkedFiles('lease', lease.id)
+              if (files.length) replaceEntityDocuments('tenant', lease.id, files, 'lease')
+            }
           }
         }
 
@@ -708,6 +788,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       return false
     }
     try {
+      const titleIds = await uploadPending(data.titleDocuments, 'title')
+      const serviceIds = await uploadPending(data.serviceDocuments, 'service')
+      const fileIds = [...titleIds, ...serviceIds]
       const created = await landlordApi.createObject({
         address: data.address.trim(),
         type: data.type,
@@ -719,14 +802,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               purchase_price: data.purchasePrice,
             }
           : {}),
+        ...(fileIds.length ? { file_ids: fileIds } : {}),
       })
       applyObjectDetail(created)
-      await uploadPending(data.titleDocuments, 'title', 'object', created.id)
-      await uploadPending(data.serviceDocuments, 'service', 'object', created.id)
-      addDocumentsBatch([
-        ...attachPendingDocuments(data.titleDocuments, 'property', created.id, 'title'),
-        ...attachPendingDocuments(data.serviceDocuments, 'property', created.id, 'service'),
-      ])
+      if (!(created.documents ?? []).length && fileIds.length) {
+        const fresh = await landlordApi.getObject(created.id)
+        applyObjectDetail(fresh)
+      }
       propertyModalOpen.value = false
       syncPlanUsage()
       return true
@@ -828,7 +910,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         end_date: endDate,
         file_ids: fileIds.length ? fileIds : undefined,
       })
-      addDocumentsBatch(attachPendingDocuments(data.documents, 'tenant', tenant.id, 'lease'))
       await loadFromApi()
       tenantModalOpen.value = false
       tenantModalPrefill.value = null
@@ -1327,6 +1408,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     getSpacesWithTenants,
     getDocuments,
     addDocument,
+    uploadAndAttachDocument,
     removeDocument,
     formatMoney,
     formatDate,

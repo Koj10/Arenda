@@ -132,7 +132,7 @@ async function terminateLease() {
 
       <p v-if="terminateError" class="text-xs text-red-400 mb-4">{{ terminateError }}</p>
 
-      <FileAttachments entity-type="tenant" :entity-id="tenant.id" category="lease" :label="TENANT_DOCUMENT_LABEL" />
+      <FileAttachments entity-type="tenant" :entity-id="tenant.leaseId ?? tenant.id" category="lease" :label="TENANT_DOCUMENT_LABEL" />
     </template>
 
     <template #footer>

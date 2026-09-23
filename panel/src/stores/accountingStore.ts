@@ -3,15 +3,17 @@ import { computed, ref } from 'vue'
 import type { Expense, ExpenseFormData, ExpenseDocument, ExpenseCategory } from '@/types/accounting'
 import type { PendingDocument } from '@/types/portfolio'
 import { formatApiError, getAccessToken } from '@/api/http'
-import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
+import { dataUrlToBlob, fileDisplayName, uploadFileApi } from '@/api/auth'
 import {
   createTransaction,
   deleteTransaction,
   getLandlordAnalytics,
+  getTransaction,
   listTransactions,
   updateTransaction,
 } from '@/api/landlord'
 import { num } from '@/api/types'
+import type { FileOut } from '@/api/types'
 import { currentPeriod, formatDateRu, parseDateOnly } from '@/utils/dates'
 
 const CATEGORIES: ExpenseCategory[] = ['utilities', 'maintenance', 'tax', 'insurance', 'management', 'other']
@@ -68,6 +70,16 @@ function toExpenseDocuments(docs: PendingDocument[]): ExpenseDocument[] {
     size: d.size,
     dataUrl: d.dataUrl,
     uploadedAt: new Date().toISOString(),
+  }))
+}
+
+function filesToExpenseDocs(files?: FileOut[]): ExpenseDocument[] {
+  return (files ?? []).map((file) => ({
+    id: file.id,
+    name: fileDisplayName(file),
+    mimeType: file.mime_type || 'application/octet-stream',
+    size: file.size ?? 0,
+    uploadedAt: file.created_at || new Date().toISOString(),
   }))
 }
 
@@ -173,15 +185,25 @@ export const useAccountingStore = defineStore('accounting', () => {
     lastError.value = null
     try {
       const rows = await listTransactions({ type: 'expense' })
-      expenses.value = rows.map((row) => ({
-        id: row.id,
-        date: row.transaction_date,
-        amount: num(row.amount),
-        category: asCategory(row.category),
-        title: row.title,
-        note: row.comment ?? '',
-        propertyId: row.object_id ?? null,
-        documents: [],
+      expenses.value = await Promise.all(rows.map(async (row) => {
+        let files = row.files
+        if (!files?.length) {
+          try {
+            files = (await getTransaction(row.id)).files
+          } catch {
+            files = []
+          }
+        }
+        return {
+          id: row.id,
+          date: row.transaction_date,
+          amount: num(row.amount),
+          category: asCategory(row.category),
+          title: row.title,
+          note: row.comment ?? '',
+          propertyId: row.object_id ?? null,
+          documents: filesToExpenseDocs(files),
+        }
       }))
       syncPropertyExpenses()
       await loadAnalytics()
@@ -220,7 +242,9 @@ export const useAccountingStore = defineStore('accounting', () => {
         title: created.title,
         note: created.comment ?? data.note,
         propertyId: created.object_id ?? data.propertyId,
-        documents: toExpenseDocuments(data.documents),
+        documents: filesToExpenseDocs(created.files).length
+          ? filesToExpenseDocs(created.files)
+          : toExpenseDocuments(data.documents),
       })
       expenseModalOpen.value = false
       syncPropertyExpenses()
@@ -278,22 +302,44 @@ export const useAccountingStore = defineStore('accounting', () => {
     }
   }
 
-  function addExpenseDocument(expenseId: number, doc: PendingDocument) {
+  async function addExpenseDocument(expenseId: number, doc: PendingDocument) {
     const expense = getExpenseById(expenseId)
-    if (!expense) return
-    expense.documents.push({
-      id: Date.now() + Math.random(),
-      name: doc.name,
-      mimeType: doc.mimeType,
-      size: doc.size,
-      dataUrl: doc.dataUrl,
-      uploadedAt: new Date().toISOString(),
-    })
+    if (!expense) return false
+    lastError.value = null
+    try {
+      const uploaded = await uploadFileApi(dataUrlToBlob(doc.dataUrl, doc.mimeType), {
+        filename: doc.name,
+        kind: 'supporting',
+        linked_type: 'transaction',
+        linked_id: expenseId,
+      })
+      const fileIds = [...expense.documents.map((item) => item.id), uploaded.id]
+      await updateTransaction(expenseId, { file_ids: fileIds })
+      expense.documents.push({
+        id: uploaded.id,
+        name: fileDisplayName(uploaded) || doc.name,
+        mimeType: uploaded.mime_type || doc.mimeType,
+        size: uploaded.size ?? doc.size,
+        dataUrl: doc.dataUrl,
+        uploadedAt: uploaded.created_at || new Date().toISOString(),
+      })
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось сохранить файл')
+      return false
+    }
   }
 
-  function removeExpenseDocument(expenseId: number, documentId: number) {
+  async function removeExpenseDocument(expenseId: number, documentId: number) {
     const expense = getExpenseById(expenseId)
     if (!expense) return
+    lastError.value = null
+    try {
+      const fileIds = expense.documents.filter((item) => item.id !== documentId).map((item) => item.id)
+      await updateTransaction(expenseId, { file_ids: fileIds })
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось отвязать файл')
+    }
     expense.documents = expense.documents.filter((d) => d.id !== documentId)
   }
 

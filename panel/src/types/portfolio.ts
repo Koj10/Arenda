@@ -78,7 +78,7 @@ export interface AttachedDocument {
   mimeType: string
   size: number
   uploadedAt: string
-  dataUrl: string
+  dataUrl?: string
 }
 
 export interface PendingDocument {

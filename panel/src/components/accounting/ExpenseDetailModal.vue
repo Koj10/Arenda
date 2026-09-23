@@ -33,7 +33,7 @@ function onDelete() {
 
 function onDocUpload(doc: PendingDocument) {
   if (!expense.value) return
-  accounting.addExpenseDocument(expense.value.id, doc)
+  void accounting.addExpenseDocument(expense.value.id, doc)
 }
 
 function onDocRemove(_index: number, documentId?: number) {

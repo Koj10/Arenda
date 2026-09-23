@@ -114,6 +114,7 @@ export interface ObjectDetailOut {
   }
   units?: UnitInObjectOut[]
   cadastre_entries?: CadastreOut[]
+  documents?: FileOut[]
 }
 
 export interface TenantOut {
@@ -129,11 +130,14 @@ export interface LeaseInTenantDetail {
   unit_id: number
   unit_number?: string
   object_id?: number
+  object_address?: string
   rent_monthly: string
   start_date?: string | null
   end_date: string
   status: string
   terminated_at?: string | null
+  documents?: FileOut[]
+  files?: FileOut[]
 }
 
 export interface TenantDetailOut extends TenantOut {
@@ -151,6 +155,7 @@ export interface TransactionOut {
   comment?: string | null
   transaction_date: string
   created_at: string
+  files?: FileOut[]
 }
 
 export interface FileOut {

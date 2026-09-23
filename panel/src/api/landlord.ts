@@ -161,6 +161,7 @@ export async function updateLease(
     rent_monthly?: number
     start_date?: string | null
     end_date?: string
+    file_ids?: number[]
   },
 ) {
   return apiRequest(`/landlord/leases/${leaseId}`, { method: 'PATCH', body })

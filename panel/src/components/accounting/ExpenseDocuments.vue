@@ -4,6 +4,7 @@ import { Download, FileText, Paperclip, Trash2, Upload } from '@lucide/vue'
 import type { ExpenseDocument } from '@/types/accounting'
 import type { PendingDocument } from '@/types/portfolio'
 import { ACCEPTED_FILE_TYPES, fileToPendingDocument, formatFileSize } from '@/composables/useDocuments'
+import { downloadFileBlob } from '@/api/http'
 
 const props = withDefaults(defineProps<{
   documents: ExpenseDocument[] | PendingDocument[]
@@ -44,13 +45,20 @@ async function onFilesSelected(event: Event) {
   }
 }
 
-function openDoc(doc: { name: string; dataUrl: string }) {
-  const link = document.createElement('a')
-  link.href = doc.dataUrl
-  link.download = doc.name
-  link.target = '_blank'
-  link.rel = 'noopener'
-  link.click()
+async function openDoc(doc: { name: string; dataUrl?: string; id?: number }) {
+  if (doc.dataUrl) {
+    const link = document.createElement('a')
+    link.href = doc.dataUrl
+    link.download = doc.name
+    link.target = '_blank'
+    link.rel = 'noopener'
+    link.click()
+    return
+  }
+  if (doc.id == null) return
+  const blob = await downloadFileBlob(doc.id)
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener')
 }
 </script>
 

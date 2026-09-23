@@ -14,7 +14,7 @@ export interface ExpenseDocument {
   name: string
   mimeType: string
   size: number
-  dataUrl: string
+  dataUrl?: string
   uploadedAt: string
 }
 

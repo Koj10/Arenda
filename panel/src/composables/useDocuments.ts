@@ -2,6 +2,7 @@ import JSZip from 'jszip'
 import type { AttachedDocument, PropertyDocumentCategory } from '@/types/portfolio'
 import { PROPERTY_DOCUMENT_LABELS } from '@/types/portfolio'
 import type { PendingDocument } from '@/types/portfolio'
+import { downloadFileBlob } from '@/api/http'
 
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} Б`
@@ -90,7 +91,16 @@ export async function downloadDocumentsArchive(
     if (!usedByFolder.has(folder)) usedByFolder.set(folder, new Set())
     const usedNames = usedByFolder.get(folder)!
     const fileName = uniqueFileName(doc.name, usedNames)
-    zip.folder(folder)?.file(fileName, dataUrlToUint8Array(doc.dataUrl))
+    if (doc.dataUrl) {
+      zip.folder(folder)?.file(fileName, dataUrlToUint8Array(doc.dataUrl))
+    } else {
+      try {
+        const blob = await downloadFileBlob(doc.id)
+        zip.folder(folder)?.file(fileName, blob)
+      } catch {
+        /* skip undownloadable file */
+      }
+    }
   }
 
   const blob = await zip.generateAsync({ type: 'blob' })

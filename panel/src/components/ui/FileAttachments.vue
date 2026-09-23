@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { Download, FileText, Paperclip, Trash2, Upload } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import type { DocumentEntityType, DocumentCategory, PendingDocument, AttachedDocument } from '@/types/portfolio'
+import { downloadFileBlob } from '@/api/http'
 import { ACCEPTED_FILE_TYPES, fileToPendingDocument, formatFileSize } from '@/composables/useDocuments'
 
 const props = withDefaults(defineProps<{
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 const store = usePortfolioStore()
 const uploading = ref(false)
+const uploadError = ref<string | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
 const isPersisted = computed(() => props.entityId != null && props.entityId > 0)
@@ -58,20 +60,24 @@ async function onFilesSelected(event: Event) {
   if (!files?.length) return
 
   uploading.value = true
+  uploadError.value = null
   try {
     for (const file of Array.from(files)) {
       const pending = await fileToPendingDocument(file)
       if (isPersisted.value) {
-        store.addDocument({
-          entityType: props.entityType,
-          entityId: props.entityId!,
-          category: props.category,
-          ...pending,
-        })
+        const ok = await store.uploadAndAttachDocument(
+          props.entityType,
+          props.entityId!,
+          props.category,
+          pending,
+        )
+        if (!ok) throw new Error(store.lastError || 'Не удалось сохранить файл')
       } else {
         pendingDocs.value = [...pendingDocs.value, pending]
       }
     }
+  } catch (err) {
+    uploadError.value = err instanceof Error ? err.message : 'Не удалось сохранить файл'
   } finally {
     uploading.value = false
     input.value = ''
@@ -83,16 +89,23 @@ function removePending(index: number) {
 }
 
 function removePersisted(id: number) {
-  store.removeDocument(id)
+  void store.removeDocument(id)
 }
 
-function openDoc(doc: { name: string; dataUrl: string }) {
-  const link = document.createElement('a')
-  link.href = doc.dataUrl
-  link.download = doc.name
-  link.target = '_blank'
-  link.rel = 'noopener'
-  link.click()
+async function openDoc(doc: DisplayDocument) {
+  if ('dataUrl' in doc && doc.dataUrl) {
+    const link = document.createElement('a')
+    link.href = doc.dataUrl
+    link.download = doc.name
+    link.target = '_blank'
+    link.rel = 'noopener'
+    link.click()
+    return
+  }
+  if (!isAttachedDocument(doc)) return
+  const blob = await downloadFileBlob(doc.id)
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener')
 }
 </script>
 
@@ -123,6 +136,8 @@ function openDoc(doc: { name: string; dataUrl: string }) {
         @change="onFilesSelected"
       />
     </div>
+
+    <p v-if="uploadError" class="text-xs text-rose-400">{{ uploadError }}</p>
 
     <div
       v-if="allDocs.length === 0"
