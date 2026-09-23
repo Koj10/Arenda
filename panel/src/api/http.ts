@@ -51,6 +51,9 @@ export function isPaymentRequired(err: unknown): boolean {
 
 export function formatApiError(err: unknown, fallback = 'Ошибка запроса'): string {
   if (err instanceof ApiError) {
+    if (err.status === 413) {
+      return 'Файл слишком большой для загрузки (лимит прокси). Счёт можно выставить без вложения.'
+    }
     if (err.status === 402) {
       const body = err.body as { detail?: unknown; message?: string } | string | null
       if (typeof body === 'string' && body.trim()) return body

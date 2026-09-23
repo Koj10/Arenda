@@ -12,7 +12,7 @@ import type {
 import {
   createDefaultSpaceUtilityPayers,
 } from '@/types/utilityBills'
-import { getAccessToken, formatApiError } from '@/api/http'
+import { getAccessToken, formatApiError, ApiError } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
 import { formatDateRu, todayISODate } from '@/utils/dates'
 import {
@@ -195,17 +195,34 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
   }
 
   async function uploadStatementFiles(items: UtilityUploadItem[]): Promise<number[]> {
+    const current = statement.value
+    if (current?.fileIds) return current.fileIds
+
     const ids: number[] = []
     const seen = new Set<string>()
+    let skippedLarge = false
     for (const item of items) {
       const key = `${item.document.name}:${item.document.size}:${item.document.dataUrl.slice(0, 40)}`
       if (seen.has(key) || !item.document.dataUrl) continue
       seen.add(key)
-      const uploaded = await uploadFileApi(
-        dataUrlToBlob(item.document.dataUrl, item.document.mimeType),
-        { filename: item.document.name, kind: 'supporting' },
-      )
-      ids.push(uploaded.id)
+      try {
+        const uploaded = await uploadFileApi(
+          dataUrlToBlob(item.document.dataUrl, item.document.mimeType),
+          { filename: item.document.name, kind: 'supporting' },
+        )
+        ids.push(uploaded.id)
+      } catch (err) {
+        skippedLarge = skippedLarge || (err instanceof ApiError && err.status === 413)
+      }
+    }
+    if (current) {
+      current.fileIds = ids
+      if (skippedLarge && ids.length === 0) {
+        current.warnings = [
+          ...current.warnings,
+          'Вложения не загрузились: прокси отклонил файл (413). Счета выставляются без сканов — поднимите client_max_body_size на nginx до 50m.',
+        ]
+      }
     }
     return ids
   }

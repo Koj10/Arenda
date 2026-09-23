@@ -192,4 +192,6 @@ export interface UtilityStatement {
   landlordLoss: number
   tenantTotal: number
   warnings: string[]
+  /** Уже загруженные вложения; пустой массив = пробовали, не вышло */
+  fileIds?: number[]
 }
