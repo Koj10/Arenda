@@ -161,7 +161,8 @@ function chipClass(spaceId: number) {
           <li>Здесь создайте <span class="text-slate-300">кадастровые номера</span> (стоимость, цена покупки).</li>
           <li>
             Перетащите плашки помещений в нужный кадастровый номер.
-            Площадь кадастра равна площади объекта; рядом с номером видно, сколько площади помещений уже распределено.
+            Один кадастр — площадь всего объекта; после разделения у новых номеров остаются площади из сплита.
+            Рядом видно, сколько площади помещений уже распределено.
           </li>
         </ol>
       </div>
@@ -279,8 +280,9 @@ function chipClass(spaceId: number) {
                     <div>
                       <p class="font-mono text-sm text-white">{{ parcel.cadastralNumber }}</p>
                       <p class="text-xs text-slate-500 mt-0.5">
-                        {{ store.formatArea(store.getSpacesAreaForParcel(parcel.id)) }}
-                        из {{ store.formatArea(selectedProperty.totalArea) }}
+                        {{ store.formatArea(parcel.area) }}
+                        · помещения {{ store.formatArea(store.getSpacesAreaForParcel(parcel.id)) }}
+                        из {{ store.formatArea(parcel.area) }}
                         · {{ store.getSpacesForParcel(parcel.id).length }} пом.
                         · {{ store.formatMoney(parcel.cadastralValue) }}
                       </p>

@@ -22,10 +22,13 @@ const editingParcel = computed(() =>
 
 const isEdit = computed(() => !!editingParcel.value)
 
-const computedArea = computed(() => property.value?.totalArea ?? 0)
-const allocatedArea = computed(() =>
-  property.value ? store.getAllocatedAreaForProperty(property.value.id) : 0,
+const computedArea = computed(() =>
+  editingParcel.value?.area || property.value?.totalArea || 0,
 )
+const allocatedArea = computed(() => {
+  if (editingParcel.value) return store.getSpacesAreaForParcel(editingParcel.value.id)
+  return property.value ? store.getAllocatedAreaForProperty(property.value.id) : 0
+})
 
 watch(
   () => store.cadastralModalOpen,
@@ -118,7 +121,8 @@ function onClose() {
         <p class="text-xs text-slate-500">
           Площадь кадастра:
           <span class="font-mono text-emerald-brand">{{ store.formatArea(computedArea) }}</span>
-          — как у объекта.
+          <template v-if="isEdit"> — у этого номера.</template>
+          <template v-else> — как у объекта, пока кадастр не разделён.</template>
           Распределено помещениями:
           <span class="font-mono text-white">{{ store.formatArea(allocatedArea) }}</span>
           из {{ store.formatArea(computedArea) }}
@@ -157,7 +161,7 @@ function onClose() {
       </div>
 
       <p class="text-xs text-slate-500 rounded-lg border border-border bg-panel/30 px-3 py-2">
-        Площадь кадастра совпадает с площадью объекта. Сумма площадей помещений показывает, сколько уже распределено.
+        Площадь одного кадастра совпадает с объектом. После разделения у каждого нового номера — площадь, указанная при сплите.
       </p>
     </div>
 

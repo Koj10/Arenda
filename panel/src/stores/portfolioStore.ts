@@ -28,8 +28,41 @@ import { ApiError, formatApiError, getAccessToken, isPaymentRequired } from '@/a
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
 import * as landlordApi from '@/api/landlord'
 import { num } from '@/api/types'
-import type { ObjectDetailOut } from '@/api/types'
+import type { CadastreSplitOut, ObjectDetailOut } from '@/api/types'
 import { daysUntil, formatDateRu, todayISODate } from '@/utils/dates'
+
+const CADASTRE_AREA_STORAGE = 'propcount.cadastreSplitAreas'
+
+function cadastreAreaKey(propertyId: number, number: string) {
+  return `${propertyId}:${number.trim()}`
+}
+
+function readStoredCadastreAreas(): Record<string, number> {
+  try {
+    const raw = sessionStorage.getItem(CADASTRE_AREA_STORAGE)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, number>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function rememberCadastreArea(propertyId: number, number: string, area: number) {
+  if (!number.trim() || !(area > 0)) return
+  const stored = readStoredCadastreAreas()
+  stored[cadastreAreaKey(propertyId, number)] = area
+  try {
+    sessionStorage.setItem(CADASTRE_AREA_STORAGE, JSON.stringify(stored))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function recalledCadastreArea(propertyId: number, number: string): number | undefined {
+  const value = readStoredCadastreAreas()[cadastreAreaKey(propertyId, number)]
+  return value && value > 0 ? value : undefined
+}
 
 function recalcPropertyStats(property: Property, propertyTenants: Tenant[]) {
   const occupying = propertyTenants.filter((t) => t.status !== 'overdue')
@@ -369,11 +402,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     cadastralParcels.value = cadastralParcels.value.filter((p) => p.propertyId !== detail.id)
     for (const entry of cadastreEntries) {
       const prev = prevParcels.find((p) => p.id === entry.id)
+        ?? prevParcels.find((p) => p.cadastralNumber.trim() === entry.number.trim())
       cadastralParcels.value.push({
         id: entry.id,
         propertyId: entry.object_id,
         cadastralNumber: entry.number,
-        area: cadastreEntries.length <= 1 ? totalArea : (prev?.area && prev.area > 0 ? prev.area : totalArea),
+        area: resolveCadastreArea(detail.id, entry.number, cadastreEntries.length, totalArea, prev?.area),
         cadastralValue: num(entry.cadastral_value),
         purchasePrice: entry.purchase_price ? num(entry.purchase_price) : undefined,
       })
@@ -392,18 +426,62 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  function resolveCadastreArea(
+    propertyId: number,
+    number: string,
+    parcelsOnObject: number,
+    objectArea: number,
+    fallback?: number,
+    splitArea?: number,
+  ) {
+    if (parcelsOnObject <= 1) return objectArea
+    if (splitArea && splitArea > 0) return splitArea
+    const remembered = recalledCadastreArea(propertyId, number)
+    if (remembered) return remembered
+    if (fallback && fallback > 0) return fallback
+    return objectArea
+  }
+
+  function applyCadastreArea(propertyId: number, number: string, area: number) {
+    rememberCadastreArea(propertyId, number, area)
+    const parcel = cadastralParcels.value.find(
+      (p) => p.propertyId === propertyId && p.cadastralNumber.trim() === number.trim(),
+    )
+    if (parcel && area > 0) parcel.area = area
+  }
+
+  function ingestSplitHistory(propertyId: number, history?: CadastreSplitOut[]) {
+    const byNumber = new Map<string, number>()
+    for (const split of history ?? []) {
+      const n = split.new_cadastre_number.trim()
+      const a = num(split.split_area)
+      if (!n || !(a > 0)) continue
+      byNumber.set(n, a)
+      rememberCadastreArea(propertyId, n, a)
+    }
+    return byNumber
+  }
+
   function applyCadastralDetail(detail: import('@/api/types').CadastralObjectDetail) {
     const property = getPropertyById(detail.object_id)
     const objectArea = property?.totalArea ?? 0
     const parcelsOnObject = (detail.cadastre_entries ?? []).length
+    const historyAreas = ingestSplitHistory(detail.object_id, detail.split_history)
     for (const entry of detail.cadastre_entries ?? []) {
       const existing = getCadastralParcelById(entry.id)
-      const area = parcelsOnObject <= 1 ? objectArea : (existing?.area || objectArea)
+      const area = resolveCadastreArea(
+        detail.object_id,
+        entry.number,
+        parcelsOnObject,
+        objectArea,
+        existing?.area,
+        historyAreas.get(entry.number.trim()),
+      )
       if (existing) {
         existing.cadastralNumber = entry.number
         existing.cadastralValue = num(entry.cadastral_value)
         existing.purchasePrice = entry.purchase_price ? num(entry.purchase_price) : undefined
-        if (parcelsOnObject <= 1 || existing.area <= 0) existing.area = objectArea
+        existing.area = area
       } else {
         cadastralParcels.value.push({
           id: entry.id,
@@ -413,14 +491,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           cadastralValue: num(entry.cadastral_value),
           purchasePrice: entry.purchase_price ? num(entry.purchase_price) : undefined,
         })
-      }
-    }
-    if (parcelsOnObject > 1) {
-      for (const split of detail.split_history ?? []) {
-        const parcel = cadastralParcels.value.find(
-          (p) => p.propertyId === detail.object_id && p.cadastralNumber === split.new_cadastre_number,
-        )
-        if (parcel && num(split.split_area) > 0) parcel.area = num(split.split_area)
       }
     }
   }
@@ -870,9 +940,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         (p) => p.propertyId === original.propertyId && p.cadastralNumber.trim() === number,
       ) ?? null
 
+    rememberCadastreArea(original.propertyId, firstNumber, firstArea)
+    rememberCadastreArea(original.propertyId, secondNumber, secondArea)
+
     try {
+      let splitRows: CadastreSplitOut[] = []
       try {
-        await landlordApi.splitCadastre(parcelId, {
+        splitRows = await landlordApi.splitCadastre(parcelId, {
           new_cadastre_number_1: firstNumber,
           new_cadastre_number_2: secondNumber,
           split_area_1: firstArea,
@@ -892,6 +966,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         await completeSplitWithoutDuplicateNumbers(original, data, firstNumber, secondNumber, firstArea, secondArea)
         await reload()
       }
+
+      ingestSplitHistory(original.propertyId, splitRows)
+      applyCadastreArea(original.propertyId, firstNumber, firstArea)
+      applyCadastreArea(original.propertyId, secondNumber, secondArea)
 
       const first = findByNumber(firstNumber)
       const second = findByNumber(secondNumber)
@@ -936,7 +1014,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     firstNumber: string,
     secondNumber: string,
     firstArea: number,
-    _secondArea: number,
+    secondArea: number,
   ) {
     const taken = (number: string, exceptId?: number) =>
       cadastralParcels.value.some(
@@ -956,6 +1034,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       stillOriginal.cadastralNumber = firstNumber
       stillOriginal.area = firstArea
       stillOriginal.cadastralValue = data.firstCadastralValue
+      rememberCadastreArea(original.propertyId, firstNumber, firstArea)
     }
 
     const secondExists = cadastralParcels.value.some(
@@ -967,6 +1046,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         cadastral_value: data.secondCadastralValue,
         purchase_price: data.secondPurchasePrice,
       })
+      rememberCadastreArea(original.propertyId, secondNumber, secondArea)
     }
   }
 
