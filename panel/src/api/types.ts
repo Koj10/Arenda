@@ -516,3 +516,14 @@ export function num(value: string | number | null | undefined, fallback = 0): nu
   const n = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(n) ? n : fallback
 }
+
+export function asList<T>(raw: unknown): T[] {
+  if (Array.isArray(raw)) return raw as T[]
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>
+    for (const key of ['items', 'results', 'data', 'rows', 'transactions', 'invoices']) {
+      if (Array.isArray(obj[key])) return obj[key] as T[]
+    }
+  }
+  return []
+}

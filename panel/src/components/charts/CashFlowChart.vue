@@ -60,7 +60,7 @@ const labelStep = computed(() => Math.max(1, Math.ceil(labels.value.length / 8))
     <div class="flex items-start justify-between mb-4">
       <div>
         <h3 class="text-base font-semibold text-white">Денежный поток</h3>
-        <p class="text-xs text-slate-500 mt-0.5">Доходы, расходы и прибыль за период</p>
+        <p class="text-xs text-slate-500 mt-0.5">Оплаты арендаторов и загруженные коммуналки</p>
       </div>
       <div class="flex items-center gap-4 text-xs">
         <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-brand" />Доход</span>

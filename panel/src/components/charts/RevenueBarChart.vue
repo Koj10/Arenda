@@ -43,7 +43,7 @@ const changeLabel = computed(() => {
       <div>
         <h3 class="text-base font-semibold text-white">Сравнение доходов</h3>
         <p class="text-xs text-slate-500 mt-0.5">
-          {{ comparison ? changeLabel : 'Текущий месяц относительно предыдущего' }}
+          {{ comparison ? changeLabel : 'Оплаченные счета арендаторов' }}
         </p>
       </div>
       <div v-if="comparison" class="flex items-center gap-4 text-xs">

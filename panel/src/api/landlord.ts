@@ -1,4 +1,5 @@
 import { apiDownload, apiRequest, queryString } from '@/api/http'
+import { asList } from '@/api/types'
 import type {
   CadastreOut,
   CadastreSplitOut,
@@ -231,7 +232,7 @@ export async function listTransactions(params: Record<string, string | number | 
     if (v != null && v !== '') search.set(k, String(v))
   }
   const q = search.toString()
-  return apiRequest<TransactionOut[]>(`/landlord/transactions${q ? `?${q}` : ''}`)
+  return asList<TransactionOut>(await apiRequest<unknown>(`/landlord/transactions${q ? `?${q}` : ''}`))
 }
 
 export async function getTransaction(transactionId: number) {
@@ -282,7 +283,9 @@ export async function getObjectPayers(objectId: number) {
 }
 
 export async function listObjectBills(objectId: number) {
-  return apiRequest<UtilityBillListItem[]>(`/landlord/objects/${objectId}/bills`)
+  return asList<UtilityBillListItem>(
+    await apiRequest<unknown>(`/landlord/objects/${objectId}/bills`),
+  )
 }
 
 export async function createUtilityBill(body: {
@@ -321,7 +324,9 @@ export async function listLandlordInvoices(params: {
   tenant_id?: number
   period?: string
 } = {}) {
-  return apiRequest<LandlordInvoiceOut[]>(`/landlord/invoices${queryString(params)}`)
+  return asList<LandlordInvoiceOut>(
+    await apiRequest<unknown>(`/landlord/invoices${queryString(params)}`),
+  )
 }
 
 export async function getLandlordInvoice(invoiceId: number) {

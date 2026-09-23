@@ -7,13 +7,16 @@ import { dataUrlToBlob, fileDisplayName, uploadFileApi } from '@/api/auth'
 import {
   createTransaction,
   deleteTransaction,
-  getLandlordAnalytics,
   getTransaction,
+  listBillObjects,
+  listLandlordInvoices,
+  listObjectBills,
+  listObjects,
   listTransactions,
   updateTransaction,
 } from '@/api/landlord'
-import { num } from '@/api/types'
-import type { FileOut } from '@/api/types'
+import { asList, num } from '@/api/types'
+import type { FileOut, LandlordInvoiceOut, UtilityBillListItem } from '@/api/types'
 import { currentPeriod, formatDateRu, parseDateOnly } from '@/utils/dates'
 
 const CATEGORIES: ExpenseCategory[] = ['utilities', 'maintenance', 'tax', 'insurance', 'management', 'other']
@@ -83,44 +86,175 @@ function filesToExpenseDocs(files?: FileOut[]): ExpenseDocument[] {
   }))
 }
 
-function mapAnalytics(raw: Awaited<ReturnType<typeof getLandlordAnalytics>>): LandlordAnalytics {
+function previousPeriod(period: string): string {
+  const [year, month] = period.split('-').map(Number)
+  if (!year || !month) return period
+  const date = new Date(year, month - 2, 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function inMonth(value: string | null | undefined, period: string): boolean {
+  if (!value) return false
+  return String(value).slice(0, 7) === period
+}
+
+function isPaidInvoice(invoice: LandlordInvoiceOut): boolean {
+  const status = (invoice.computed_status || invoice.status || '').toLowerCase()
+  return status === 'paid' || Boolean(invoice.paid_at)
+}
+
+function paidInMonth(invoice: LandlordInvoiceOut, period: string): boolean {
+  if (!isPaidInvoice(invoice)) return false
+  if (invoice.paid_at) return inMonth(invoice.paid_at, period)
+  return inMonth(invoice.period, period)
+}
+
+function billInPeriod(bill: UtilityBillListItem, period: string): boolean {
+  return inMonth(bill.period, period) || (!bill.period && inMonth(bill.created_at, period))
+}
+
+function dayKey(value: string | null | undefined, fallback: string): string {
+  const raw = String(value || '')
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10)
+  if (/^\d{4}-\d{2}$/.test(raw)) return `${raw}-01`
+  return fallback
+}
+
+function emptyAnalytics(period: string): LandlordAnalytics {
   return {
-    period: raw.period,
+    period,
     cards: {
-      income: num(raw.cards.income),
-      expenses: num(raw.cards.expenses),
-      profit: num(raw.cards.profit),
-      rentAccrued: num(raw.cards.rent_accrued),
-      utilityAccrued: num(raw.cards.utility_accrued),
-      invoicesPending: num(raw.cards.invoices_pending),
-      invoicesOverdue: num(raw.cards.invoices_overdue),
-      occupancyPercent: raw.cards.occupancy_percent ?? 0,
+      income: 0,
+      expenses: 0,
+      profit: 0,
+      rentAccrued: 0,
+      utilityAccrued: 0,
+      invoicesPending: 0,
+      invoicesOverdue: 0,
+      occupancyPercent: 0,
     },
-    cashflow: (raw.cashflow ?? []).map((row) => ({
-      date: row.date,
-      income: num(row.income),
-      expense: num(row.expense),
-      profit: num(row.profit),
-    })),
-    expenseBreakdown: (raw.expense_breakdown ?? []).map((row) => ({
-      category: row.category,
-      amount: num(row.amount),
-    })),
+    cashflow: [],
+    expenseBreakdown: [],
     revenueComparison: {
-      currentPeriod: raw.revenue_comparison.current_period,
-      previousPeriod: raw.revenue_comparison.previous_period,
-      current: num(raw.revenue_comparison.current),
-      previous: num(raw.revenue_comparison.previous),
-      difference: num(raw.revenue_comparison.difference),
-      percentChange: raw.revenue_comparison.percent_change ?? 0,
+      currentPeriod: period,
+      previousPeriod: previousPeriod(period),
+      current: 0,
+      previous: 0,
+      difference: 0,
+      percentChange: 0,
     },
   }
+}
+
+function paidIncome(invoices: LandlordInvoiceOut[], period: string): number {
+  return invoices.filter((item) => paidInMonth(item, period)).reduce((sum, item) => sum + num(item.amount), 0)
+}
+
+function buildBusinessAnalytics(
+  period: string,
+  invoices: LandlordInvoiceOut[],
+  bills: UtilityBillListItem[],
+): LandlordAnalytics {
+  const mapped = emptyAnalytics(period)
+  const paidNow = invoices.filter((item) => paidInMonth(item, period))
+  const billsNow = bills.filter((item) => billInPeriod(item, period))
+  const unpaid = invoices.filter((item) => !isPaidInvoice(item))
+
+  const income = paidNow.reduce((sum, item) => sum + num(item.amount), 0)
+  const expenses = billsNow.reduce((sum, item) => sum + num(item.total), 0)
+  const rentPaid = paidNow
+    .filter((item) => (item.kind || '').toLowerCase() === 'rent')
+    .reduce((sum, item) => sum + num(item.amount), 0)
+  const utilityPaid = paidNow
+    .filter((item) => {
+      const kind = (item.kind || '').toLowerCase()
+      return kind === 'utility' || kind === 'utilities'
+    })
+    .reduce((sum, item) => sum + num(item.amount), 0)
+  const pending = unpaid.reduce((sum, item) => sum + num(item.amount), 0)
+  const overdue = unpaid
+    .filter((item) => (item.computed_status || item.status || '').toLowerCase() === 'overdue')
+    .reduce((sum, item) => sum + num(item.amount), 0)
+
+  mapped.cards = {
+    income,
+    expenses,
+    profit: income - expenses,
+    rentAccrued: rentPaid,
+    utilityAccrued: utilityPaid,
+    invoicesPending: pending,
+    invoicesOverdue: overdue,
+    occupancyPercent: 0,
+  }
+
+  const byDay = new Map<string, CashflowPoint>()
+  function point(date: string): CashflowPoint {
+    const existing = byDay.get(date)
+    if (existing) return existing
+    const next = { date, income: 0, expense: 0, profit: 0 }
+    byDay.set(date, next)
+    return next
+  }
+  for (const invoice of paidNow) {
+    point(dayKey(invoice.paid_at || invoice.period, `${period}-01`)).income += num(invoice.amount)
+  }
+  for (const bill of billsNow) {
+    point(dayKey(bill.created_at || bill.period, `${period}-01`)).expense += num(bill.total)
+  }
+  mapped.cashflow = [...byDay.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((row) => ({ ...row, profit: row.income - row.expense }))
+
+  const breakdown = new Map<string, number>()
+  for (const bill of billsNow) {
+    const key = bill.title?.trim() || 'utilities'
+    breakdown.set(key, (breakdown.get(key) ?? 0) + num(bill.total))
+  }
+  mapped.expenseBreakdown = [...breakdown.entries()].map(([category, amount]) => ({ category, amount }))
+
+  const previous = paidIncome(invoices, previousPeriod(period))
+  mapped.revenueComparison = {
+    currentPeriod: period,
+    previousPeriod: previousPeriod(period),
+    current: income,
+    previous,
+    difference: income - previous,
+    percentChange: previous ? ((income - previous) / previous) * 100 : 0,
+  }
+  return mapped
+}
+
+function ensureChartPoints(analytics: LandlordAnalytics): LandlordAnalytics {
+  if (analytics.cashflow.length || (!analytics.cards.income && !analytics.cards.expenses)) {
+    return analytics
+  }
+  return {
+    ...analytics,
+    cashflow: [{
+      date: `${analytics.period}-01`,
+      income: analytics.cards.income,
+      expense: analytics.cards.expenses,
+      profit: analytics.cards.profit,
+    }],
+  }
+}
+
+async function loadAllUtilityBills(): Promise<UtilityBillListItem[]> {
+  let objects = asList<{ id: number }>(await listBillObjects().catch(() => []))
+  if (!objects.length) {
+    objects = asList<{ id: number }>(await listObjects())
+  }
+  const rows = await Promise.all(
+    objects.map((object) => listObjectBills(object.id).catch(() => [] as UtilityBillListItem[])),
+  )
+  return rows.flat()
 }
 
 export const useAccountingStore = defineStore('accounting', () => {
   const expenses = ref<Expense[]>([])
   const analytics = ref<LandlordAnalytics | null>(null)
   const lastError = ref<string | null>(null)
+  const loading = ref(false)
 
   const expenseModalOpen = ref(false)
   const expenseDetailOpen = ref(false)
@@ -169,46 +303,50 @@ export const useAccountingStore = defineStore('accounting', () => {
     expenses.value = []
     analytics.value = null
     lastError.value = null
+    loading.value = false
   }
 
   async function loadAnalytics() {
     if (!getAccessToken()) return
+    const period = currentPeriod()
     try {
-      analytics.value = mapAnalytics(await getLandlordAnalytics(currentPeriod()))
+      const [invoices, bills] = await Promise.all([
+        listLandlordInvoices(),
+        loadAllUtilityBills(),
+      ])
+      analytics.value = ensureChartPoints(buildBusinessAnalytics(period, invoices, bills))
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось загрузить аналитику')
+      analytics.value = emptyAnalytics(period)
     }
   }
 
   async function loadFromApi() {
     if (!getAccessToken()) return
+    loading.value = true
     lastError.value = null
     try {
-      const rows = await listTransactions({ type: 'expense' })
-      expenses.value = await Promise.all(rows.map(async (row) => {
-        let files = row.files
-        if (!files?.length) {
-          try {
-            files = (await getTransaction(row.id)).files
-          } catch {
-            files = []
-          }
-        }
-        return {
-          id: row.id,
-          date: row.transaction_date,
-          amount: num(row.amount),
-          category: asCategory(row.category),
-          title: row.title,
-          note: row.comment ?? '',
-          propertyId: row.object_id ?? null,
-          documents: filesToExpenseDocs(files),
-        }
+      const rows = asList<Awaited<ReturnType<typeof listTransactions>>[number]>(
+        await listTransactions({ type: 'expense' }),
+      )
+      expenses.value = rows.map((row) => ({
+        id: row.id,
+        date: row.transaction_date,
+        amount: num(row.amount),
+        category: asCategory(row.category),
+        title: row.title,
+        note: row.comment ?? '',
+        propertyId: row.object_id ?? null,
+        documents: filesToExpenseDocs(row.files),
       }))
       syncPropertyExpenses()
-      await loadAnalytics()
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось загрузить транзакции')
+    }
+    try {
+      await loadAnalytics()
+    } finally {
+      loading.value = false
     }
   }
 
@@ -354,6 +492,15 @@ export const useAccountingStore = defineStore('accounting', () => {
   function openExpenseDetail(id: number) {
     expenseDetailId.value = id
     expenseDetailOpen.value = true
+    const expense = getExpenseById(id)
+    if (expense && !expense.documents.length) {
+      void getTransaction(id).then((detail) => {
+        const current = getExpenseById(id)
+        if (current && !current.documents.length) {
+          current.documents = filesToExpenseDocs(detail.files)
+        }
+      }).catch(() => {})
+    }
   }
 
   function closeExpenseDetail() {
@@ -365,6 +512,7 @@ export const useAccountingStore = defineStore('accounting', () => {
     expenses,
     analytics,
     lastError,
+    loading,
     expenseModalOpen,
     expenseDetailOpen,
     expenseDetailId,

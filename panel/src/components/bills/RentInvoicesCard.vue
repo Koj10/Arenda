@@ -128,6 +128,9 @@ async function confirm(id: number) {
   try {
     await confirmInvoicePayment(id)
     await load()
+    void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
+      void useAccountingStore().loadAnalytics()
+    })
   } catch (err) {
     error.value = formatApiError(err, 'Не удалось подтвердить оплату')
   } finally {

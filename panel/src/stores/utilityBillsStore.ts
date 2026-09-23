@@ -273,6 +273,9 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         /* расчёт уже показан, сохранение не блокирует */
       }
     }
+    void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
+      void useAccountingStore().loadAnalytics()
+    })
   }
 
   async function uploadStatementFiles(items: UtilityUploadItem[]): Promise<number[]> {
@@ -327,6 +330,9 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         file_ids: fileIds.length ? fileIds : undefined,
       })
       row.issued = true
+      void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
+        void useAccountingStore().loadAnalytics()
+      })
       return true
     } catch (err) {
       statementError.value = formatApiError(err, 'Не удалось выставить счёт')
@@ -362,6 +368,9 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         })
         row.issued = true
       }
+      void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
+        void useAccountingStore().loadAnalytics()
+      })
       return true
     } catch (err) {
       statementError.value = formatApiError(err, 'Не удалось выставить счета')
@@ -405,6 +414,9 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         lines: data.lines.filter((l) => l.amount > 0),
       })
       closeAddBillModal()
+      void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
+        void useAccountingStore().loadAnalytics()
+      })
       return true
     } catch {
       return false

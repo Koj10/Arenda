@@ -60,7 +60,7 @@ const arcs = computed(() => {
 <template>
   <div class="panel-card p-5 h-full">
     <h3 class="text-base font-semibold text-white mb-1">Структура расходов</h3>
-    <p class="text-xs text-slate-500 mb-4">По категориям за период</p>
+    <p class="text-xs text-slate-500 mb-4">Загруженные счета коммуналки</p>
     <div class="flex flex-col items-center">
       <svg viewBox="0 0 200 200" class="w-44 h-44">
         <circle v-if="!segments.length" :cx="cx" :cy="cy" :r="r" fill="none" stroke="#2a2f36" stroke-width="22" />
@@ -77,7 +77,7 @@ const arcs = computed(() => {
           <span class="ml-auto text-slate-500">{{ Math.round(seg.value) }}%</span>
         </div>
       </div>
-      <p v-else class="text-xs text-slate-500 mt-2">Пока нет расходов</p>
+      <p v-else class="text-xs text-slate-500 mt-2">Нет загруженных счетов коммуналки</p>
     </div>
   </div>
 </template>

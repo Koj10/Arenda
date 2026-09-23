@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AddExpenseModal from '@/components/accounting/AddExpenseModal.vue'
 import ExpenseDetailModal from '@/components/accounting/ExpenseDetailModal.vue'
@@ -69,6 +69,10 @@ function formatShort(n: number) {
   if (n >= 1_000) return `₽${Math.round(n / 1_000)}K`
   return accounting.formatMoney(n)
 }
+
+onMounted(() => {
+  void accounting.loadFromApi()
+})
 </script>
 
 <template>
@@ -101,6 +105,7 @@ function formatShort(n: number) {
       </div>
 
       <p v-if="accounting.lastError" class="mb-4 text-sm text-red-400">{{ accounting.lastError }}</p>
+      <p v-else-if="accounting.loading" class="mb-4 text-sm text-slate-500">Загрузка аналитики...</p>
 
       <template v-if="activeTab === 'overview'">
         <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
@@ -110,7 +115,7 @@ function formatShort(n: number) {
               <span class="p-2 rounded-xl bg-emerald-brand/10 text-emerald-brand"><ArrowUpRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalIncome) }}</p>
-            <p class="text-xs text-slate-500 mt-2">за текущий месяц</p>
+            <p class="text-xs text-slate-500 mt-2">оплаченные счета арендаторов</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
@@ -118,7 +123,7 @@ function formatShort(n: number) {
               <span class="p-2 rounded-xl bg-red-500/10 text-red-400"><ArrowDownRight class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalExpenses) }}</p>
-            <p class="text-xs text-slate-500 mt-2">за текущий месяц</p>
+            <p class="text-xs text-slate-500 mt-2">загруженные счета коммуналки</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
@@ -126,7 +131,7 @@ function formatShort(n: number) {
               <span class="p-2 rounded-xl bg-orange-500/10 text-orange-400"><Wallet class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(netProfit) }}</p>
-            <p class="text-xs text-slate-500 mt-2">доход минус расход за месяц</p>
+            <p class="text-xs text-slate-500 mt-2">доход минус расход</p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
@@ -134,7 +139,7 @@ function formatShort(n: number) {
               <span class="p-2 rounded-xl bg-yellow-500/10 text-yellow-400"><Clock class="w-4 h-4" /></span>
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(pendingPayments) }}</p>
-            <p class="text-xs text-slate-500 mt-2">неподтверждённые счета</p>
+            <p class="text-xs text-slate-500 mt-2">аренда и коммуналка от арендаторов</p>
           </div>
         </div>
 
