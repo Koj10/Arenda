@@ -68,6 +68,13 @@ function validate() {
   const secondNumber = form.value.newCadastralNumber.trim()
   if (!firstNumber) errors.value.firstCadastralNumber = 'Укажите кадастровый номер'
   if (!secondNumber) errors.value.newCadastralNumber = 'Укажите кадастровый номер'
+  const originalNumber = sourceParcel.value.cadastralNumber.trim()
+  if (firstNumber && firstNumber === originalNumber) {
+    errors.value.firstCadastralNumber = 'Нужен новый номер, исходный после раздела не сохраняется'
+  }
+  if (secondNumber && secondNumber === originalNumber) {
+    errors.value.newCadastralNumber = 'Нужен новый номер, исходный после раздела не сохраняется'
+  }
   if (firstNumber && secondNumber && firstNumber === secondNumber) {
     errors.value.newCadastralNumber = 'Номера должны отличаться'
   }
@@ -115,7 +122,7 @@ async function submit() {
       : undefined,
   })
   if (!ok) {
-    errors.value.newCadastralNumber = store.lastError || 'Не удалось разделить — проверьте данные'
+    errors.value.submit = store.lastError || 'Не удалось разделить — проверьте данные'
   }
 }
 
@@ -136,18 +143,16 @@ function onClose() {
       <div class="rounded-xl border border-emerald-brand/30 bg-emerald-brand/5 px-4 py-3 text-sm text-slate-300">
         <p class="font-medium text-white mb-1">{{ property.address }}</p>
         <p>
-          Исходный номер <span class="font-mono">{{ sourceParcel.cadastralNumber }}</span>
-          · площадь <span class="font-mono text-emerald-brand">{{ store.formatArea(sourceArea) }}</span>
-          ({{ spacesOnParcel }} пом.).
-          Укажите два разных кадастровых номера, площадь и стоимость каждого.
+          Исходный номер <span class="font-mono">{{ sourceParcel.cadastralNumber }}</span> после раздела
+          перестанет действовать. Укажите два новых кадастровых номера, площадь и стоимость каждого.
           <template v-if="sourceArea > 0"> Сумма площадей должна быть {{ store.formatArea(sourceArea) }}.</template>
         </p>
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
         <section class="rounded-xl border border-border bg-panel/30 p-4 space-y-3">
-          <h3 class="text-sm font-semibold text-white">1. Первый кадастр</h3>
-          <p class="text-xs text-slate-500">Помещения пока остаются здесь</p>
+          <h3 class="text-sm font-semibold text-white">1. Первый новый кадастр</h3>
+          <p class="text-xs text-slate-500">Помещения пока остаются на этом участке</p>
 
           <div>
             <label class="block text-xs text-slate-500 mb-1">Кадастровый номер</label>
@@ -188,7 +193,7 @@ function onClose() {
         </section>
 
         <section class="rounded-xl border border-border bg-panel/30 p-4 space-y-3">
-          <h3 class="text-sm font-semibold text-white">2. Второй кадастр</h3>
+          <h3 class="text-sm font-semibold text-white">2. Второй новый кадастр</h3>
           <p class="text-xs text-slate-500">
             После разделения перетащите сюда нужные помещения.
           </p>
@@ -243,6 +248,7 @@ function onClose() {
           {{ remainingArea < 0 ? 'сверх исходной' : '' }}
         </template>
       </p>
+      <p v-if="errors.submit" class="text-sm text-rose-400">{{ errors.submit }}</p>
     </div>
 
     <template #footer>

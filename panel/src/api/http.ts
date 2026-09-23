@@ -51,6 +51,18 @@ export function isPaymentRequired(err: unknown): boolean {
 
 export function formatApiError(err: unknown, fallback = 'Ошибка запроса'): string {
   if (err instanceof ApiError) {
+    if (err.status === 409) {
+      const body = err.body as { detail?: unknown; message?: string } | string | null
+      if (typeof body === 'string' && body.trim()) return body
+      if (body && typeof body === 'object') {
+        if (typeof body.detail === 'string' && body.detail.trim()) return body.detail
+        if (body.message) return body.message
+      }
+      return 'Такая запись уже есть. Для кадастра укажите другой номер.'
+    }
+    if (err.status === 500) {
+      return 'Сервер не обработал запрос. Проверьте данные и повторите, либо укажите другие кадастровые номера.'
+    }
     if (err.status === 413) {
       return 'Файл слишком большой для загрузки (лимит прокси). Счёт можно выставить без вложения.'
     }

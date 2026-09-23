@@ -853,30 +853,39 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     splitCadastralParcelId.value = null
   }
 
-  /** Делит один кадастровый номер на два: сумма площадей = исходная площадь номера */
+  /** Делит исходный кадастр на два новых номера. Исходный номер больше не используется. */
   async function splitCadastralParcel(parcelId: number, data: SplitCadastralFormData) {
     const original = getCadastralParcelById(parcelId)
     if (!original) return false
+    const originalNumber = original.cadastralNumber.trim()
     const firstNumber = data.firstCadastralNumber.trim()
     const secondNumber = data.newCadastralNumber.trim()
     const firstArea = Number(data.firstArea) || 0
     const secondArea = Number(data.secondArea) || 0
     if (!firstNumber || !secondNumber) return false
     if (firstNumber === secondNumber) return false
+    if (firstNumber === originalNumber || secondNumber === originalNumber) return false
     if (data.firstCadastralValue <= 0 || data.secondCadastralValue <= 0) return false
     if (firstArea <= 0 || secondArea <= 0) return false
     if (original.area > 0 && Math.abs(firstArea + secondArea - original.area) > 0.01) return false
     lastError.value = null
     try {
-      await landlordApi.splitCadastre(parcelId, {
-        new_cadastre_number_1: firstNumber,
-        new_cadastre_number_2: secondNumber,
-        split_area_1: firstArea,
-        split_area_2: secondArea,
-      })
+      try {
+        await landlordApi.splitCadastre(parcelId, {
+          new_cadastre_number_1: firstNumber,
+          new_cadastre_number_2: secondNumber,
+          split_area_1: firstArea,
+          split_area_2: secondArea,
+        })
+      } catch (err) {
+        if (!(err instanceof ApiError) || (err.status !== 409 && err.status !== 500)) throw err
+        await splitByUpdateAndCreate(original, data, firstNumber, secondNumber, firstArea, secondArea)
+      }
+
       const detail = await landlordApi.getObject(original.propertyId)
       applyObjectDetail(detail)
       await refreshCadastral(original.propertyId)
+
       const first = cadastralParcels.value.find(
         (p) => p.propertyId === original.propertyId && p.cadastralNumber === firstNumber,
       )
@@ -911,6 +920,42 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось разделить кадастр')
       return false
+    }
+  }
+
+  async function splitByUpdateAndCreate(
+    original: CadastralParcel,
+    data: SplitCadastralFormData,
+    firstNumber: string,
+    secondNumber: string,
+    firstArea: number,
+    secondArea: number,
+  ) {
+    await landlordApi.updateCadastre(original.id, {
+      number: firstNumber,
+      cadastral_value: data.firstCadastralValue,
+      purchase_price: data.firstPurchasePrice,
+    })
+    original.cadastralNumber = firstNumber
+    original.area = firstArea
+    original.cadastralValue = data.firstCadastralValue
+    original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
+      ? data.firstPurchasePrice
+      : undefined
+    const created = await landlordApi.createCadastre(original.propertyId, {
+      number: secondNumber,
+      cadastral_value: data.secondCadastralValue,
+      purchase_price: data.secondPurchasePrice,
+    })
+    if (!cadastralParcels.value.some((p) => p.id === created.id)) {
+      cadastralParcels.value.push({
+        id: created.id,
+        propertyId: created.object_id,
+        cadastralNumber: created.number,
+        area: secondArea,
+        cadastralValue: num(created.cadastral_value),
+        purchasePrice: created.purchase_price ? num(created.purchase_price) : undefined,
+      })
     }
   }
 
