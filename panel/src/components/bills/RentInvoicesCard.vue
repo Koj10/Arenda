@@ -201,7 +201,7 @@ onMounted(() => {
     </div>
     <p v-if="error" class="px-5 py-3 text-sm text-rose-400 border-b border-border">{{ error }}</p>
     <div v-show="!collapsed">
-      <p v-else-if="loading" class="px-5 py-8 text-sm text-slate-500 text-center">Загрузка...</p>
+      <p v-if="loading" class="px-5 py-8 text-sm text-slate-500 text-center">Загрузка...</p>
       <div v-else-if="invoices.length === 0" class="px-5 py-8 text-sm text-slate-500 text-center">
         Счетов на аренду пока нет
       </div>
