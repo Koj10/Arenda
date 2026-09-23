@@ -1,5 +1,5 @@
 import { apiRequest, apiUpload, clearTokens, getApiBaseUrl, queryString, setTokens } from '@/api/http'
-import type { AuthResponse, FileOut, MeResponse, TenantProfileOut, UserPublic } from '@/api/types'
+import { asList, type AuthResponse, type FileOut, type MeResponse, type TenantProfileOut, type UserPublic } from '@/api/types'
 
 export function persistAuth(session: AuthResponse) {
   setTokens(session.access_token, session.refresh_token)
@@ -115,7 +115,7 @@ export async function listFiles(params: {
   linked_id?: number
   kind?: string
 } = {}) {
-  return apiRequest<FileOut[]>(`/files${queryString(params)}`)
+  return asList<FileOut>(await apiRequest<unknown>(`/files${queryString(params)}`))
 }
 
 export async function deleteFileApi(fileId: number) {

@@ -30,6 +30,7 @@ const PAGES_LANDLORD: { title: string; subtitle: string; to: string; keys: strin
   { title: 'Объекты', subtitle: 'Недвижимость', to: '/landlord/objects', keys: 'объекты недвижимость objects' },
   { title: 'Кадастр', subtitle: 'Кадастровые номера', to: '/landlord/cadastral', keys: 'кадастр cadastral' },
   { title: 'Арендаторы', subtitle: 'Контракты', to: '/landlord/tenants', keys: 'арендаторы tenants' },
+  { title: 'Документы', subtitle: 'Файлы кабинета', to: '/landlord/documents', keys: 'документы файлы documents' },
   { title: 'Счета', subtitle: 'Коммунальные счета', to: '/landlord/bills', keys: 'счета bills коммунальные жкх' },
   { title: 'Финансы', subtitle: 'Отчёты', to: '/landlord/reports', keys: 'финансы отчёты reports' },
   { title: 'Настройки', subtitle: 'Профиль и тариф', to: '/settings', keys: 'настройки профиль тариф' },
