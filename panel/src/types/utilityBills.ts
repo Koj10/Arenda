@@ -129,6 +129,7 @@ export interface PropertyBill {
   issuedAt: string
   status: 'distributed' | 'paid'
   document?: InvoiceDocument
+  fileId?: number | null
   lines: PropertyBillLine[]
 }
 

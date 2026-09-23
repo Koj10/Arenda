@@ -4,12 +4,13 @@ import { RouterLink } from 'vue-router'
 import { Building2, ChevronRight, Download, MapPin, Plus, Landmark, Trash2 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
+import PropertyBillsTab from '@/components/objects/PropertyBillsTab.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { PROPERTY_TYPE_LABELS, PROPERTY_DOCUMENT_LABELS, formatAreaShare } from '@/types/portfolio'
 import { usePlan } from '@/composables/usePlan'
 import { downloadDocumentsArchive } from '@/composables/useDocuments'
 
-type PropertyTab = 'spaces' | 'documents'
+type PropertyTab = 'spaces' | 'documents' | 'bills'
 
 const store = usePortfolioStore()
 const { canAddSpace, requireCanAddSpace } = usePlan()
@@ -52,6 +53,7 @@ const totalCadastralValue = computed(() =>
 
 const TABS: { id: PropertyTab; label: string }[] = [
   { id: 'spaces', label: 'Помещения' },
+  { id: 'bills', label: 'Счета' },
   { id: 'documents', label: 'Документы' },
 ]
 
@@ -269,6 +271,11 @@ function occupancyClass(occupied: boolean) {
           <MapPin class="w-3.5 h-3.5 shrink-0 mt-0.5" />
           <span>Выберите помещение для карточки с арендатором и ставкой</span>
         </div>
+      </div>
+
+      <!-- Счета -->
+      <div v-else-if="activeTab === 'bills'">
+        <PropertyBillsTab :property-id="property.id" />
       </div>
 
       <!-- Документы -->

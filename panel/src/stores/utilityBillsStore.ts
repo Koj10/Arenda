@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type {
   PropertyBill,
   PropertyBillFormData,
+  PropertyBillLine,
   SpaceUtilitySettings,
   UtilityCriterion,
   BillPayer,
@@ -11,23 +12,54 @@ import type {
 } from '@/types/utilityBills'
 import {
   createDefaultSpaceUtilityPayers,
+  UTILITY_CRITERIA,
+  UTILITY_CRITERION_LABELS,
 } from '@/types/utilityBills'
 import { getAccessToken, formatApiError, ApiError } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
-import { formatDateRu, todayISODate } from '@/utils/dates'
+import { formatDateRu } from '@/utils/dates'
 import {
   createLandlordInvoice,
   createUtilityBill,
   getObjectPayers,
+  getUtilityBill,
   listObjectBills,
   listObjectMeters,
   updateUnitPayer,
   upsertMeter,
 } from '@/api/landlord'
-import { num } from '@/api/types'
+import { num, type UtilityBillDetailOut, type UtilityBillListItem } from '@/api/types'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { buildUtilityStatement, meterConsumption } from '@/composables/utilityCalc'
 import { buildMeterDrafts, meterKey, shiftPeriod } from '@/composables/meters'
+
+function linesFromAmounts(amounts?: Record<string, string | number> | null): PropertyBillLine[] {
+  if (!amounts) return []
+  return Object.entries(amounts)
+    .filter(([, value]) => num(value) > 0)
+    .map(([criterion, amount]) => ({
+      criterion: (UTILITY_CRITERIA.includes(criterion as UtilityCriterion)
+        ? criterion
+        : 'management') as UtilityCriterion,
+      amount: num(amount),
+    }))
+}
+
+function mapPropertyBill(bill: UtilityBillListItem, detail?: UtilityBillDetailOut | null): PropertyBill {
+  return {
+    id: bill.id,
+    propertyId: bill.object_id,
+    period: bill.period,
+    title: bill.title,
+    totalAmount: num(bill.total),
+    landlordLoss: num(bill.landlord_loss ?? detail?.landlord_loss),
+    dueDate: bill.pay_by,
+    issuedAt: bill.created_at.slice(0, 10),
+    status: 'distributed',
+    fileId: bill.file_id ?? detail?.file_id ?? null,
+    lines: linesFromAmounts(detail?.amounts),
+  }
+}
 
 export const useUtilityBillsStore = defineStore('utilityBills', () => {
   const spaceSettings = ref<SpaceUtilitySettings[]>([])
@@ -90,20 +122,12 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         }
       }
       const bills = await listObjectBills(propertyId)
+      const details = await Promise.all(
+        bills.map((bill) => getUtilityBill(bill.id).catch(() => null)),
+      )
       propertyBills.value = [
         ...propertyBills.value.filter((b) => b.propertyId !== propertyId),
-        ...bills.map((bill) => ({
-          id: bill.id,
-          propertyId: bill.object_id,
-          period: bill.period,
-          title: bill.title,
-          totalAmount: num(bill.total),
-          landlordLoss: num(bill.landlord_loss),
-          dueDate: bill.pay_by,
-          issuedAt: bill.created_at.slice(0, 10),
-          status: 'distributed' as const,
-          lines: [],
-        })),
+        ...bills.map((bill, index) => mapPropertyBill(bill, details[index])),
       ]
     } catch {
       /* keep local settings */
@@ -191,7 +215,64 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       },
     })
     closeAddBillModal()
+    void persistUploadedBills(params.propertyId, params.period, params.dueDate, params.items)
     return true
+  }
+
+  async function persistUploadedBills(
+    propertyId: number,
+    period: string,
+    dueDate: string,
+    items: UtilityUploadItem[],
+  ) {
+    const groups = new Map<string, UtilityUploadItem[]>()
+    for (const item of items) {
+      const key = `${item.document.name}:${item.document.size}`
+      const list = groups.get(key) ?? []
+      list.push(item)
+      groups.set(key, list)
+    }
+    for (const group of groups.values()) {
+      const first = group[0]!
+      const amounts: Record<string, number> = {}
+      for (const item of group) {
+        if (item.totalAmount != null && item.totalAmount > 0) {
+          amounts[item.criterion] = (amounts[item.criterion] ?? 0) + item.totalAmount
+        }
+      }
+      if (!Object.keys(amounts).length) continue
+      let fileId: number | undefined
+      try {
+        if (first.document.dataUrl) {
+          const uploaded = await uploadFileApi(
+            dataUrlToBlob(first.document.dataUrl, first.document.mimeType),
+            { filename: first.document.name, kind: 'supporting' },
+          )
+          fileId = uploaded.id
+        }
+      } catch {
+        fileId = undefined
+      }
+      const criteria = Object.keys(amounts) as UtilityCriterion[]
+      const title = criteria.length === 1
+        ? UTILITY_CRITERION_LABELS[criteria[0]!]
+        : first.fileName.replace(/\.[^.]+$/, '') || 'Коммунальный счёт'
+      try {
+        const created = await createUtilityBill({
+          object_id: propertyId,
+          file_id: fileId,
+          title,
+          period,
+          pay_by: dueDate,
+          amounts,
+        })
+        if (!propertyBills.value.some((bill) => bill.id === created.id)) {
+          propertyBills.value.unshift(mapPropertyBill(created, created))
+        }
+      } catch {
+        /* расчёт уже показан, сохранение не блокирует */
+      }
+    }
   }
 
   async function uploadStatementFiles(items: UtilityUploadItem[]): Promise<number[]> {
@@ -316,18 +397,10 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         period: data.period,
         pay_by: data.dueDate,
         amounts,
-      }) as { id?: number; total?: string; created_at?: string }
+      })
 
       propertyBills.value.unshift({
-        id: created.id ?? Date.now(),
-        propertyId: data.propertyId,
-        period: data.period,
-        title: data.title.trim(),
-        totalAmount: created.total ? num(created.total) : totalAmount,
-        landlordLoss: num((created as { landlord_loss?: string }).landlord_loss),
-        dueDate: data.dueDate,
-        issuedAt: created.created_at?.slice(0, 10) ?? todayISODate(),
-        status: 'distributed',
+        ...mapPropertyBill(created, created),
         document: data.document,
         lines: data.lines.filter((l) => l.amount > 0),
       })
