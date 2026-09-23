@@ -193,7 +193,7 @@ function onClose() {
         <section class="rounded-xl border border-border bg-panel/30 p-4 space-y-3">
           <h3 class="text-sm font-semibold text-white">2. Второй новый кадастр</h3>
           <p class="text-xs text-slate-500">
-            После разделения перетащите сюда нужные помещения.
+            Исходный кадастр удалится, его помещения уйдут в нераспределённые — потом перетащите их на нужный номер.
           </p>
 
           <div>
