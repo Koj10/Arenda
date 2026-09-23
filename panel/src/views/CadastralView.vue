@@ -160,8 +160,8 @@ function chipClass(spaceId: number) {
           <li>Добавьте <span class="text-slate-300">объект</span> и <span class="text-slate-300">помещения</span> в разделе «Объекты».</li>
           <li>Здесь создайте <span class="text-slate-300">кадастровые номера</span> (стоимость, цена покупки).</li>
           <li>
-            Перетащите плашки помещений в нужный кадастровый номер
-            <span class="text-slate-500">— площадь кадастра пересчитается автоматически</span>.
+            Перетащите плашки помещений в нужный кадастровый номер.
+            Площадь кадастра равна площади объекта; рядом с номером видно, сколько площади помещений уже распределено.
           </li>
         </ol>
       </div>
@@ -209,7 +209,8 @@ function chipClass(spaceId: number) {
                 <h2 class="text-lg font-semibold text-white">{{ selectedProperty.address }}</h2>
                 <p class="text-xs text-slate-500 mt-1">
                   {{ PROPERTY_TYPE_LABELS[selectedProperty.type] }}
-                  · {{ store.formatArea(selectedProperty.totalArea) }}
+                  · объект {{ store.formatArea(selectedProperty.totalArea) }}
+                  · помещения {{ store.formatArea(store.getAllocatedAreaForProperty(selectedProperty.id)) }} из {{ store.formatArea(selectedProperty.totalArea) }}
                   · {{ store.formatMoney(totalCadastralValue) }}
                 </p>
               </div>
@@ -278,7 +279,8 @@ function chipClass(spaceId: number) {
                     <div>
                       <p class="font-mono text-sm text-white">{{ parcel.cadastralNumber }}</p>
                       <p class="text-xs text-slate-500 mt-0.5">
-                        {{ store.formatArea(parcel.area) }}
+                        {{ store.formatArea(store.getSpacesAreaForParcel(parcel.id)) }}
+                        из {{ store.formatArea(selectedProperty.totalArea) }}
                         · {{ store.getSpacesForParcel(parcel.id).length }} пом.
                         · {{ store.formatMoney(parcel.cadastralValue) }}
                       </p>

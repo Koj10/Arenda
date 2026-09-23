@@ -177,12 +177,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       .reduce((sum, s) => sum + s.area, 0)
   }
 
-  function syncParcelAreaFromSpaces(parcelId: number) {
-    const parcel = getCadastralParcelById(parcelId)
-    if (!parcel) return
-    const spacesArea = getSpacesAreaForParcel(parcelId)
-    if (parcel.area > 0) return
-    parcel.area = spacesArea
+  function syncParcelAreaFromSpaces(_parcelId: number) {
+    /* Площадь кадастра = площадь объекта, не сумма помещений */
   }
 
   function getAvailableAreaForParcel(parcelId: number, excludeSpaceId?: number) {
@@ -368,13 +364,16 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (existing) Object.assign(existing, nextProperty)
     else properties.value.push(nextProperty)
 
+    const prevParcels = cadastralParcels.value.filter((p) => p.propertyId === detail.id)
+    const cadastreEntries = detail.cadastre_entries ?? []
     cadastralParcels.value = cadastralParcels.value.filter((p) => p.propertyId !== detail.id)
-    for (const entry of detail.cadastre_entries ?? []) {
+    for (const entry of cadastreEntries) {
+      const prev = prevParcels.find((p) => p.id === entry.id)
       cadastralParcels.value.push({
         id: entry.id,
         propertyId: entry.object_id,
         cadastralNumber: entry.number,
-        area: 0,
+        area: cadastreEntries.length <= 1 ? totalArea : (prev?.area && prev.area > 0 ? prev.area : totalArea),
         cadastralValue: num(entry.cadastral_value),
         purchasePrice: entry.purchase_price ? num(entry.purchase_price) : undefined,
       })
@@ -391,25 +390,20 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         monthlyRate: num(unit.rent_rate),
       })
     }
-    for (const entry of detail.cadastre_entries ?? []) {
-      syncParcelAreaFromSpaces(entry.id)
-    }
   }
 
   function applyCadastralDetail(detail: import('@/api/types').CadastralObjectDetail) {
-    const areas = new Map<number, number>()
-    for (const unit of detail.units ?? []) {
-      if (unit.cadastre_id == null) continue
-      areas.set(unit.cadastre_id, (areas.get(unit.cadastre_id) ?? 0) + num(unit.area))
-    }
+    const property = getPropertyById(detail.object_id)
+    const objectArea = property?.totalArea ?? 0
+    const parcelsOnObject = (detail.cadastre_entries ?? []).length
     for (const entry of detail.cadastre_entries ?? []) {
       const existing = getCadastralParcelById(entry.id)
-      const area = areas.get(entry.id) ?? 0
+      const area = parcelsOnObject <= 1 ? objectArea : (existing?.area || objectArea)
       if (existing) {
         existing.cadastralNumber = entry.number
         existing.cadastralValue = num(entry.cadastral_value)
         existing.purchasePrice = entry.purchase_price ? num(entry.purchase_price) : undefined
-        if (area > 0) existing.area = area
+        if (parcelsOnObject <= 1 || existing.area <= 0) existing.area = objectArea
       } else {
         cadastralParcels.value.push({
           id: entry.id,
@@ -421,11 +415,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         })
       }
     }
-    for (const split of detail.split_history ?? []) {
-      const parcel = cadastralParcels.value.find(
-        (p) => p.propertyId === detail.object_id && p.cadastralNumber === split.new_cadastre_number,
-      )
-      if (parcel && num(split.split_area) > 0) parcel.area = num(split.split_area)
+    if (parcelsOnObject > 1) {
+      for (const split of detail.split_history ?? []) {
+        const parcel = cadastralParcels.value.find(
+          (p) => p.propertyId === detail.object_id && p.cadastralNumber === split.new_cadastre_number,
+        )
+        if (parcel && num(split.split_area) > 0) parcel.area = num(split.split_area)
+      }
     }
   }
 
@@ -775,7 +771,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         id: created.id,
         propertyId: created.object_id,
         cadastralNumber: created.number,
-        area: 0,
+        area: getPropertyById(propertyId)?.totalArea ?? 0,
         cadastralValue: num(created.cadastral_value),
         purchasePrice: created.purchase_price ? num(created.purchase_price) : undefined,
       })
@@ -803,7 +799,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       parcel.cadastralNumber = data.cadastralNumber.trim()
       parcel.cadastralValue = data.cadastralValue
       parcel.purchasePrice = data.purchasePrice && data.purchasePrice > 0 ? data.purchasePrice : undefined
-      syncParcelAreaFromSpaces(id)
       cadastralModalOpen.value = false
       cadastralEditId.value = null
       return true
@@ -869,6 +864,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (firstArea <= 0 || secondArea <= 0) return false
     if (original.area > 0 && Math.abs(firstArea + secondArea - original.area) > 0.01) return false
     lastError.value = null
+
+    const findByNumber = (number: string) =>
+      cadastralParcels.value.find(
+        (p) => p.propertyId === original.propertyId && p.cadastralNumber.trim() === number,
+      ) ?? null
+
     try {
       try {
         await landlordApi.splitCadastre(parcelId, {
@@ -879,19 +880,21 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         })
       } catch (err) {
         if (!(err instanceof ApiError) || (err.status !== 409 && err.status !== 500)) throw err
-        await splitByUpdateAndCreate(original, data, firstNumber, secondNumber, firstArea, secondArea)
       }
 
-      const detail = await landlordApi.getObject(original.propertyId)
-      applyObjectDetail(detail)
-      await refreshCadastral(original.propertyId)
+      const reload = async () => {
+        applyObjectDetail(await landlordApi.getObject(original.propertyId))
+        await refreshCadastral(original.propertyId)
+      }
+      await reload()
 
-      const first = cadastralParcels.value.find(
-        (p) => p.propertyId === original.propertyId && p.cadastralNumber === firstNumber,
-      )
-      const second = cadastralParcels.value.find(
-        (p) => p.propertyId === original.propertyId && p.cadastralNumber === secondNumber,
-      )
+      if (!findByNumber(firstNumber) || !findByNumber(secondNumber)) {
+        await completeSplitWithoutDuplicateNumbers(original, data, firstNumber, secondNumber, firstArea, secondArea)
+        await reload()
+      }
+
+      const first = findByNumber(firstNumber)
+      const second = findByNumber(secondNumber)
       if (first) {
         await landlordApi.updateCadastre(first.id, {
           cadastral_value: data.firstCadastralValue,
@@ -914,6 +917,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           ? data.secondPurchasePrice
           : undefined
       }
+      if (!first || !second) {
+        lastError.value = 'Раздел не завершён: новые кадастровые номера не появились. Попробуйте ещё раз.'
+        return false
+      }
       splitCadastralModalOpen.value = false
       splitCadastralParcelId.value = null
       return true
@@ -923,38 +930,42 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
-  async function splitByUpdateAndCreate(
+  async function completeSplitWithoutDuplicateNumbers(
     original: CadastralParcel,
     data: SplitCadastralFormData,
     firstNumber: string,
     secondNumber: string,
     firstArea: number,
-    secondArea: number,
+    _secondArea: number,
   ) {
-    await landlordApi.updateCadastre(original.id, {
-      number: firstNumber,
-      cadastral_value: data.firstCadastralValue,
-      purchase_price: data.firstPurchasePrice,
-    })
-    original.cadastralNumber = firstNumber
-    original.area = firstArea
-    original.cadastralValue = data.firstCadastralValue
-    original.purchasePrice = data.firstPurchasePrice && data.firstPurchasePrice > 0
-      ? data.firstPurchasePrice
-      : undefined
-    const created = await landlordApi.createCadastre(original.propertyId, {
-      number: secondNumber,
-      cadastral_value: data.secondCadastralValue,
-      purchase_price: data.secondPurchasePrice,
-    })
-    if (!cadastralParcels.value.some((p) => p.id === created.id)) {
-      cadastralParcels.value.push({
-        id: created.id,
-        propertyId: created.object_id,
-        cadastralNumber: created.number,
-        area: secondArea,
-        cadastralValue: num(created.cadastral_value),
-        purchasePrice: created.purchase_price ? num(created.purchase_price) : undefined,
+    const taken = (number: string, exceptId?: number) =>
+      cadastralParcels.value.some(
+        (p) => p.propertyId === original.propertyId && p.cadastralNumber.trim() === number && p.id !== exceptId,
+      )
+
+    const stillOriginal = getCadastralParcelById(original.id)
+    const firstExists = cadastralParcels.value.some(
+      (p) => p.propertyId === original.propertyId && p.cadastralNumber.trim() === firstNumber,
+    )
+    if (!firstExists && stillOriginal && !taken(firstNumber, original.id)) {
+      await landlordApi.updateCadastre(original.id, {
+        number: firstNumber,
+        cadastral_value: data.firstCadastralValue,
+        purchase_price: data.firstPurchasePrice,
+      })
+      stillOriginal.cadastralNumber = firstNumber
+      stillOriginal.area = firstArea
+      stillOriginal.cadastralValue = data.firstCadastralValue
+    }
+
+    const secondExists = cadastralParcels.value.some(
+      (p) => p.propertyId === original.propertyId && p.cadastralNumber.trim() === secondNumber,
+    )
+    if (!secondExists && !taken(secondNumber)) {
+      await landlordApi.createCadastre(original.propertyId, {
+        number: secondNumber,
+        cadastral_value: data.secondCadastralValue,
+        purchase_price: data.secondPurchasePrice,
       })
     }
   }

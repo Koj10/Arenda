@@ -25,10 +25,8 @@ const property = computed(() =>
   sourceParcel.value ? store.getPropertyById(sourceParcel.value.propertyId) : null,
 )
 
-const sourceArea = computed(() => sourceParcel.value?.area ?? 0)
-
-const spacesOnParcel = computed(() =>
-  sourceParcel.value ? store.getSpacesForParcel(sourceParcel.value.id).length : 0,
+const sourceArea = computed(() =>
+  sourceParcel.value?.area || property.value?.totalArea || 0,
 )
 
 const firstArea = computed(() => Number(form.value.firstArea) || 0)

@@ -22,8 +22,9 @@ const editingParcel = computed(() =>
 
 const isEdit = computed(() => !!editingParcel.value)
 
-const computedArea = computed(() =>
-  editingParcel.value ? store.getSpacesAreaForParcel(editingParcel.value.id) : 0,
+const computedArea = computed(() => property.value?.totalArea ?? 0)
+const allocatedArea = computed(() =>
+  property.value ? store.getAllocatedAreaForProperty(property.value.id) : 0,
 )
 
 watch(
@@ -113,11 +114,14 @@ function onClose() {
         <p v-if="errors.cadastralNumber" class="text-xs text-red-400 mt-1">{{ errors.cadastralNumber }}</p>
       </div>
 
-      <div v-if="isEdit" class="rounded-lg border border-border bg-panel/30 px-3 py-2">
+      <div class="rounded-lg border border-border bg-panel/30 px-3 py-2">
         <p class="text-xs text-slate-500">
-          Площадь по кадастру:
+          Площадь кадастра:
           <span class="font-mono text-emerald-brand">{{ store.formatArea(computedArea) }}</span>
-          — считается автоматически по привязанным помещениям
+          — как у объекта.
+          Распределено помещениями:
+          <span class="font-mono text-white">{{ store.formatArea(allocatedArea) }}</span>
+          из {{ store.formatArea(computedArea) }}
         </p>
       </div>
 
@@ -153,7 +157,7 @@ function onClose() {
       </div>
 
       <p class="text-xs text-slate-500 rounded-lg border border-border bg-panel/30 px-3 py-2">
-        Площадь кадастра не задаётся вручную — привяжите помещения в разделе «Кадастр», и площадь пересчитается автоматически.
+        Площадь кадастра совпадает с площадью объекта. Сумма площадей помещений показывает, сколько уже распределено.
       </p>
     </div>
 
