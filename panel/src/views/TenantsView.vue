@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AddTenantModal from '@/components/tenants/AddTenantModal.vue'
 import TenantDetailModal from '@/components/tenants/TenantDetailModal.vue'
 import { Plus, Search, User, Lock } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { usePlan } from '@/composables/usePlan'
+import { listLandlordInvoices } from '@/api/landlord'
+import type { LandlordInvoiceOut } from '@/api/types'
+import { INVOICE_STATUS_LABELS } from '@/types/billing'
+import type { InvoiceStatus } from '@/types/billing'
+import type { Tenant } from '@/types/portfolio'
+import { currentPeriod } from '@/utils/dates'
 
 const store = usePortfolioStore()
 const { canAddTenant, requireCanAddTenant } = usePlan()
 const search = ref('')
+const rentInvoices = ref<LandlordInvoiceOut[]>([])
 
 const filtered = computed(() => {
   if (!search.value) return store.tenants
@@ -32,6 +39,80 @@ function statusClass(s: string) {
   }
   return map[s] ?? ''
 }
+
+function invoiceStatusOf(row: LandlordInvoiceOut): InvoiceStatus {
+  const value = row.computed_status || row.status
+  if (value === 'paid' || value === 'overdue' || value === 'pending' || value === 'awaiting_confirmation') {
+    return value
+  }
+  return 'pending'
+}
+
+function payStatusClass(status: InvoiceStatus | 'none') {
+  const map: Record<InvoiceStatus | 'none', string> = {
+    pending: 'text-accent-amber bg-accent-amber/10',
+    paid: 'text-emerald-400 bg-emerald-500/10',
+    overdue: 'text-rose-400 bg-rose-500/10',
+    awaiting_confirmation: 'text-sky-300 bg-sky-500/10',
+    none: 'text-slate-500 bg-white/5',
+  }
+  return map[status]
+}
+
+function payStatusLabel(status: InvoiceStatus | 'none') {
+  if (status === 'none') return 'Нет счёта'
+  return INVOICE_STATUS_LABELS[status]
+}
+
+function isRentInvoice(row: LandlordInvoiceOut) {
+  const kind = (row.kind || 'rent').toLowerCase()
+  return kind === 'rent'
+}
+
+function invoiceMatchesTenant(row: LandlordInvoiceOut, tenant: Tenant) {
+  if (row.tenant_id !== tenant.id || !isRentInvoice(row)) return false
+  const unit = store.getSpacesForProperty(tenant.propertyId).find((s) => s.name === tenant.space)
+  if (row.unit_id && unit) return row.unit_id === unit.id
+  if (row.unit_number && tenant.space) return row.unit_number === tenant.space
+  return true
+}
+
+const STATUS_RANK: Record<InvoiceStatus, number> = {
+  overdue: 0,
+  awaiting_confirmation: 1,
+  pending: 2,
+  paid: 3,
+}
+
+function rentPayStatus(tenant: Tenant): InvoiceStatus | 'none' {
+  const period = currentPeriod()
+  const current = rentInvoices.value.filter(
+    (row) => invoiceMatchesTenant(row, tenant) && row.period === period,
+  )
+  if (!current.length) return 'none'
+  return current
+    .map(invoiceStatusOf)
+    .sort((a, b) => STATUS_RANK[a] - STATUS_RANK[b])[0]
+}
+
+async function loadRentInvoices() {
+  try {
+    rentInvoices.value = await listLandlordInvoices()
+  } catch {
+    rentInvoices.value = []
+  }
+}
+
+onMounted(() => {
+  void loadRentInvoices()
+})
+
+watch(
+  () => store.loadingRemote,
+  (loading) => {
+    if (!loading) void loadRentInvoices()
+  },
+)
 
 function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
   const prop = store.getPropertyById(tenant.propertyId)
@@ -79,8 +160,9 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
                 <th class="px-5 py-3 font-medium hidden sm:table-cell">ИНН</th>
                 <th class="px-5 py-3 font-medium hidden md:table-cell">Помещение</th>
                 <th class="px-5 py-3 font-medium">Аренда/мес</th>
+                <th class="px-5 py-3 font-medium">Оплата аренды</th>
                 <th class="px-5 py-3 font-medium hidden lg:table-cell">Договор до</th>
-                <th class="px-5 py-3 font-medium">Статус</th>
+                <th class="px-5 py-3 font-medium">Договор</th>
               </tr>
             </thead>
             <tbody>
@@ -101,6 +183,14 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
                 <td class="px-5 py-3.5 font-mono text-slate-500 hidden sm:table-cell">{{ t.inn }}</td>
                 <td class="px-5 py-3.5 text-slate-400 hidden md:table-cell">{{ getSpaceLabel(t) }}</td>
                 <td class="px-5 py-3.5 font-mono text-emerald-brand">{{ store.formatMoney(t.rent) }}</td>
+                <td class="px-5 py-3.5">
+                  <span
+                    class="inline-flex px-2 py-0.5 rounded text-xs font-medium"
+                    :class="payStatusClass(rentPayStatus(t))"
+                  >
+                    {{ payStatusLabel(rentPayStatus(t)) }}
+                  </span>
+                </td>
                 <td class="px-5 py-3.5 text-slate-500 hidden lg:table-cell">{{ store.formatDate(t.contract) }}</td>
                 <td class="px-5 py-3.5">
                   <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(t.status)">
