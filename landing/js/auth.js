@@ -242,7 +242,14 @@ function ensureCodeModal() {
         <h2 id="auth-code-title" class="auth-modal-title">Код подтверждения</h2>
         <p class="auth-modal-subtitle" data-code-modal-subtitle></p>
         <form id="auth-code-form" novalidate class="auth-form">
-          <div class="field-group" data-code-modal-code-wrap>
+          <div class="field-group" data-code-modal-email-wrap hidden>
+            <div class="field-control">
+              <i data-feather="mail" class="field-icon"></i>
+              <input name="email" type="email" class="field-input" placeholder="Email" autocomplete="email" />
+            </div>
+            <p class="field-error"></p>
+          </div>
+          <div class="field-group" data-code-modal-code-wrap hidden>
             <div class="field-control">
               <i data-feather="key" class="field-icon"></i>
               <input
@@ -300,21 +307,28 @@ function applyAuthModalLayout() {
 
   const title = document.getElementById('auth-code-title')
   const subtitle = root.querySelector('[data-code-modal-subtitle]')
+  const emailWrap = root.querySelector('[data-code-modal-email-wrap]')
   const codeWrap = root.querySelector('[data-code-modal-code-wrap]')
   const passwords = root.querySelector('[data-code-modal-passwords]')
   const resend = root.querySelector('[data-code-modal-resend]')
   const submit = root.querySelector('[data-code-modal-submit]')
+  const emailInput = form.querySelector('input[name="email"]')
   const codeInput = form.querySelector('input[name="code"]')
   const passwordInput = form.querySelector('input[name="password"]')
   const confirmInput = form.querySelector('input[name="password_confirm"]')
   const email = codeModalState.email
   const isReset = codeModalState.mode === 'reset'
-  const isPasswordStep = isReset && codeModalState.step === 'password'
+  const step = codeModalState.step
+  const isEmailStep = isReset && step === 'email'
+  const isCodeStep = !isReset || step === 'code'
+  const isPasswordStep = isReset && step === 'password'
 
-  codeWrap.hidden = isPasswordStep
-  passwords.hidden = !isPasswordStep
-  if (resend) resend.hidden = isPasswordStep
-  if (codeInput) codeInput.required = !isPasswordStep
+  if (emailWrap) emailWrap.hidden = !isEmailStep
+  if (codeWrap) codeWrap.hidden = !isCodeStep
+  if (passwords) passwords.hidden = !isPasswordStep
+  if (resend) resend.hidden = !isCodeStep
+  if (emailInput) emailInput.required = isEmailStep
+  if (codeInput) codeInput.required = isCodeStep
   if (passwordInput) passwordInput.required = isPasswordStep
   if (confirmInput) confirmInput.required = isPasswordStep
 
@@ -324,6 +338,10 @@ function applyAuthModalLayout() {
       ? `Мы отправили код на <strong>${escapeHtml(email)}</strong>. Введите его, чтобы завершить регистрацию.`
       : 'Введите код из письма, чтобы завершить регистрацию.'
     submit.textContent = 'Подтвердить'
+  } else if (isEmailStep) {
+    title.textContent = 'Восстановление пароля'
+    subtitle.textContent = 'Укажите email — отправим код для смены пароля.'
+    submit.textContent = 'Отправить код'
   } else if (isPasswordStep) {
     title.textContent = 'Новый пароль'
     subtitle.textContent = 'Придумайте новый пароль для входа.'
@@ -346,7 +364,7 @@ function openCodeModal({ mode, email, pendingSession = null, pendingPassword = '
   codeModalState.pendingSession = pendingSession || null
   if (mode === 'reset') {
     codeModalState.pendingPassword = ''
-    if (step === 'code') codeModalState.resetToken = ''
+    if (step !== 'password') codeModalState.resetToken = ''
   } else if (pendingPassword) {
     codeModalState.pendingPassword = pendingPassword
   }
@@ -354,10 +372,12 @@ function openCodeModal({ mode, email, pendingSession = null, pendingPassword = '
   const root = document.getElementById('auth-code-modal')
   const form = document.getElementById('auth-code-form')
   const hint = root.querySelector('[data-resend-ok]')
+  const emailInput = form.querySelector('input[name="email"]')
 
   form.reset()
   showFormError(form, '')
   form.querySelectorAll('input').forEach(clearFieldError)
+  if (emailInput) emailInput.value = email || ''
   if (hint) {
     hint.hidden = true
     hint.textContent = ''
@@ -369,7 +389,11 @@ function openCodeModal({ mode, email, pendingSession = null, pendingPassword = '
   root.setAttribute('aria-hidden', 'false')
   document.body.classList.add('auth-modal-open')
   setTimeout(() => {
-    const focusName = codeModalState.step === 'password' ? 'password' : 'code'
+    const focusName = codeModalState.step === 'password'
+      ? 'password'
+      : codeModalState.step === 'email'
+        ? 'email'
+        : 'code'
     form.querySelector(`input[name="${focusName}"]`)?.focus()
   }, 50)
 }
@@ -382,12 +406,13 @@ function closeCodeModal() {
   document.body.classList.remove('auth-modal-open')
   codeModalState.pendingSession = null
   codeModalState.resetToken = ''
-  codeModalState.step = 'code'
+  codeModalState.step = 'email'
 }
 
 async function onCodeModalSubmit(e) {
   e.preventDefault()
   const form = e.currentTarget
+  const emailInput = form.querySelector('input[name="email"]')
   const codeInput = form.querySelector('input[name="code"]')
   const passwordInput = form.querySelector('input[name="password"]')
   const confirmInput = form.querySelector('input[name="password_confirm"]')
@@ -396,7 +421,31 @@ async function onCodeModalSubmit(e) {
   const isReset = codeModalState.mode === 'reset'
 
   showFormError(form, '')
-  ;[codeInput, passwordInput, confirmInput].filter(Boolean).forEach(clearFieldError)
+  ;[emailInput, codeInput, passwordInput, confirmInput].filter(Boolean).forEach(clearFieldError)
+
+  if (isReset && codeModalState.step === 'email') {
+    const emailValue = (emailInput?.value || '').trim()
+    if (!validateEmail(emailValue)) {
+      showFieldError(emailInput, 'Введите корректный email')
+      return
+    }
+    setButtonLoading(btn, true)
+    try {
+      await apiPost('/auth/forgot-password', { email: emailValue })
+      codeModalState.email = emailValue
+      codeModalState.step = 'code'
+      if (codeInput) codeInput.value = ''
+      showFormError(form, '')
+      setButtonLoading(btn, false)
+      delete btn.dataset.label
+      applyAuthModalLayout()
+      setTimeout(() => codeInput?.focus(), 50)
+    } catch (err) {
+      showFormError(form, err.message || 'Не удалось отправить код')
+      setButtonLoading(btn, false)
+    }
+    return
+  }
 
   if (isReset && codeModalState.step === 'code') {
     if (code.length < 4) {
@@ -604,6 +653,7 @@ function initRegisterForm() {
     const emailValue = email.value.trim()
     openCodeModal({
       mode: 'register',
+      step: 'code',
       email: emailValue,
       pendingPassword: password.value,
     })
@@ -627,24 +677,18 @@ function initRegisterForm() {
 function initForgotPassword() {
   const link = document.querySelector('[data-forgot-password]')
   if (link) {
-    link.addEventListener('click', async (e) => {
+    link.addEventListener('click', (e) => {
       e.preventDefault()
-      if (link.dataset.busy) return
-      const form = document.getElementById('login-form')
       const emailInput = document.querySelector('#email')
       const email = emailInput?.value?.trim() || ''
       if (emailInput) clearFieldError(emailInput)
+      const form = document.getElementById('login-form')
       if (form) showFormError(form, '')
-      if (!email || !validateEmail(email)) {
-        window.location.href = '/forgot-password'
-        return
-      }
-      link.dataset.busy = '1'
-      try {
-        await startPasswordRecovery(email, form)
-      } finally {
-        delete link.dataset.busy
-      }
+      openCodeModal({
+        mode: 'reset',
+        step: 'email',
+        email: validateEmail(email) ? email : '',
+      })
     })
   }
 
