@@ -60,11 +60,11 @@ function clearFieldError(input) {
   if (err) err.textContent = ''
 }
 
-function initPasswordStrength(root = document) {
-  const passwordInput = root.querySelector('#password') || root.querySelector('[name="password"]')
-  const bar = root.querySelector('.strength-bar')
-  const fill = root.querySelector('.strength-fill')
-  const label = root.querySelector('.strength-label')
+function initPasswordStrength() {
+  const passwordInput = document.getElementById('password')
+  const bar = document.querySelector('.strength-bar')
+  const fill = document.querySelector('.strength-fill')
+  const label = document.querySelector('.strength-label')
   if (!passwordInput || !fill) return
 
   passwordInput.addEventListener('input', () => {
@@ -93,48 +93,6 @@ function parseApiError(payload, fallback) {
   return payload.message || fallback
 }
 
-function ApiClientError(message, status, body) {
-  const err = new Error(message)
-  err.status = status
-  err.body = body
-  return err
-}
-
-function validationLocs(body) {
-  const detail = body && typeof body === 'object' ? body.detail : null
-  if (!Array.isArray(detail)) return []
-  return detail.flatMap((item) => (Array.isArray(item?.loc) ? item.loc.map(String) : []))
-}
-
-function isMissingField(body, field) {
-  return validationLocs(body).includes(field)
-}
-
-function isUnverifiedError(message) {
-  return /подтвержд|verify|verif|не подтвержд|email not confirmed|confirm your email|код с почт/i.test(message || '')
-}
-
-function isAuthSession(data) {
-  return Boolean(data && typeof data === 'object' && data.access_token && data.user)
-}
-
-function pendingEmailKey() {
-  return 'propcount-pending-email'
-}
-
-function savePendingEmail(email) {
-  sessionStorage.setItem(pendingEmailKey(), email)
-}
-
-function readPendingEmail() {
-  const params = new URLSearchParams(window.location.search)
-  return (params.get('email') || sessionStorage.getItem(pendingEmailKey()) || '').trim()
-}
-
-function normalizeCode(value) {
-  return String(value || '').replace(/\s+/g, '').trim()
-}
-
 async function apiPost(path, body, token) {
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
@@ -144,57 +102,13 @@ async function apiPost(path, body, token) {
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw ApiClientError(parseApiError(data, `Ошибка ${res.status}`), res.status, data)
+  if (!res.ok) {
+    const err = new Error(parseApiError(data, `Ошибка ${res.status}`))
+    err.status = res.status
+    err.body = data
+    throw err
+  }
   return data
-}
-
-async function apiPostFirstPath(paths, body) {
-  let last = null
-  for (const path of paths) {
-    try {
-      return await apiPost(path, body)
-    } catch (err) {
-      last = err
-      if (err.status === 404 || err.status === 405) continue
-      throw err
-    }
-  }
-  throw last || ApiClientError('Не удалось выполнить запрос', 0, null)
-}
-
-function verifyEmail(email, code) {
-  return apiPostFirstPath(
-    ['/auth/verify-email', '/auth/confirm-email', '/auth/verify'],
-    { email, code },
-  )
-}
-
-function resendCode(email) {
-  return apiPostFirstPath(
-    ['/auth/resend-code', '/auth/resend-verification', '/auth/verify-email/resend'],
-    { email },
-  )
-}
-
-async function resetPassword(email, code, password, passwordConfirm) {
-  const base = { password, password_confirm: passwordConfirm }
-  try {
-    return await apiPost('/auth/reset-password', { ...base, email, code, token: code })
-  } catch (err) {
-    if (err.status !== 422) throw err
-    if (isMissingField(err.body, 'token') && !isMissingField(err.body, 'code')) {
-      return apiPost('/auth/reset-password', { ...base, token: code })
-    }
-    if (isMissingField(err.body, 'code')) {
-      return apiPost('/auth/reset-password', { ...base, email, code })
-    }
-    try {
-      return await apiPost('/auth/reset-password', { ...base, token: code })
-    } catch (retry) {
-      if (retry.status !== 422) throw retry
-      return apiPost('/auth/reset-password', { ...base, email, code })
-    }
-  }
 }
 
 async function apiPatch(path, body, token) {
@@ -206,8 +120,17 @@ async function apiPatch(path, body, token) {
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(parseApiError(data, `Ошибка ${res.status}`))
+  if (!res.ok) {
+    const err = new Error(parseApiError(data, `Ошибка ${res.status}`))
+    err.status = res.status
+    err.body = data
+    throw err
+  }
   return data
+}
+
+function queryParam(name) {
+  return new URLSearchParams(window.location.search).get(name) || ''
 }
 
 function setButtonLoading(btn, loading) {
@@ -252,52 +175,237 @@ function afterAuth(session, mode) {
   redirectToPanel(session, { mode })
 }
 
-function showAuthPanel(name) {
-  const panels = document.querySelectorAll('[data-auth-panel]')
-  if (!panels.length) return false
-  let found = false
-  panels.forEach((el) => {
-    const match = el.dataset.authPanel === name
-    if (match) found = true
-    el.hidden = !match
+const codeModalState = {
+  mode: 'register',
+  email: '',
+  pendingSession: null,
+}
+
+function ensureCodeModal() {
+  if (document.getElementById('auth-code-modal')) return
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="auth-code-modal" class="auth-modal" aria-hidden="true">
+      <div class="auth-modal-backdrop" data-code-modal-close></div>
+      <div class="auth-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-code-title">
+        <button type="button" class="auth-modal-close" data-code-modal-close aria-label="Закрыть">×</button>
+        <h2 id="auth-code-title" class="auth-modal-title">Код подтверждения</h2>
+        <p class="auth-modal-subtitle" data-code-modal-subtitle></p>
+        <form id="auth-code-form" novalidate class="auth-form">
+          <div class="field-group">
+            <div class="field-control">
+              <i data-feather="key" class="field-icon"></i>
+              <input
+                name="code"
+                type="text"
+                class="field-input field-input--code"
+                placeholder="Код из письма"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="64"
+                required
+              />
+            </div>
+            <p class="field-error"></p>
+          </div>
+          <div class="auth-modal-passwords" data-code-modal-passwords hidden>
+            <div class="field-group">
+              <div class="field-control">
+                <i data-feather="lock" class="field-icon"></i>
+                <input id="auth-code-password" name="password" type="password" class="field-input" placeholder="Новый пароль" autocomplete="new-password" />
+                <button type="button" data-toggle-password class="field-toggle" aria-label="Показать пароль">
+                  <i data-feather="eye"></i>
+                </button>
+              </div>
+              <div class="strength-bar"><div class="strength-fill"></div></div>
+              <p class="strength-label"></p>
+              <p class="field-error"></p>
+            </div>
+            <div class="field-group">
+              <div class="field-control">
+                <i data-feather="lock" class="field-icon"></i>
+                <input name="password_confirm" type="password" class="field-input" placeholder="Подтверждение пароля" autocomplete="new-password" />
+              </div>
+              <p class="field-error"></p>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary" data-code-modal-submit>Подтвердить</button>
+        </form>
+        <p class="auth-footer-text">
+          Не пришло письмо?
+          <button type="button" class="auth-link auth-link--bold auth-text-btn" data-resend-code>Отправить снова</button>
+        </p>
+        <p class="field-hint" data-resend-ok hidden></p>
+      </div>
+    </div>
+  `)
+
+  const root = document.getElementById('auth-code-modal')
+  const form = document.getElementById('auth-code-form')
+  const passwordInput = document.getElementById('auth-code-password')
+  const fill = root.querySelector('.strength-fill')
+  const bar = root.querySelector('.strength-bar')
+  const label = root.querySelector('.strength-label')
+
+  root.querySelectorAll('[data-code-modal-close]').forEach((el) => {
+    el.addEventListener('click', closeCodeModal)
   })
-  if (found && typeof feather !== 'undefined') feather.replace()
-  return found
-}
 
-function fillFormEmail(form, email) {
-  const input = form?.querySelector('[name="email"]') || form?.querySelector('#email')
-  if (input && email) input.value = email
-}
-
-function openVerifyStep(email) {
-  savePendingEmail(email)
-  const form = document.getElementById('verify-email-form')
-  fillFormEmail(form, email)
-  if (showAuthPanel('verify')) {
-    form?.querySelector('[name="code"]')?.focus()
-    return true
-  }
-  window.location.href = `/verify-email.html?email=${encodeURIComponent(email)}`
-  return false
-}
-
-function openResetStep(email) {
-  savePendingEmail(email)
-  const form = document.getElementById('reset-password-form')
-  fillFormEmail(form, email)
-  if (showAuthPanel('reset')) {
-    form?.querySelector('[name="code"]')?.focus()
-    return true
-  }
-  window.location.href = `/reset-password.html?email=${encodeURIComponent(email)}`
-  return false
-}
-
-function initAuthPanelNav() {
-  document.querySelectorAll('[data-auth-back]').forEach((btn) => {
-    btn.addEventListener('click', () => showAuthPanel(btn.getAttribute('data-auth-back')))
+  passwordInput?.addEventListener('input', () => {
+    const value = passwordInput.value
+    const { label: text, class: cls } = getPasswordStrength(value)
+    if (fill) fill.className = 'strength-fill ' + (cls || '')
+    if (bar) bar.classList.toggle('is-active', Boolean(value))
+    if (label) label.textContent = value ? text : ''
   })
+
+  form.addEventListener('submit', onCodeModalSubmit)
+  root.querySelector('[data-resend-code]')?.addEventListener('click', onResendCode)
+
+  if (typeof feather !== 'undefined') feather.replace()
+}
+
+function openCodeModal({ mode, email, pendingSession = null }) {
+  ensureCodeModal()
+  codeModalState.mode = mode
+  codeModalState.email = email
+  codeModalState.pendingSession = pendingSession || null
+
+  const root = document.getElementById('auth-code-modal')
+  const form = document.getElementById('auth-code-form')
+  const subtitle = root.querySelector('[data-code-modal-subtitle]')
+  const passwords = root.querySelector('[data-code-modal-passwords]')
+  const submit = root.querySelector('[data-code-modal-submit]')
+  const hint = root.querySelector('[data-resend-ok]')
+  const title = document.getElementById('auth-code-title')
+
+  form.reset()
+  showFormError(form, '')
+  form.querySelectorAll('input').forEach(clearFieldError)
+  if (hint) {
+    hint.hidden = true
+    hint.textContent = ''
+  }
+
+  const isReset = mode === 'reset'
+  title.textContent = isReset ? 'Восстановление пароля' : 'Подтвердите почту'
+  subtitle.innerHTML = `Мы отправили код на <strong>${email}</strong>. Введите его${isReset ? ' и задайте новый пароль' : ', чтобы завершить регистрацию'}.`
+  passwords.hidden = !isReset
+  submit.textContent = isReset ? 'Сохранить пароль' : 'Подтвердить'
+  delete submit.dataset.label
+
+  root.classList.add('is-open')
+  root.setAttribute('aria-hidden', 'false')
+  document.body.classList.add('auth-modal-open')
+  setTimeout(() => form.querySelector('input[name="code"]')?.focus(), 50)
+}
+
+function closeCodeModal() {
+  const root = document.getElementById('auth-code-modal')
+  if (!root) return
+  root.classList.remove('is-open')
+  root.setAttribute('aria-hidden', 'true')
+  document.body.classList.remove('auth-modal-open')
+  codeModalState.pendingSession = null
+}
+
+async function onCodeModalSubmit(e) {
+  e.preventDefault()
+  const form = e.currentTarget
+  const codeInput = form.querySelector('input[name="code"]')
+  const passwordInput = form.querySelector('input[name="password"]')
+  const confirmInput = form.querySelector('input[name="password_confirm"]')
+  const btn = form.querySelector('[type="submit"]')
+  const code = (codeInput.value || '').trim()
+  const isReset = codeModalState.mode === 'reset'
+
+  showFormError(form, '')
+  ;[codeInput, passwordInput, confirmInput].filter(Boolean).forEach(clearFieldError)
+
+  let valid = true
+  if (code.length < 4) {
+    showFieldError(codeInput, 'Введите код из письма')
+    valid = false
+  }
+  if (isReset) {
+    if (!passwordInput.value || passwordInput.value.length < 8) {
+      showFieldError(passwordInput, 'Минимум 8 символов')
+      valid = false
+    }
+    if (passwordInput.value !== confirmInput.value) {
+      showFieldError(confirmInput, 'Пароли не совпадают')
+      valid = false
+    }
+  }
+  if (!valid) return
+
+  setButtonLoading(btn, true)
+  try {
+    if (isReset) {
+      await apiPost('/auth/reset-password', {
+        token: code,
+        password: passwordInput.value,
+        password_confirm: confirmInput.value,
+      })
+      closeCodeModal()
+      window.location.href = '/login'
+      return
+    }
+
+    let session = null
+    try {
+      session = await apiPost('/auth/verify-email', {
+        email: codeModalState.email,
+        code,
+      })
+    } catch (err) {
+      if (err.status !== 404 || !codeModalState.pendingSession) throw err
+      session = codeModalState.pendingSession
+    }
+    const next = session?.access_token ? session : codeModalState.pendingSession
+    if (!next?.access_token) throw new Error('Не удалось подтвердить почту')
+    afterAuth(next, 'register')
+  } catch (err) {
+    showFormError(form, err.message || 'Неверный код')
+    setButtonLoading(btn, false)
+  }
+}
+
+async function onResendCode() {
+  const hint = document.querySelector('#auth-code-modal [data-resend-ok]')
+  const form = document.getElementById('auth-code-form')
+  showFormError(form, '')
+  try {
+    if (codeModalState.mode === 'reset') {
+      await apiPost('/auth/forgot-password', { email: codeModalState.email })
+    } else {
+      try {
+        await apiPost('/auth/resend-verification', { email: codeModalState.email })
+      } catch (err) {
+        if (err.status !== 404) throw err
+      }
+    }
+    if (hint) {
+      hint.hidden = false
+      hint.textContent = 'Код отправлен повторно. Проверьте почту.'
+    }
+  } catch (err) {
+    showFormError(form, err.message || 'Не удалось отправить код')
+  }
+}
+
+async function startPasswordRecovery(email, formForError) {
+  if (!email || !validateEmail(email)) {
+    if (formForError) {
+      const input = formForError.querySelector('#email') || formForError.querySelector('input[type="email"]')
+      if (input) showFieldError(input, 'Введите корректный email')
+      else showFormError(formForError, 'Введите корректный email')
+    }
+    return false
+  }
+  await apiPost('/auth/forgot-password', { email })
+  openCodeModal({ mode: 'reset', email })
+  return true
 }
 
 function initLoginForm() {
@@ -307,8 +415,8 @@ function initLoginForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     let valid = true
-    const email = form.querySelector('[name="email"]')
-    const password = form.querySelector('[name="password"]')
+    const email = form.querySelector('#email')
+    const password = form.querySelector('#password')
     showFormError(form, '')
     clearFieldError(email)
     clearFieldError(password)
@@ -332,13 +440,7 @@ function initLoginForm() {
       })
       afterAuth(session, 'login')
     } catch (err) {
-      const message = err.message || 'Не удалось войти'
-      if (isUnverifiedError(message)) {
-        openVerifyStep(email.value.trim())
-        setButtonLoading(btn, false)
-        return
-      }
-      showFormError(form, message)
+      showFormError(form, err.message || 'Не удалось войти')
       setButtonLoading(btn, false)
     }
   })
@@ -348,16 +450,16 @@ function initRegisterForm() {
   const form = document.getElementById('register-form')
   if (!form) return
 
-  initPasswordStrength(form)
+  initPasswordStrength()
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     let valid = true
-    const name = form.querySelector('[name="name"]')
-    const email = form.querySelector('[name="email"]')
-    const password = form.querySelector('[name="password"]')
-    const confirm = form.querySelector('[name="password_confirm"]')
-    const terms = form.querySelector('[name="terms"]')
+    const name = form.querySelector('#name')
+    const email = form.querySelector('#email')
+    const password = form.querySelector('#password')
+    const confirm = form.querySelector('#password-confirm')
+    const terms = form.querySelector('#terms')
     showFormError(form, '')
 
     ;[name, email, password, confirm].forEach(clearFieldError)
@@ -387,159 +489,137 @@ function initRegisterForm() {
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
     try {
-      await apiPost('/auth/register', {
+      const session = await apiPost('/auth/register', {
         name: name.value.trim(),
         email: email.value.trim(),
         password: password.value,
         password_confirm: confirm.value,
         terms: true,
       })
-      openVerifyStep(email.value.trim())
+      openCodeModal({
+        mode: 'register',
+        email: email.value.trim(),
+        pendingSession: session,
+      })
       setButtonLoading(btn, false)
     } catch (err) {
-      const message = err.message || 'Не удалось зарегистрироваться'
-      if (isUnverifiedError(message)) {
-        openVerifyStep(email.value.trim())
-        setButtonLoading(btn, false)
-        return
-      }
-      showFormError(form, message)
+      showFormError(form, err.message || 'Не удалось зарегистрироваться')
       setButtonLoading(btn, false)
     }
   })
 }
 
-function startResendCooldown(button, seconds) {
-  if (!button) return
-  let left = seconds
-  const label = button.dataset.label || button.textContent
-  button.dataset.label = label
-  button.disabled = true
-  const tick = () => {
-    if (left <= 0) {
-      button.disabled = false
-      button.textContent = label
+function initForgotPassword() {
+  const link = document.querySelector('[data-forgot-password]')
+  if (link) {
+    link.addEventListener('click', async (e) => {
+      e.preventDefault()
+      if (link.dataset.busy) return
+      const form = document.getElementById('login-form')
+      const emailInput = document.querySelector('#email')
+      const email = emailInput?.value?.trim() || ''
+      if (emailInput) clearFieldError(emailInput)
+      if (form) showFormError(form, '')
+      if (!email || !validateEmail(email)) {
+        if (emailInput) {
+          showFieldError(emailInput, 'Введите email для восстановления пароля')
+          emailInput.focus()
+        }
+        return
+      }
+      link.dataset.busy = '1'
+      try {
+        await startPasswordRecovery(email, form)
+      } catch (err) {
+        if (form) showFormError(form, err.message || 'Не удалось отправить код')
+      } finally {
+        delete link.dataset.busy
+      }
+    })
+  }
+
+  const forgotForm = document.getElementById('forgot-password-form')
+  if (!forgotForm) return
+  const preset = queryParam('email')
+  const emailField = forgotForm.querySelector('input[name="email"]')
+  if (preset && emailField && !emailField.value) emailField.value = preset
+
+  forgotForm.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const emailInput = forgotForm.querySelector('input[name="email"]')
+    showFormError(forgotForm, '')
+    clearFieldError(emailInput)
+    const email = emailInput.value.trim()
+    if (!validateEmail(email)) {
+      showFieldError(emailInput, 'Введите корректный email')
       return
     }
-    button.textContent = `Отправить снова (${left} с)`
-    left -= 1
-    window.setTimeout(tick, 1000)
-  }
-  tick()
+    const btn = forgotForm.querySelector('[type="submit"]')
+    setButtonLoading(btn, true)
+    try {
+      await startPasswordRecovery(email, forgotForm)
+    } catch (err) {
+      showFormError(forgotForm, err.message || 'Не удалось отправить код')
+    } finally {
+      setButtonLoading(btn, false)
+    }
+  })
 }
 
 function initVerifyEmailForm() {
   const form = document.getElementById('verify-email-form')
   if (!form) return
-
-  const emailInput = form.querySelector('[name="email"]') || form.querySelector('#email')
-  const codeInput = form.querySelector('[name="code"]') || form.querySelector('#code')
-  const resendBtn = document.querySelector('[data-resend-code]')
-  const email = readPendingEmail()
-  fillFormEmail(form, email)
-  const params = new URLSearchParams(window.location.search)
-  const presetCode = normalizeCode(params.get('code') || '')
-  if (codeInput && presetCode) codeInput.value = presetCode
+  const emailField = form.querySelector('input[name="email"]')
+  const codeField = form.querySelector('input[name="code"]')
+  const preset = queryParam('email')
+  if (preset && emailField && !emailField.value) emailField.value = preset
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
+    const email = emailField.value.trim()
+    const code = codeField.value.trim()
     showFormError(form, '')
-    const mail = (emailInput?.value || '').trim()
-    const code = normalizeCode(codeInput?.value)
-    let valid = true
-    if (emailInput) clearFieldError(emailInput)
-    if (codeInput) clearFieldError(codeInput)
-    if (!validateEmail(mail)) {
-      if (emailInput) showFieldError(emailInput, 'Введите корректный email')
-      valid = false
+    clearFieldError(emailField)
+    clearFieldError(codeField)
+    if (!validateEmail(email)) {
+      showFieldError(emailField, 'Введите корректный email')
+      return
     }
     if (code.length < 4) {
-      if (codeInput) showFieldError(codeInput, 'Введите код из письма')
-      valid = false
+      showFieldError(codeField, 'Введите код из письма')
+      return
     }
-    if (!valid) return
-
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
     try {
-      const data = await verifyEmail(mail, code)
-      savePendingEmail(mail)
-      if (isAuthSession(data)) {
-        afterAuth(data, 'register')
-        return
-      }
-      if (showAuthPanel('login')) {
-        const banner = document.querySelector('[data-auth-banner]')
-        if (banner) banner.textContent = 'Почта подтверждена. Войдите в аккаунт.'
-        setButtonLoading(btn, false)
-        return
-      }
-      window.location.href = '/login.html?verified=1'
+      const session = await apiPost('/auth/verify-email', { email, code })
+      if (!session?.access_token) throw new Error('Не удалось подтвердить почту')
+      afterAuth(session, 'register')
     } catch (err) {
-      showFormError(form, err.message || 'Неверный или просроченный код')
+      showFormError(form, err.message || 'Неверный код')
       setButtonLoading(btn, false)
     }
   })
 
-  resendBtn?.addEventListener('click', async () => {
-    const mail = (emailInput?.value || '').trim()
-    showFormError(form, '')
-    if (!validateEmail(mail)) {
-      if (emailInput) showFieldError(emailInput, 'Введите корректный email')
+  form.querySelector('[data-resend-code]')?.addEventListener('click', async () => {
+    const email = emailField.value.trim()
+    if (!validateEmail(email)) {
+      showFieldError(emailField, 'Введите корректный email')
       return
     }
-    resendBtn.disabled = true
+    const hint = form.querySelector('[data-resend-ok]')
     try {
-      await resendCode(mail)
-      const hint = form.querySelector('[data-resend-ok]')
+      try {
+        await apiPost('/auth/resend-verification', { email })
+      } catch (err) {
+        if (err.status !== 404) throw err
+      }
       if (hint) {
         hint.hidden = false
-        hint.textContent = 'Новый код отправлен на почту'
+        hint.textContent = 'Код отправлен повторно. Проверьте почту.'
       }
-      startResendCooldown(resendBtn, 45)
-    } catch (err) {
-      showFormError(form, err.message || 'Не удалось отправить код повторно')
-      resendBtn.disabled = false
-    }
-  })
-}
-
-function initForgotPasswordForm() {
-  const form = document.getElementById('forgot-password-form')
-  const trigger = document.querySelector('[data-forgot-password]')
-  if (trigger) {
-    trigger.addEventListener('click', (e) => {
-      e.preventDefault()
-      const loginEmail = document.querySelector('#login-form [name="email"]')?.value?.trim()
-      fillFormEmail(form, loginEmail || readPendingEmail())
-      if (!showAuthPanel('forgot')) {
-        window.location.href = '/forgot-password.html'
-      }
-    })
-  }
-  if (!form) return
-
-  const emailInput = form.querySelector('[name="email"]') || form.querySelector('#email')
-  fillFormEmail(form, readPendingEmail())
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    showFormError(form, '')
-    const email = (emailInput?.value || '').trim()
-    clearFieldError(emailInput)
-    if (!validateEmail(email)) {
-      showFieldError(emailInput, 'Введите корректный email')
-      return
-    }
-    const btn = form.querySelector('[type="submit"]')
-    setButtonLoading(btn, true)
-    try {
-      await apiPost('/auth/forgot-password', { email })
-      openResetStep(email)
-      setButtonLoading(btn, false)
     } catch (err) {
       showFormError(form, err.message || 'Не удалось отправить код')
-      setButtonLoading(btn, false)
     }
   })
 }
@@ -547,29 +627,24 @@ function initForgotPasswordForm() {
 function initResetPasswordForm() {
   const form = document.getElementById('reset-password-form')
   if (!form) return
-
-  initPasswordStrength(form)
-  const emailInput = form.querySelector('[name="email"]') || form.querySelector('#email')
-  const codeInput = form.querySelector('[name="code"]') || form.querySelector('#code')
-  const password = form.querySelector('[name="password"]') || form.querySelector('#password')
-  const confirm = form.querySelector('[name="password_confirm"]') || form.querySelector('#password-confirm')
-  const params = new URLSearchParams(window.location.search)
-  fillFormEmail(form, readPendingEmail())
-  const presetCode = normalizeCode(params.get('code') || params.get('token') || '')
-  if (codeInput && presetCode) codeInput.value = presetCode
+  const emailField = form.querySelector('input[name="email"]')
+  const preset = queryParam('email')
+  if (preset && emailField && !emailField.value) emailField.value = preset
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
+    const email = emailField.value.trim()
+    const codeInput = form.querySelector('input[name="code"]')
+    const password = form.querySelector('input[name="password"]')
+    const confirm = form.querySelector('input[name="password_confirm"]')
     showFormError(form, '')
-    ;[emailInput, codeInput, password, confirm].forEach(clearFieldError)
+    ;[emailField, codeInput, password, confirm].forEach(clearFieldError)
     let valid = true
-    const mail = (emailInput?.value || '').trim()
-    const code = normalizeCode(codeInput?.value)
-    if (!validateEmail(mail)) {
-      showFieldError(emailInput, 'Введите корректный email')
+    if (!validateEmail(email)) {
+      showFieldError(emailField, 'Введите корректный email')
       valid = false
     }
-    if (code.length < 4) {
+    if ((codeInput.value || '').trim().length < 4) {
       showFieldError(codeInput, 'Введите код из письма')
       valid = false
     }
@@ -586,28 +661,17 @@ function initResetPasswordForm() {
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
     try {
-      await resetPassword(mail, code, password.value, confirm.value)
-      if (showAuthPanel('login')) {
-        const banner = document.querySelector('[data-auth-banner]')
-        if (banner) banner.textContent = 'Пароль обновлён. Войдите с новым паролем.'
-        setButtonLoading(btn, false)
-        return
-      }
-      window.location.href = '/login.html?reset=1'
+      await apiPost('/auth/reset-password', {
+        token: codeInput.value.trim(),
+        password: password.value,
+        password_confirm: confirm.value,
+      })
+      window.location.href = '/login'
     } catch (err) {
-      showFormError(form, err.message || 'Не удалось сменить пароль')
+      showFormError(form, err.message || 'Не удалось сохранить пароль')
       setButtonLoading(btn, false)
     }
   })
-}
-
-function initAuthBanners() {
-  const params = new URLSearchParams(window.location.search)
-  const banner = document.querySelector('[data-auth-banner]')
-  if (!banner) return
-  if (params.get('verified') === '1') banner.textContent = 'Почта подтверждена. Войдите в аккаунт.'
-  else if (params.get('reset') === '1') banner.textContent = 'Пароль обновлён. Войдите с новым паролем.'
-  else banner.remove()
 }
 
 function initOauth() {
@@ -622,17 +686,24 @@ function initOauth() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  initAuthBanners()
-  initAuthPanelNav()
   initLoginForm()
   initRegisterForm()
+  initForgotPassword()
   initVerifyEmailForm()
-  initForgotPasswordForm()
   initResetPasswordForm()
   initOauth()
+  ensureCodeModal()
 
-  document.querySelectorAll('[data-toggle-password]').forEach((btn) => {
-    btn.addEventListener('click', () => togglePassword(btn))
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-toggle-password]')
+    if (!btn) return
+    e.preventDefault()
+    togglePassword(btn)
+  })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return
+    if (document.getElementById('auth-code-modal')?.classList.contains('is-open')) closeCodeModal()
   })
 
   if (typeof feather !== 'undefined') feather.replace()
