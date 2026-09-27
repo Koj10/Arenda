@@ -578,6 +578,10 @@ body.landing-page {
   cursor: pointer;
 }
 
+[data-auth-panel][hidden] {
+  display: none !important;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;

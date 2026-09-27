@@ -60,11 +60,11 @@ function clearFieldError(input) {
   if (err) err.textContent = ''
 }
 
-function initPasswordStrength() {
-  const passwordInput = document.getElementById('password')
-  const bar = document.querySelector('.strength-bar')
-  const fill = document.querySelector('.strength-fill')
-  const label = document.querySelector('.strength-label')
+function initPasswordStrength(root = document) {
+  const passwordInput = root.querySelector('#password') || root.querySelector('[name="password"]')
+  const bar = root.querySelector('.strength-bar')
+  const fill = root.querySelector('.strength-fill')
+  const label = root.querySelector('.strength-label')
   if (!passwordInput || !fill) return
 
   passwordInput.addEventListener('input', () => {
@@ -252,6 +252,54 @@ function afterAuth(session, mode) {
   redirectToPanel(session, { mode })
 }
 
+function showAuthPanel(name) {
+  const panels = document.querySelectorAll('[data-auth-panel]')
+  if (!panels.length) return false
+  let found = false
+  panels.forEach((el) => {
+    const match = el.dataset.authPanel === name
+    if (match) found = true
+    el.hidden = !match
+  })
+  if (found && typeof feather !== 'undefined') feather.replace()
+  return found
+}
+
+function fillFormEmail(form, email) {
+  const input = form?.querySelector('[name="email"]') || form?.querySelector('#email')
+  if (input && email) input.value = email
+}
+
+function openVerifyStep(email) {
+  savePendingEmail(email)
+  const form = document.getElementById('verify-email-form')
+  fillFormEmail(form, email)
+  if (showAuthPanel('verify')) {
+    form?.querySelector('[name="code"]')?.focus()
+    return true
+  }
+  window.location.href = `/verify-email.html?email=${encodeURIComponent(email)}`
+  return false
+}
+
+function openResetStep(email) {
+  savePendingEmail(email)
+  const form = document.getElementById('reset-password-form')
+  fillFormEmail(form, email)
+  if (showAuthPanel('reset')) {
+    form?.querySelector('[name="code"]')?.focus()
+    return true
+  }
+  window.location.href = `/reset-password.html?email=${encodeURIComponent(email)}`
+  return false
+}
+
+function initAuthPanelNav() {
+  document.querySelectorAll('[data-auth-back]').forEach((btn) => {
+    btn.addEventListener('click', () => showAuthPanel(btn.getAttribute('data-auth-back')))
+  })
+}
+
 function initLoginForm() {
   const form = document.getElementById('login-form')
   if (!form) return
@@ -259,8 +307,8 @@ function initLoginForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     let valid = true
-    const email = form.querySelector('#email')
-    const password = form.querySelector('#password')
+    const email = form.querySelector('[name="email"]')
+    const password = form.querySelector('[name="password"]')
     showFormError(form, '')
     clearFieldError(email)
     clearFieldError(password)
@@ -286,8 +334,8 @@ function initLoginForm() {
     } catch (err) {
       const message = err.message || 'Не удалось войти'
       if (isUnverifiedError(message)) {
-        savePendingEmail(email.value.trim())
-        window.location.href = `/verify-email?email=${encodeURIComponent(email.value.trim())}`
+        openVerifyStep(email.value.trim())
+        setButtonLoading(btn, false)
         return
       }
       showFormError(form, message)
@@ -300,16 +348,16 @@ function initRegisterForm() {
   const form = document.getElementById('register-form')
   if (!form) return
 
-  initPasswordStrength()
+  initPasswordStrength(form)
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     let valid = true
-    const name = form.querySelector('#name')
-    const email = form.querySelector('#email')
-    const password = form.querySelector('#password')
-    const confirm = form.querySelector('#password-confirm')
-    const terms = form.querySelector('#terms')
+    const name = form.querySelector('[name="name"]')
+    const email = form.querySelector('[name="email"]')
+    const password = form.querySelector('[name="password"]')
+    const confirm = form.querySelector('[name="password_confirm"]')
+    const terms = form.querySelector('[name="terms"]')
     showFormError(form, '')
 
     ;[name, email, password, confirm].forEach(clearFieldError)
@@ -339,24 +387,20 @@ function initRegisterForm() {
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
     try {
-      const data = await apiPost('/auth/register', {
+      await apiPost('/auth/register', {
         name: name.value.trim(),
         email: email.value.trim(),
         password: password.value,
         password_confirm: confirm.value,
         terms: true,
       })
-      if (isAuthSession(data)) {
-        afterAuth(data, 'register')
-        return
-      }
-      savePendingEmail(email.value.trim())
-      window.location.href = `/verify-email?email=${encodeURIComponent(email.value.trim())}`
+      openVerifyStep(email.value.trim())
+      setButtonLoading(btn, false)
     } catch (err) {
       const message = err.message || 'Не удалось зарегистрироваться'
       if (isUnverifiedError(message)) {
-        savePendingEmail(email.value.trim())
-        window.location.href = `/verify-email?email=${encodeURIComponent(email.value.trim())}`
+        openVerifyStep(email.value.trim())
+        setButtonLoading(btn, false)
         return
       }
       showFormError(form, message)
@@ -388,11 +432,11 @@ function initVerifyEmailForm() {
   const form = document.getElementById('verify-email-form')
   if (!form) return
 
-  const emailInput = form.querySelector('#email')
-  const codeInput = form.querySelector('#code')
+  const emailInput = form.querySelector('[name="email"]') || form.querySelector('#email')
+  const codeInput = form.querySelector('[name="code"]') || form.querySelector('#code')
   const resendBtn = document.querySelector('[data-resend-code]')
   const email = readPendingEmail()
-  if (emailInput && email) emailInput.value = email
+  fillFormEmail(form, email)
   const params = new URLSearchParams(window.location.search)
   const presetCode = normalizeCode(params.get('code') || '')
   if (codeInput && presetCode) codeInput.value = presetCode
@@ -424,7 +468,13 @@ function initVerifyEmailForm() {
         afterAuth(data, 'register')
         return
       }
-      window.location.href = '/login?verified=1'
+      if (showAuthPanel('login')) {
+        const banner = document.querySelector('[data-auth-banner]')
+        if (banner) banner.textContent = 'Почта подтверждена. Войдите в аккаунт.'
+        setButtonLoading(btn, false)
+        return
+      }
+      window.location.href = '/login.html?verified=1'
     } catch (err) {
       showFormError(form, err.message || 'Неверный или просроченный код')
       setButtonLoading(btn, false)
@@ -441,7 +491,6 @@ function initVerifyEmailForm() {
     resendBtn.disabled = true
     try {
       await resendCode(mail)
-      showFormError(form, '')
       const hint = form.querySelector('[data-resend-ok]')
       if (hint) {
         hint.hidden = false
@@ -457,11 +506,21 @@ function initVerifyEmailForm() {
 
 function initForgotPasswordForm() {
   const form = document.getElementById('forgot-password-form')
+  const trigger = document.querySelector('[data-forgot-password]')
+  if (trigger) {
+    trigger.addEventListener('click', (e) => {
+      e.preventDefault()
+      const loginEmail = document.querySelector('#login-form [name="email"]')?.value?.trim()
+      fillFormEmail(form, loginEmail || readPendingEmail())
+      if (!showAuthPanel('forgot')) {
+        window.location.href = '/forgot-password.html'
+      }
+    })
+  }
   if (!form) return
 
-  const emailInput = form.querySelector('#email')
-  const preset = readPendingEmail()
-  if (emailInput && preset) emailInput.value = preset
+  const emailInput = form.querySelector('[name="email"]') || form.querySelector('#email')
+  fillFormEmail(form, readPendingEmail())
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -476,8 +535,8 @@ function initForgotPasswordForm() {
     setButtonLoading(btn, true)
     try {
       await apiPost('/auth/forgot-password', { email })
-      savePendingEmail(email)
-      window.location.href = `/reset-password?email=${encodeURIComponent(email)}`
+      openResetStep(email)
+      setButtonLoading(btn, false)
     } catch (err) {
       showFormError(form, err.message || 'Не удалось отправить код')
       setButtonLoading(btn, false)
@@ -489,14 +548,13 @@ function initResetPasswordForm() {
   const form = document.getElementById('reset-password-form')
   if (!form) return
 
-  initPasswordStrength()
-  const emailInput = form.querySelector('#email')
-  const codeInput = form.querySelector('#code')
-  const password = form.querySelector('#password')
-  const confirm = form.querySelector('#password-confirm')
+  initPasswordStrength(form)
+  const emailInput = form.querySelector('[name="email"]') || form.querySelector('#email')
+  const codeInput = form.querySelector('[name="code"]') || form.querySelector('#code')
+  const password = form.querySelector('[name="password"]') || form.querySelector('#password')
+  const confirm = form.querySelector('[name="password_confirm"]') || form.querySelector('#password-confirm')
   const params = new URLSearchParams(window.location.search)
-  const email = readPendingEmail()
-  if (emailInput && email) emailInput.value = email
+  fillFormEmail(form, readPendingEmail())
   const presetCode = normalizeCode(params.get('code') || params.get('token') || '')
   if (codeInput && presetCode) codeInput.value = presetCode
 
@@ -529,7 +587,13 @@ function initResetPasswordForm() {
     setButtonLoading(btn, true)
     try {
       await resetPassword(mail, code, password.value, confirm.value)
-      window.location.href = '/login?reset=1'
+      if (showAuthPanel('login')) {
+        const banner = document.querySelector('[data-auth-banner]')
+        if (banner) banner.textContent = 'Пароль обновлён. Войдите с новым паролем.'
+        setButtonLoading(btn, false)
+        return
+      }
+      window.location.href = '/login.html?reset=1'
     } catch (err) {
       showFormError(form, err.message || 'Не удалось сменить пароль')
       setButtonLoading(btn, false)
@@ -559,6 +623,7 @@ function initOauth() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initAuthBanners()
+  initAuthPanelNav()
   initLoginForm()
   initRegisterForm()
   initVerifyEmailForm()

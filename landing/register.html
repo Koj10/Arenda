@@ -19,69 +19,114 @@
     </a>
 
     <div class="auth-card">
-      <h1 class="auth-title">Создайте аккаунт</h1>
-      <p class="auth-subtitle">На почту придёт код подтверждения. Роль выберете после входа.</p>
+      <div data-auth-panel="register">
+        <h1 class="auth-title">Создайте аккаунт</h1>
+        <p class="auth-subtitle">На почту придёт код подтверждения. Роль выберете после входа.</p>
 
-      <form id="register-form" novalidate class="auth-form">
-        <div class="field-group">
-          <div class="field-control">
-            <i data-feather="user" class="field-icon"></i>
-            <input id="name" type="text" class="field-input" placeholder="Полное имя" autocomplete="name" required />
+        <form id="register-form" novalidate class="auth-form">
+          <div class="field-group">
+            <div class="field-control">
+              <i data-feather="user" class="field-icon"></i>
+              <input id="name" name="name" type="text" class="field-input" placeholder="Полное имя" autocomplete="name" required />
+            </div>
+            <p class="field-error"></p>
           </div>
-          <p class="field-error"></p>
+
+          <div class="field-group">
+            <div class="field-control">
+              <i data-feather="mail" class="field-icon"></i>
+              <input id="email" name="email" type="email" class="field-input" placeholder="Email" autocomplete="email" required />
+            </div>
+            <p class="field-error"></p>
+          </div>
+
+          <div class="field-group">
+            <div class="field-control">
+              <i data-feather="lock" class="field-icon"></i>
+              <input id="password" name="password" type="password" class="field-input" placeholder="Пароль" autocomplete="new-password" required />
+              <button type="button" data-toggle-password class="field-toggle" aria-label="Показать пароль">
+                <i data-feather="eye"></i>
+              </button>
+            </div>
+            <div class="strength-bar"><div class="strength-fill"></div></div>
+            <p class="strength-label"></p>
+            <p class="field-error"></p>
+          </div>
+
+          <div class="field-group">
+            <div class="field-control">
+              <i data-feather="lock" class="field-icon"></i>
+              <input id="password-confirm" name="password_confirm" type="password" class="field-input" placeholder="Подтверждение пароля" autocomplete="new-password" required />
+            </div>
+            <p class="field-error"></p>
+          </div>
+
+          <label class="auth-terms">
+            <input id="terms" name="terms" type="checkbox" required />
+            <span>
+              Я согласен с <a href="/terms" class="auth-link" target="_blank" rel="noopener">условиями использования</a> и
+              <a href="/privacy" class="auth-link" target="_blank" rel="noopener">политикой конфиденциальности</a>
+            </span>
+          </label>
+
+          <button type="submit" class="btn-primary">Создать аккаунт</button>
+        </form>
+
+        <div class="auth-divider"><span>Или продолжайте с</span></div>
+
+        <div class="auth-oauth">
+          <button type="button" class="auth-oauth-btn" data-oauth="google">Google</button>
+          <button type="button" class="auth-oauth-btn" data-oauth="apple">Apple</button>
         </div>
 
-        <div class="field-group">
-          <div class="field-control">
-            <i data-feather="mail" class="field-icon"></i>
-            <input id="email" type="email" class="field-input" placeholder="Email" autocomplete="email" required />
-          </div>
-          <p class="field-error"></p>
-        </div>
-
-        <div class="field-group">
-          <div class="field-control">
-            <i data-feather="lock" class="field-icon"></i>
-            <input id="password" type="password" class="field-input" placeholder="Пароль" autocomplete="new-password" required />
-            <button type="button" data-toggle-password class="field-toggle" aria-label="Показать пароль">
-              <i data-feather="eye"></i>
-            </button>
-          </div>
-          <div class="strength-bar"><div class="strength-fill"></div></div>
-          <p class="strength-label"></p>
-          <p class="field-error"></p>
-        </div>
-
-        <div class="field-group">
-          <div class="field-control">
-            <i data-feather="lock" class="field-icon"></i>
-            <input id="password-confirm" type="password" class="field-input" placeholder="Подтверждение пароля" autocomplete="new-password" required />
-          </div>
-          <p class="field-error"></p>
-        </div>
-
-        <label class="auth-terms">
-          <input id="terms" type="checkbox" required />
-          <span>
-            Я согласен с <a href="/terms" class="auth-link" target="_blank" rel="noopener">условиями использования</a> и
-            <a href="/privacy" class="auth-link" target="_blank" rel="noopener">политикой конфиденциальности</a>
-          </span>
-        </label>
-
-        <button type="submit" class="btn-primary">Создать аккаунт</button>
-      </form>
-
-      <div class="auth-divider"><span>Или продолжайте с</span></div>
-
-      <div class="auth-oauth">
-        <button type="button" class="auth-oauth-btn" data-oauth="google">Google</button>
-        <button type="button" class="auth-oauth-btn" data-oauth="apple">Apple</button>
+        <p class="auth-footer-text">
+          Уже есть аккаунт?
+          <a href="/login" class="auth-link auth-link--bold">Войти</a>
+        </p>
       </div>
 
-      <p class="auth-footer-text">
-        Уже есть аккаунт?
-        <a href="/login" class="auth-link auth-link--bold">Войти</a>
-      </p>
+      <div data-auth-panel="verify" hidden>
+        <h1 class="auth-title">Подтвердите почту</h1>
+        <p class="auth-subtitle">Мы отправили код на email. Введите его, чтобы завершить регистрацию.</p>
+
+        <form id="verify-email-form" novalidate class="auth-form">
+          <div class="field-group">
+            <div class="field-control">
+              <i data-feather="mail" class="field-icon"></i>
+              <input name="email" type="email" class="field-input" placeholder="Email" autocomplete="email" required />
+            </div>
+            <p class="field-error"></p>
+          </div>
+
+          <div class="field-group">
+            <div class="field-control">
+              <i data-feather="key" class="field-icon"></i>
+              <input
+                name="code"
+                type="text"
+                class="field-input field-input--code"
+                placeholder="Код из письма"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="8"
+                required
+              />
+            </div>
+            <p class="field-error"></p>
+          </div>
+
+          <p class="field-hint" data-resend-ok hidden></p>
+          <button type="submit" class="btn-primary">Подтвердить</button>
+        </form>
+
+        <p class="auth-footer-text">
+          Не пришло письмо?
+          <button type="button" class="auth-link auth-link--bold auth-text-btn" data-resend-code>Отправить снова</button>
+        </p>
+        <p class="auth-footer-text">
+          <button type="button" class="auth-link auth-text-btn" data-auth-back="register">Изменить данные</button>
+        </p>
+      </div>
     </div>
 
     <p class="auth-back"><a href="/">← На главную</a></p>
