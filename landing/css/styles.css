@@ -1086,7 +1086,7 @@ body.auth-modal-open {
 .auth-modal {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 9999;
   display: none;
   align-items: flex-end;
   justify-content: center;
@@ -1094,7 +1094,7 @@ body.auth-modal-open {
 }
 
 .auth-modal.is-open {
-  display: flex;
+  display: flex !important;
 }
 
 .auth-modal-backdrop {
