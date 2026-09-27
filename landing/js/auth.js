@@ -93,6 +93,48 @@ function parseApiError(payload, fallback) {
   return payload.message || fallback
 }
 
+function ApiClientError(message, status, body) {
+  const err = new Error(message)
+  err.status = status
+  err.body = body
+  return err
+}
+
+function validationLocs(body) {
+  const detail = body && typeof body === 'object' ? body.detail : null
+  if (!Array.isArray(detail)) return []
+  return detail.flatMap((item) => (Array.isArray(item?.loc) ? item.loc.map(String) : []))
+}
+
+function isMissingField(body, field) {
+  return validationLocs(body).includes(field)
+}
+
+function isUnverifiedError(message) {
+  return /подтвержд|verify|verif|не подтвержд|email not confirmed|confirm your email|код с почт/i.test(message || '')
+}
+
+function isAuthSession(data) {
+  return Boolean(data && typeof data === 'object' && data.access_token && data.user)
+}
+
+function pendingEmailKey() {
+  return 'propcount-pending-email'
+}
+
+function savePendingEmail(email) {
+  sessionStorage.setItem(pendingEmailKey(), email)
+}
+
+function readPendingEmail() {
+  const params = new URLSearchParams(window.location.search)
+  return (params.get('email') || sessionStorage.getItem(pendingEmailKey()) || '').trim()
+}
+
+function normalizeCode(value) {
+  return String(value || '').replace(/\s+/g, '').trim()
+}
+
 async function apiPost(path, body, token) {
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
@@ -102,8 +144,57 @@ async function apiPost(path, body, token) {
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(parseApiError(data, `Ошибка ${res.status}`))
+  if (!res.ok) throw ApiClientError(parseApiError(data, `Ошибка ${res.status}`), res.status, data)
   return data
+}
+
+async function apiPostFirstPath(paths, body) {
+  let last = null
+  for (const path of paths) {
+    try {
+      return await apiPost(path, body)
+    } catch (err) {
+      last = err
+      if (err.status === 404 || err.status === 405) continue
+      throw err
+    }
+  }
+  throw last || ApiClientError('Не удалось выполнить запрос', 0, null)
+}
+
+function verifyEmail(email, code) {
+  return apiPostFirstPath(
+    ['/auth/verify-email', '/auth/confirm-email', '/auth/verify'],
+    { email, code },
+  )
+}
+
+function resendCode(email) {
+  return apiPostFirstPath(
+    ['/auth/resend-code', '/auth/resend-verification', '/auth/verify-email/resend'],
+    { email },
+  )
+}
+
+async function resetPassword(email, code, password, passwordConfirm) {
+  const base = { password, password_confirm: passwordConfirm }
+  try {
+    return await apiPost('/auth/reset-password', { ...base, email, code, token: code })
+  } catch (err) {
+    if (err.status !== 422) throw err
+    if (isMissingField(err.body, 'token') && !isMissingField(err.body, 'code')) {
+      return apiPost('/auth/reset-password', { ...base, token: code })
+    }
+    if (isMissingField(err.body, 'code')) {
+      return apiPost('/auth/reset-password', { ...base, email, code })
+    }
+    try {
+      return await apiPost('/auth/reset-password', { ...base, token: code })
+    } catch (retry) {
+      if (retry.status !== 422) throw retry
+      return apiPost('/auth/reset-password', { ...base, email, code })
+    }
+  }
 }
 
 async function apiPatch(path, body, token) {
@@ -193,7 +284,13 @@ function initLoginForm() {
       })
       afterAuth(session, 'login')
     } catch (err) {
-      showFormError(form, err.message || 'Не удалось войти')
+      const message = err.message || 'Не удалось войти'
+      if (isUnverifiedError(message)) {
+        savePendingEmail(email.value.trim())
+        window.location.href = `/verify-email?email=${encodeURIComponent(email.value.trim())}`
+        return
+      }
+      showFormError(form, message)
       setButtonLoading(btn, false)
     }
   })
@@ -242,39 +339,211 @@ function initRegisterForm() {
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
     try {
-      const session = await apiPost('/auth/register', {
+      const data = await apiPost('/auth/register', {
         name: name.value.trim(),
         email: email.value.trim(),
         password: password.value,
         password_confirm: confirm.value,
         terms: true,
       })
-      afterAuth(session, 'register')
+      if (isAuthSession(data)) {
+        afterAuth(data, 'register')
+        return
+      }
+      savePendingEmail(email.value.trim())
+      window.location.href = `/verify-email?email=${encodeURIComponent(email.value.trim())}`
     } catch (err) {
-      showFormError(form, err.message || 'Не удалось зарегистрироваться')
+      const message = err.message || 'Не удалось зарегистрироваться'
+      if (isUnverifiedError(message)) {
+        savePendingEmail(email.value.trim())
+        window.location.href = `/verify-email?email=${encodeURIComponent(email.value.trim())}`
+        return
+      }
+      showFormError(form, message)
       setButtonLoading(btn, false)
     }
   })
 }
 
-function initForgotPassword() {
-  const link = document.querySelector('[data-forgot-password]')
-  if (!link) return
-  link.addEventListener('click', async (e) => {
-    e.preventDefault()
-    const emailInput = document.querySelector('#email')
-    const email = emailInput?.value?.trim() || prompt('Email для сброса пароля')
-    if (!email || !validateEmail(email)) {
-      alert('Укажите корректный email')
+function startResendCooldown(button, seconds) {
+  if (!button) return
+  let left = seconds
+  const label = button.dataset.label || button.textContent
+  button.dataset.label = label
+  button.disabled = true
+  const tick = () => {
+    if (left <= 0) {
+      button.disabled = false
+      button.textContent = label
       return
     }
+    button.textContent = `Отправить снова (${left} с)`
+    left -= 1
+    window.setTimeout(tick, 1000)
+  }
+  tick()
+}
+
+function initVerifyEmailForm() {
+  const form = document.getElementById('verify-email-form')
+  if (!form) return
+
+  const emailInput = form.querySelector('#email')
+  const codeInput = form.querySelector('#code')
+  const resendBtn = document.querySelector('[data-resend-code]')
+  const email = readPendingEmail()
+  if (emailInput && email) emailInput.value = email
+  const params = new URLSearchParams(window.location.search)
+  const presetCode = normalizeCode(params.get('code') || '')
+  if (codeInput && presetCode) codeInput.value = presetCode
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    showFormError(form, '')
+    const mail = (emailInput?.value || '').trim()
+    const code = normalizeCode(codeInput?.value)
+    let valid = true
+    if (emailInput) clearFieldError(emailInput)
+    if (codeInput) clearFieldError(codeInput)
+    if (!validateEmail(mail)) {
+      if (emailInput) showFieldError(emailInput, 'Введите корректный email')
+      valid = false
+    }
+    if (code.length < 4) {
+      if (codeInput) showFieldError(codeInput, 'Введите код из письма')
+      valid = false
+    }
+    if (!valid) return
+
+    const btn = form.querySelector('[type="submit"]')
+    setButtonLoading(btn, true)
     try {
-      await apiPost('/auth/forgot-password', { email })
-      alert('Если аккаунт существует, мы отправим письмо для сброса пароля')
+      const data = await verifyEmail(mail, code)
+      savePendingEmail(mail)
+      if (isAuthSession(data)) {
+        afterAuth(data, 'register')
+        return
+      }
+      window.location.href = '/login?verified=1'
     } catch (err) {
-      alert(err.message || 'Не удалось отправить запрос')
+      showFormError(form, err.message || 'Неверный или просроченный код')
+      setButtonLoading(btn, false)
     }
   })
+
+  resendBtn?.addEventListener('click', async () => {
+    const mail = (emailInput?.value || '').trim()
+    showFormError(form, '')
+    if (!validateEmail(mail)) {
+      if (emailInput) showFieldError(emailInput, 'Введите корректный email')
+      return
+    }
+    resendBtn.disabled = true
+    try {
+      await resendCode(mail)
+      showFormError(form, '')
+      const hint = form.querySelector('[data-resend-ok]')
+      if (hint) {
+        hint.hidden = false
+        hint.textContent = 'Новый код отправлен на почту'
+      }
+      startResendCooldown(resendBtn, 45)
+    } catch (err) {
+      showFormError(form, err.message || 'Не удалось отправить код повторно')
+      resendBtn.disabled = false
+    }
+  })
+}
+
+function initForgotPasswordForm() {
+  const form = document.getElementById('forgot-password-form')
+  if (!form) return
+
+  const emailInput = form.querySelector('#email')
+  const preset = readPendingEmail()
+  if (emailInput && preset) emailInput.value = preset
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    showFormError(form, '')
+    const email = (emailInput?.value || '').trim()
+    clearFieldError(emailInput)
+    if (!validateEmail(email)) {
+      showFieldError(emailInput, 'Введите корректный email')
+      return
+    }
+    const btn = form.querySelector('[type="submit"]')
+    setButtonLoading(btn, true)
+    try {
+      await apiPost('/auth/forgot-password', { email })
+      savePendingEmail(email)
+      window.location.href = `/reset-password?email=${encodeURIComponent(email)}`
+    } catch (err) {
+      showFormError(form, err.message || 'Не удалось отправить код')
+      setButtonLoading(btn, false)
+    }
+  })
+}
+
+function initResetPasswordForm() {
+  const form = document.getElementById('reset-password-form')
+  if (!form) return
+
+  initPasswordStrength()
+  const emailInput = form.querySelector('#email')
+  const codeInput = form.querySelector('#code')
+  const password = form.querySelector('#password')
+  const confirm = form.querySelector('#password-confirm')
+  const params = new URLSearchParams(window.location.search)
+  const email = readPendingEmail()
+  if (emailInput && email) emailInput.value = email
+  const presetCode = normalizeCode(params.get('code') || params.get('token') || '')
+  if (codeInput && presetCode) codeInput.value = presetCode
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    showFormError(form, '')
+    ;[emailInput, codeInput, password, confirm].forEach(clearFieldError)
+    let valid = true
+    const mail = (emailInput?.value || '').trim()
+    const code = normalizeCode(codeInput?.value)
+    if (!validateEmail(mail)) {
+      showFieldError(emailInput, 'Введите корректный email')
+      valid = false
+    }
+    if (code.length < 4) {
+      showFieldError(codeInput, 'Введите код из письма')
+      valid = false
+    }
+    if (password.value.length < 8) {
+      showFieldError(password, 'Минимум 8 символов')
+      valid = false
+    }
+    if (password.value !== confirm.value) {
+      showFieldError(confirm, 'Пароли не совпадают')
+      valid = false
+    }
+    if (!valid) return
+
+    const btn = form.querySelector('[type="submit"]')
+    setButtonLoading(btn, true)
+    try {
+      await resetPassword(mail, code, password.value, confirm.value)
+      window.location.href = '/login?reset=1'
+    } catch (err) {
+      showFormError(form, err.message || 'Не удалось сменить пароль')
+      setButtonLoading(btn, false)
+    }
+  })
+}
+
+function initAuthBanners() {
+  const params = new URLSearchParams(window.location.search)
+  const banner = document.querySelector('[data-auth-banner]')
+  if (!banner) return
+  if (params.get('verified') === '1') banner.textContent = 'Почта подтверждена. Войдите в аккаунт.'
+  else if (params.get('reset') === '1') banner.textContent = 'Пароль обновлён. Войдите с новым паролем.'
+  else banner.remove()
 }
 
 function initOauth() {
@@ -289,9 +558,12 @@ function initOauth() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  initAuthBanners()
   initLoginForm()
   initRegisterForm()
-  initForgotPassword()
+  initVerifyEmailForm()
+  initForgotPasswordForm()
+  initResetPasswordForm()
   initOauth()
 
   document.querySelectorAll('[data-toggle-password]').forEach((btn) => {

@@ -927,7 +927,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       applyObjectDetail(detail)
       syncPropertyStats(propertyId)
       syncPlanUsage()
-      spaceModalOpen.value = false
+    spaceModalOpen.value = false
       return true
     } catch (err) {
       onPaymentRequired(err, 'Не удалось добавить помещение')
@@ -981,8 +981,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       })
       if (lease?.id && uploadedFiles.length) rememberLeaseFiles(lease.id, uploadedFiles)
       await loadFromApi()
-      tenantModalOpen.value = false
-      tenantModalPrefill.value = null
+    tenantModalOpen.value = false
+    tenantModalPrefill.value = null
       return true
     } catch (err) {
       onPaymentRequired(err, 'Не удалось добавить арендатора')
@@ -1002,13 +1002,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         rent_rate: data.monthlyRate,
         cadastre_id: space.cadastralParcelId ?? null,
       })
-      const oldName = space.name
-      space.name = data.name.trim()
-      space.area = data.area
-      space.monthlyRate = data.monthlyRate
-      if (space.name !== oldName) {
-        const tenant = getTenantForSpace(space.propertyId, oldName)
-        if (tenant) tenant.space = space.name
+    const oldName = space.name
+    space.name = data.name.trim()
+    space.area = data.area
+    space.monthlyRate = data.monthlyRate
+    if (space.name !== oldName) {
+      const tenant = getTenantForSpace(space.propertyId, oldName)
+      if (tenant) tenant.space = space.name
       }
       if (space.cadastralParcelId) syncParcelAreaFromSpaces(space.cadastralParcelId)
       return true
@@ -1042,7 +1042,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         useUtilityBillsStore().removeSettingsForSpace(id)
       })
       syncPlanUsage()
-      return true
+    return true
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось удалить помещение')
       return false
@@ -1340,11 +1340,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         item.inn = data.inn.trim()
         item.email = email
       }
-      tenant.rent = data.rent
-      tenant.contract = data.contract
-      tenant.status = getTenantStatus(data.contract)
-      syncPropertyStats(tenant.propertyId)
-      return true
+    tenant.rent = data.rent
+    tenant.contract = data.contract
+    tenant.status = getTenantStatus(data.contract)
+    syncPropertyStats(tenant.propertyId)
+    return true
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось сохранить арендатора')
       return false

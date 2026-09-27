@@ -546,6 +546,38 @@ body.landing-page {
   line-height: 1.4;
 }
 
+.auth-banner {
+  margin: -0.75rem 0 1.25rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  background: rgba(45, 212, 191, 0.08);
+  color: #99f6e4;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.auth-banner:empty {
+  display: none;
+}
+
+.field-input--code {
+  letter-spacing: 0.28em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+}
+
+.auth-text-btn {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;

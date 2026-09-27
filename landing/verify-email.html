@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Вход — PropCount</title>
+  <title>Код подтверждения — PropCount</title>
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,11 +19,10 @@
     </a>
 
     <div class="auth-card">
-      <h1 class="auth-title">Добро пожаловать обратно</h1>
-      <p class="auth-subtitle">После входа выберите панель: арендодатель или арендатор</p>
-      <p class="auth-banner" data-auth-banner></p>
+      <h1 class="auth-title">Подтвердите почту</h1>
+      <p class="auth-subtitle">Мы отправили код на email. Введите его, чтобы завершить регистрацию.</p>
 
-      <form id="login-form" novalidate class="auth-form">
+      <form id="verify-email-form" novalidate class="auth-form">
         <div class="field-group">
           <div class="field-control">
             <i data-feather="mail" class="field-icon"></i>
@@ -34,36 +33,32 @@
 
         <div class="field-group">
           <div class="field-control">
-            <i data-feather="lock" class="field-icon"></i>
-            <input id="password" type="password" class="field-input" placeholder="Пароль" autocomplete="current-password" required />
-            <button type="button" data-toggle-password class="field-toggle" aria-label="Показать пароль">
-              <i data-feather="eye"></i>
-            </button>
+            <i data-feather="key" class="field-icon"></i>
+            <input
+              id="code"
+              type="text"
+              class="field-input field-input--code"
+              placeholder="Код из письма"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="8"
+              required
+            />
           </div>
           <p class="field-error"></p>
         </div>
 
-        <div class="auth-row">
-          <label class="auth-checkbox-label">
-            <input type="checkbox" />
-            <span>Запомнить меня</span>
-          </label>
-          <a href="/forgot-password" class="auth-link">Забыли пароль?</a>
-        </div>
+        <p class="field-hint" data-resend-ok hidden></p>
 
-        <button type="submit" class="btn-primary">Войти</button>
+        <button type="submit" class="btn-primary">Подтвердить</button>
       </form>
 
-      <div class="auth-divider"><span>Или продолжайте с</span></div>
-
-      <div class="auth-oauth">
-        <button type="button" class="auth-oauth-btn" data-oauth="google">Google</button>
-        <button type="button" class="auth-oauth-btn" data-oauth="apple">Apple</button>
-      </div>
-
       <p class="auth-footer-text">
-        Нет аккаунта?
-        <a href="/register" class="auth-link auth-link--bold">Зарегистрироваться</a>
+        Не пришло письмо?
+        <button type="button" class="auth-link auth-link--bold auth-text-btn" data-resend-code>Отправить снова</button>
+      </p>
+      <p class="auth-footer-text">
+        <a href="/login" class="auth-link">Вернуться ко входу</a>
       </p>
     </div>
 

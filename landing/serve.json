@@ -3,12 +3,18 @@
     { "source": "/index.html", "destination": "/" },
     { "source": "/login.html", "destination": "/login" },
     { "source": "/register.html", "destination": "/register" },
+    { "source": "/verify-email.html", "destination": "/verify-email" },
+    { "source": "/forgot-password.html", "destination": "/forgot-password" },
+    { "source": "/reset-password.html", "destination": "/reset-password" },
     { "source": "/privacy.html", "destination": "/privacy" },
     { "source": "/terms.html", "destination": "/terms" }
   ],
   "rewrites": [
     { "source": "/login", "destination": "/login.html" },
     { "source": "/register", "destination": "/register.html" },
+    { "source": "/verify-email", "destination": "/verify-email.html" },
+    { "source": "/forgot-password", "destination": "/forgot-password.html" },
+    { "source": "/reset-password", "destination": "/reset-password.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" }
   ]
