@@ -93,6 +93,16 @@ function parseApiError(payload, fallback) {
   return payload.message || fallback
 }
 
+function throwApiError(res, data) {
+  const fallback = res.status === 409
+    ? 'Этот email уже зарегистрирован. Войдите или восстановите пароль.'
+    : `Ошибка ${res.status}`
+  const err = new Error(parseApiError(data, fallback))
+  err.status = res.status
+  err.body = data
+  throw err
+}
+
 async function apiPost(path, body, token) {
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
@@ -102,12 +112,7 @@ async function apiPost(path, body, token) {
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => null)
-  if (!res.ok) {
-    const err = new Error(parseApiError(data, `Ошибка ${res.status}`))
-    err.status = res.status
-    err.body = data
-    throw err
-  }
+  if (!res.ok) throwApiError(res, data)
   return data
 }
 
@@ -120,12 +125,7 @@ async function apiPatch(path, body, token) {
     body: JSON.stringify(body),
   })
   const data = await res.json().catch(() => null)
-  if (!res.ok) {
-    const err = new Error(parseApiError(data, `Ошибка ${res.status}`))
-    err.status = res.status
-    err.body = data
-    throw err
-  }
+  if (!res.ok) throwApiError(res, data)
   return data
 }
 
@@ -180,6 +180,7 @@ function afterAuth(session, mode) {
 }
 
 const PENDING_VERIFY_KEY = 'propcount-await-verify'
+const UNVERIFIED_KEY = 'propcount-unverified-emails'
 
 const codeModalState = {
   mode: 'register',
@@ -198,16 +199,58 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;')
 }
 
-function setAwaitingVerify(email) {
-  sessionStorage.setItem(PENDING_VERIFY_KEY, email)
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase()
 }
 
-function clearAwaitingVerify() {
-  sessionStorage.removeItem(PENDING_VERIFY_KEY)
+function unverifiedEmails() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(UNVERIFIED_KEY) || '[]')
+    return Array.isArray(raw) ? raw.map(normalizeEmail).filter(Boolean) : []
+  } catch {
+    return []
+  }
 }
 
-function isAwaitingVerify(email) {
-  return sessionStorage.getItem(PENDING_VERIFY_KEY) === email
+function markUnverified(email) {
+  const value = normalizeEmail(email)
+  if (!value) return
+  sessionStorage.setItem(PENDING_VERIFY_KEY, value)
+  localStorage.setItem(UNVERIFIED_KEY, JSON.stringify([...new Set([...unverifiedEmails(), value])]))
+}
+
+function clearUnverified(email) {
+  const value = normalizeEmail(email)
+  if (sessionStorage.getItem(PENDING_VERIFY_KEY) === value) sessionStorage.removeItem(PENDING_VERIFY_KEY)
+  localStorage.setItem(UNVERIFIED_KEY, JSON.stringify(unverifiedEmails().filter((item) => item !== value)))
+}
+
+function isUnverified(email) {
+  const value = normalizeEmail(email)
+  if (!value) return false
+  return sessionStorage.getItem(PENDING_VERIFY_KEY) === value || unverifiedEmails().includes(value)
+}
+
+function verificationUnavailableMessage() {
+  return 'Сервер создаёт аккаунт сразу и не шлёт код: нет /auth/verify-email. Пока эту ручку не включат, подтвердить почту нельзя.'
+}
+
+async function confirmEmail(email, code) {
+  try {
+    return await apiPost('/auth/verify-email', { email: normalizeEmail(email), code })
+  } catch (err) {
+    if (err.status === 404) throw new Error(verificationUnavailableMessage())
+    throw err
+  }
+}
+
+async function resendVerification(email) {
+  try {
+    await apiPost('/auth/resend-verification', { email: normalizeEmail(email) })
+  } catch (err) {
+    if (err.status === 404) throw new Error(verificationUnavailableMessage())
+    throw err
+  }
 }
 
 function bindCodeModal(root) {
@@ -496,21 +539,11 @@ async function onCodeModalSubmit(e) {
       return
     }
 
-    const verified = await apiPost('/auth/verify-email', {
-      email: codeModalState.email,
-      code,
-    })
-    let session = verified?.access_token ? verified : codeModalState.pendingSession
-    if (!session?.access_token && codeModalState.pendingPassword) {
-      session = await apiPost('/auth/login', {
-        email: codeModalState.email,
-        password: codeModalState.pendingPassword,
-      })
-    }
-    if (!session?.access_token) throw new Error('Не удалось подтвердить почту')
-    clearAwaitingVerify()
+    const verified = await confirmEmail(codeModalState.email, code)
+    if (!verified?.access_token) throw new Error('Не удалось подтвердить почту')
+    clearUnverified(codeModalState.email)
     codeModalState.pendingPassword = ''
-    afterAuth(session, 'register')
+    afterAuth(verified, 'register')
   } catch (err) {
     showFormError(form, err.message || 'Неверный код')
     setButtonLoading(btn, false)
@@ -529,11 +562,7 @@ async function onResendCode() {
     if (codeModalState.mode === 'reset') {
       await apiPost('/auth/forgot-password', { email: codeModalState.email })
     } else {
-      try {
-        await apiPost('/auth/resend-verification', { email: codeModalState.email })
-      } catch (err) {
-        if (err.status !== 404) throw err
-      }
+      await resendVerification(codeModalState.email)
     }
     if (hint) {
       hint.hidden = false
@@ -594,11 +623,10 @@ function initLoginForm() {
         email: emailValue,
         password: password.value,
       })
-      if (isAwaitingVerify(emailValue)) {
+      if (isUnverified(emailValue)) {
         openCodeModal({
           mode: 'register',
           email: emailValue,
-          pendingSession: session,
           pendingPassword: password.value,
         })
         setButtonLoading(btn, false)
@@ -655,25 +683,29 @@ function initRegisterForm() {
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
     const emailValue = email.value.trim()
-    openCodeModal({
-      mode: 'register',
-      step: 'code',
-      email: emailValue,
-      pendingPassword: password.value,
-    })
     try {
-      const session = await apiPost('/auth/register', {
+      await apiPost('/auth/register', {
         name: name.value.trim(),
         email: emailValue,
         password: password.value,
         password_confirm: confirm.value,
         terms: true,
       })
-      if (session?.access_token) codeModalState.pendingSession = session
-      setAwaitingVerify(emailValue)
+      markUnverified(emailValue)
+      openCodeModal({
+        mode: 'register',
+        step: 'code',
+        email: emailValue,
+        pendingPassword: password.value,
+      })
       setButtonLoading(btn, false)
     } catch (err) {
-      showFormError(document.getElementById('auth-code-form') || form, err.message || 'Не удалось зарегистрироваться')
+      if (err.status === 409) {
+        showFieldError(email, 'Такая почта уже зарегистрирована')
+        showFormError(form, 'Аккаунт с этим email уже существует. Войдите или восстановите пароль.')
+      } else {
+        showFormError(form, err.message || 'Не удалось зарегистрироваться')
+      }
       setButtonLoading(btn, false)
     }
   })
@@ -751,8 +783,9 @@ function initVerifyEmailForm() {
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
     try {
-      const session = await apiPost('/auth/verify-email', { email, code })
+      const session = await confirmEmail(email, code)
       if (!session?.access_token) throw new Error('Не удалось подтвердить почту')
+      clearUnverified(email)
       afterAuth(session, 'register')
     } catch (err) {
       showFormError(form, err.message || 'Неверный код')
@@ -768,11 +801,7 @@ function initVerifyEmailForm() {
     }
     const hint = form.querySelector('[data-resend-ok]')
     try {
-      try {
-        await apiPost('/auth/resend-verification', { email })
-      } catch (err) {
-        if (err.status !== 404) throw err
-      }
+      await resendVerification(email)
       if (hint) {
         hint.hidden = false
         hint.textContent = 'Код отправлен повторно. Проверьте почту.'
