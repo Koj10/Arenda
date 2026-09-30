@@ -780,6 +780,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               rent: 0,
               contract: '',
               status: 'active',
+              isRegistered: Boolean(detail.is_registered ?? row.is_registered),
             })
             continue
           }
@@ -796,6 +797,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               contract: lease.end_date,
               status: getTenantStatus(lease.end_date),
               leaseId: lease.id,
+              isRegistered: Boolean(detail.is_registered ?? row.is_registered),
             })
             const leaseFiles = lease.documents ?? lease.files ?? []
             await hydrateLeaseDocuments(lease.id, leaseFiles)
@@ -1351,6 +1353,19 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  async function inviteTenant(id: number) {
+    const tenant = getTenantById(id)
+    if (!tenant) return false
+    lastError.value = null
+    try {
+      await landlordApi.sendTenantInvitation(tenant.id)
+      return true
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось отправить приглашение')
+      return false
+    }
+  }
+
   async function terminateLease(leaseId: number) {
     lastError.value = null
     try {
@@ -1497,6 +1512,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     addTenant,
     updateSpace,
     updateTenant,
+    inviteTenant,
     terminateLease,
     addCadastralParcel,
     updateCadastralParcel,

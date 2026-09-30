@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Код подтверждения — PropCount</title>
+  <title>Приглашение — PropCount</title>
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,53 +12,44 @@
 </head>
 <body class="auth-body">
 
-  <main class="auth-shell">
+  <main class="auth-shell auth-shell--wide">
     <a href="/" class="auth-logo">
       <img src="assets/logo.png" alt="" width="36" height="36" />
       <span>PropCount</span>
     </a>
 
     <div class="auth-card">
-      <h1 class="auth-title">Подтвердите почту</h1>
-      <p class="auth-subtitle">Мы отправили код на email. Введите его, чтобы завершить регистрацию.</p>
+      <h1 class="auth-title">Приглашение арендатора</h1>
+      <p class="auth-subtitle">Задайте пароль, чтобы открыть кабинет по приглашению арендодателя.</p>
 
-      <form id="verify-email-form" novalidate class="auth-form">
+      <form id="invite-form" novalidate class="auth-form">
         <div class="field-group">
           <div class="field-control">
-            <i data-feather="mail" class="field-icon"></i>
-              <input name="email" type="email" class="field-input" placeholder="Email" autocomplete="email" required />
+            <i data-feather="lock" class="field-icon"></i>
+            <input id="password" name="password" type="password" class="field-input" placeholder="Пароль" autocomplete="new-password" required />
+            <button type="button" data-toggle-password class="field-toggle" aria-label="Показать пароль">
+              <i data-feather="eye"></i>
+            </button>
           </div>
+          <div class="strength-bar"><div class="strength-fill"></div></div>
+          <p class="strength-label"></p>
           <p class="field-error"></p>
         </div>
 
         <div class="field-group">
           <div class="field-control">
-            <i data-feather="key" class="field-icon"></i>
-            <input
-                name="code"
-              type="text"
-              class="field-input"
-              placeholder="Код из письма"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              maxlength="8"
-              required
-            />
+            <i data-feather="lock" class="field-icon"></i>
+            <input name="password_confirm" type="password" class="field-input" placeholder="Подтверждение пароля" autocomplete="new-password" required />
           </div>
           <p class="field-error"></p>
         </div>
 
-        <p class="field-hint" data-resend-ok hidden></p>
-
-        <button type="submit" class="btn-primary">Подтвердить</button>
+        <button type="submit" class="btn-primary">Принять приглашение</button>
       </form>
 
       <p class="auth-footer-text">
-        Не пришло письмо?
-        <button type="button" class="auth-link auth-link--bold auth-text-btn" data-resend-code>Отправить снова</button>
-      </p>
-      <p class="auth-footer-text">
-        <a href="/login" class="auth-link">Вернуться ко входу</a>
+        Уже есть аккаунт?
+        <a href="/login" class="auth-link auth-link--bold">Войти</a>
       </p>
     </div>
 

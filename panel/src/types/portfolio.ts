@@ -68,6 +68,7 @@ export interface Tenant {
   contract: string
   status: TenantStatus
   leaseId?: number
+  isRegistered?: boolean
 }
 
 export interface AttachedDocument {

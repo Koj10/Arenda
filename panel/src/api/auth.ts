@@ -69,7 +69,7 @@ export async function fetchTenantProfileApi(): Promise<TenantProfileOut> {
 }
 
 export async function forgotPasswordApi(email: string) {
-  return apiRequest<{ message?: string }>('/auth/forgot-password', {
+  return apiRequest<{ detail?: string; message?: string }>('/auth/forgot-password', {
     method: 'POST',
     skipAuth: true,
     body: { email },
@@ -81,11 +81,25 @@ export async function resetPasswordApi(data: {
   password: string
   password_confirm: string
 }) {
-  return apiRequest<{ message?: string }>('/auth/reset-password', {
+  return apiRequest<{ detail?: string; message?: string }>('/auth/reset-password', {
     method: 'POST',
     skipAuth: true,
     body: data,
   })
+}
+
+export async function acceptTenantInvitationApi(data: {
+  token: string
+  password: string
+  password_confirm: string
+}): Promise<AuthResponse> {
+  const session = await apiRequest<AuthResponse>('/auth/tenant-invitation/accept', {
+    method: 'POST',
+    skipAuth: true,
+    body: data,
+  })
+  persistAuth(session)
+  return session
 }
 
 export async function updateMeApi(params: { name?: string; inn?: string }) {

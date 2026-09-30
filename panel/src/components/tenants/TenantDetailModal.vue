@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Building2, MapPin, Mail, User } from '@lucide/vue'
+import { Building2, MapPin, Mail, Send, User } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -12,6 +12,9 @@ const terminateError = ref<string | null>(null)
 const emailDraft = ref('')
 const emailError = ref('')
 const savingEmail = ref(false)
+const inviting = ref(false)
+const inviteError = ref('')
+const inviteOk = ref('')
 
 const tenant = computed(() => {
   if (store.tenantDetailLeaseId) {
@@ -38,6 +41,8 @@ watch(
   () => {
     emailDraft.value = tenant.value?.email ?? ''
     emailError.value = ''
+    inviteError.value = ''
+    inviteOk.value = ''
   },
   { immediate: true },
 )
@@ -78,6 +83,21 @@ async function saveEmail() {
   )
   savingEmail.value = false
   if (!ok) emailError.value = store.lastError || 'Не удалось сохранить email'
+}
+
+async function inviteTenant() {
+  if (!tenant.value || inviting.value) return
+  if (!emailDraft.value.trim() && !tenant.value.email) {
+    inviteError.value = 'Сначала укажите и сохраните email'
+    return
+  }
+  inviting.value = true
+  inviteError.value = ''
+  inviteOk.value = ''
+  const ok = await store.inviteTenant(tenant.value.id)
+  inviting.value = false
+  if (ok) inviteOk.value = 'Приглашение отправлено на почту арендатора'
+  else inviteError.value = store.lastError || 'Не удалось отправить приглашение'
 }
 
 function onClose() {
@@ -145,8 +165,28 @@ async function terminateLease() {
         </div>
         <p v-if="emailError" class="text-xs text-red-400 mt-1">{{ emailError }}</p>
         <p v-else class="text-xs text-slate-500 mt-1">
-          На этот адрес будут уходить счета на аренду и коммуналку, если арендатор не зарегистрирован.
+          На этот адрес уходят счета и приглашение в кабинет, если арендатор ещё не в PropCount.
         </p>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <span
+            v-if="tenant.isRegistered"
+            class="inline-flex px-2 py-0.5 rounded text-xs font-medium text-emerald-brand bg-emerald-brand/10"
+          >
+            Уже зарегистрирован
+          </span>
+          <button
+            v-else
+            type="button"
+            class="panel-btn-secondary text-xs"
+            :disabled="inviting"
+            @click="inviteTenant"
+          >
+            <Send class="w-3.5 h-3.5" />
+            {{ inviting ? 'Отправка...' : 'Пригласить в PropCount' }}
+          </button>
+        </div>
+        <p v-if="inviteOk" class="text-xs text-emerald-brand mt-2">{{ inviteOk }}</p>
+        <p v-if="inviteError" class="text-xs text-red-400 mt-2">{{ inviteError }}</p>
       </div>
 
       <div class="grid sm:grid-cols-2 gap-4 mb-5">

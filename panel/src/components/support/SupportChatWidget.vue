@@ -60,7 +60,7 @@ function onKeydown(event: KeyboardEvent) {
 
         <div ref="listRef" class="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
           <p v-if="chat.messages.length === 0" class="text-xs text-slate-500 text-center py-8 px-4 leading-relaxed">
-            Опишите вопрос — сообщение уйдёт в поддержку. История видна, пока открыта вкладка.
+            Опишите вопрос — сообщение уйдёт в поддержку, история хранится в аккаунте.
           </p>
           <article
             v-for="item in chat.messages"
@@ -106,13 +106,19 @@ function onKeydown(event: KeyboardEvent) {
 
       <button
         type="button"
-        class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-brand text-black shadow-lg shadow-emerald-brand/30 flex items-center justify-center hover:brightness-110 transition-transform"
+        class="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-brand text-black shadow-lg shadow-emerald-brand/30 flex items-center justify-center hover:brightness-110 transition-transform"
         :class="chat.open ? 'rotate-0' : ''"
         :aria-label="chat.open ? 'Закрыть чат поддержки' : 'Открыть чат поддержки'"
         @click="chat.toggle()"
       >
         <X v-if="chat.open" class="w-6 h-6" />
         <MessageCircle v-else class="w-6 h-6" />
+        <span
+          v-if="!chat.open && chat.unread > 0"
+          class="absolute -top-0.5 -right-0.5 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center"
+        >
+          {{ chat.unread > 9 ? '9+' : chat.unread }}
+        </span>
       </button>
     </div>
   </Teleport>

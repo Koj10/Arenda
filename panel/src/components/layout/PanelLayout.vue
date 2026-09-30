@@ -10,6 +10,7 @@ import HeaderSearch from '@/components/layout/HeaderSearch.vue'
 import SupportChatWidget from '@/components/support/SupportChatWidget.vue'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { usePanelSearchStore } from '@/stores/panelSearchStore'
+import { useSupportChatStore } from '@/stores/supportChatStore'
 
 defineProps<{
   sidebar: Component
@@ -20,6 +21,7 @@ const route = useRoute()
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
 const panelSearch = usePanelSearchStore()
+const supportChat = useSupportChatStore()
 const sidebarOpen = ref(false)
 const isNarrow = ref(false)
 
@@ -33,8 +35,10 @@ function syncViewport() {
 watch(
   () => [auth.user?.email, auth.user?.role] as const,
   ([email, role]) => {
-    if (email && role) notifications.hydrate(role, email)
-    else notifications.clear()
+    if (email && role) {
+      notifications.hydrate(role, email)
+      void supportChat.refreshUnread()
+    } else notifications.clear()
   },
   { immediate: true },
 )

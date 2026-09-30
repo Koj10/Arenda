@@ -181,6 +181,12 @@ export async function updateTenant(tenantId: number, body: { name?: string; inn?
   return apiRequest<TenantOut>(`/landlord/tenants/${tenantId}`, { method: 'PATCH', body })
 }
 
+export async function sendTenantInvitation(tenantId: number) {
+  return apiRequest<Record<string, unknown>>(`/landlord/tenants/${tenantId}/invitation`, {
+    method: 'POST',
+  })
+}
+
 export async function deleteTenant(tenantId: number) {
   return apiRequest<void>(`/landlord/tenants/${tenantId}`, { method: 'DELETE' })
 }

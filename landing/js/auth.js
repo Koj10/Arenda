@@ -156,11 +156,14 @@ function showFormError(form, message) {
 /** Панель: локально :5173, в проде — /panel/ на том же origin */
 function redirectToPanel(session, options = {}) {
   const user = session.user || {}
+  const role = options.role || session.current_role || ''
+  const chooseRole = options.chooseRole === false ? false : options.chooseRole === true ? true : !role
   const params = new URLSearchParams({ autologin: '1', email: user.email || '' })
   if (user.name) params.set('name', user.name)
   if (session.access_token) params.set('access_token', session.access_token)
   if (session.refresh_token) params.set('refresh_token', session.refresh_token)
-  params.set('chooseRole', '1')
+  if (chooseRole) params.set('chooseRole', '1')
+  else if (role) params.set('role', role)
   if (options.mode) params.set('mode', options.mode)
 
   const { protocol, hostname, port } = window.location
@@ -172,7 +175,8 @@ function redirectToPanel(session, options = {}) {
 }
 
 function afterAuth(session, mode) {
-  redirectToPanel(session, { mode })
+  const role = session.current_role || ''
+  redirectToPanel(session, { mode, role, chooseRole: !role })
 }
 
 const PENDING_VERIFY_KEY = 'propcount-await-verify'
@@ -658,13 +662,14 @@ function initRegisterForm() {
       pendingPassword: password.value,
     })
     try {
-      await apiPost('/auth/register', {
+      const session = await apiPost('/auth/register', {
         name: name.value.trim(),
         email: emailValue,
         password: password.value,
         password_confirm: confirm.value,
         terms: true,
       })
+      if (session?.access_token) codeModalState.pendingSession = session
       setAwaitingVerify(emailValue)
       setButtonLoading(btn, false)
     } catch (err) {
@@ -782,24 +787,35 @@ function initResetPasswordForm() {
   const form = document.getElementById('reset-password-form')
   if (!form) return
   const emailField = form.querySelector('input[name="email"]')
-  const preset = queryParam('email')
-  if (preset && emailField && !emailField.value) emailField.value = preset
+  const codeInput = form.querySelector('input[name="code"]')
+  const subtitle = form.closest('.auth-card')?.querySelector('.auth-subtitle')
+  const presetEmail = queryParam('email')
+  const presetToken = queryParam('token')
+  if (presetEmail && emailField && !emailField.value) emailField.value = presetEmail
+  if (presetToken && codeInput && !codeInput.value) {
+    codeInput.value = presetToken
+    codeInput.removeAttribute('maxlength')
+    emailField?.closest('.field-group')?.setAttribute('hidden', '')
+    codeInput.closest('.field-group')?.setAttribute('hidden', '')
+    if (subtitle) subtitle.textContent = 'Задайте новый пароль по ссылке из письма.'
+  }
+  initPasswordStrength()
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
-    const email = emailField.value.trim()
-    const codeInput = form.querySelector('input[name="code"]')
+    const email = (emailField?.value || '').trim()
     const password = form.querySelector('input[name="password"]')
     const confirm = form.querySelector('input[name="password_confirm"]')
+    const token = (codeInput.value || '').trim() || presetToken
     showFormError(form, '')
-    ;[emailField, codeInput, password, confirm].forEach(clearFieldError)
+    ;[emailField, codeInput, password, confirm].filter(Boolean).forEach(clearFieldError)
     let valid = true
-    if (!validateEmail(email)) {
-      showFieldError(emailField, 'Введите корректный email')
+    if (!token || token.length < 4) {
+      showFieldError(codeInput, 'Введите код из письма или откройте ссылку из письма')
       valid = false
     }
-    if ((codeInput.value || '').trim().length < 4) {
-      showFieldError(codeInput, 'Введите код из письма')
+    if (!presetToken && !validateEmail(email)) {
+      showFieldError(emailField, 'Введите корректный email')
       valid = false
     }
     if (password.value.length < 8) {
@@ -816,13 +832,59 @@ function initResetPasswordForm() {
     setButtonLoading(btn, true)
     try {
       await apiPost('/auth/reset-password', {
-        token: codeInput.value.trim(),
+        token,
         password: password.value,
         password_confirm: confirm.value,
       })
       window.location.href = '/login'
     } catch (err) {
       showFormError(form, err.message || 'Не удалось сохранить пароль')
+      setButtonLoading(btn, false)
+    }
+  })
+}
+
+function initInviteForm() {
+  const form = document.getElementById('invite-form')
+  if (!form) return
+  const token = queryParam('token')
+  initPasswordStrength()
+  if (!token) {
+    showFormError(form, 'В ссылке нет токена приглашения. Откройте письмо ещё раз.')
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const password = form.querySelector('input[name="password"]')
+    const confirm = form.querySelector('input[name="password_confirm"]')
+    showFormError(form, '')
+    ;[password, confirm].forEach(clearFieldError)
+    if (!token) {
+      showFormError(form, 'Недействительная ссылка приглашения')
+      return
+    }
+    let valid = true
+    if (password.value.length < 8) {
+      showFieldError(password, 'Минимум 8 символов')
+      valid = false
+    }
+    if (password.value !== confirm.value) {
+      showFieldError(confirm, 'Пароли не совпадают')
+      valid = false
+    }
+    if (!valid) return
+
+    const btn = form.querySelector('[type="submit"]')
+    setButtonLoading(btn, true)
+    try {
+      const session = await apiPost('/auth/tenant-invitation/accept', {
+        token,
+        password: password.value,
+        password_confirm: confirm.value,
+      })
+      afterAuth(session, 'login')
+    } catch (err) {
+      showFormError(form, err.message || 'Не удалось принять приглашение')
       setButtonLoading(btn, false)
     }
   })
@@ -845,6 +907,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initForgotPassword()
   initVerifyEmailForm()
   initResetPasswordForm()
+  initInviteForm()
   initOauth()
   ensureCodeModal()
 

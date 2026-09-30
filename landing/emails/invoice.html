@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <h1>Счёт за аренду и ЖКХ</h1>
+
+    <p>Здравствуйте, {{ tenant_name }}!</p>
+
+    <p>
+        Вам выставлен счёт за период <strong>{{ period }}</strong>.
+    </p>
+
+    <ul>
+        <li>Объект: {{ object_address }}</li>
+        <li>Помещение: {{ unit_number }}</li>
+        <li>Аренда: {{ rent_amount }}</li>
+        <li>ЖКХ: {{ utility_amount }}</li>
+        <li>Итого к оплате: <strong>{{ amount }}</strong></li>
+        <li>Срок оплаты: {{ due_date }}</li>
+    </ul>
+
+    {{ invoice_block }}
+
+    <p>
+        Если у вас есть вопросы по счёту, свяжитесь с арендодателем.
+    </p>
+</body>
+
+</html>

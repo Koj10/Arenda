@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <h1>Выписка за период</h1>
+
+    <p>Здравствуйте, {{ tenant_name }}!</p>
+
+    <p>
+        Направляем вам выписку по начислениям за период <strong>{{ period }}</strong>.
+    </p>
+
+    {{ extract_block }}
+
+    <p>
+        Если у вас есть вопросы по выписке, свяжитесь с арендодателем.
+    </p>
+</body>
+
+</html>

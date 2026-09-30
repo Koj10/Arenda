@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { sendSupportToTelegram } from '@/api/telegram'
-import { useAuthStore } from '@/stores/authStore'
+import {
+  getSupportUnreadCount,
+  listSupportMessages,
+  markSupportRead,
+  sendSupportMessage,
+} from '@/api/support'
+import { getAccessToken } from '@/api/http'
+import type { SupportMessageOut } from '@/api/types'
 
 export interface SupportChatMessage {
   id: string
@@ -11,35 +17,73 @@ export interface SupportChatMessage {
   status: 'sending' | 'sent' | 'error'
 }
 
-const STORAGE_KEY = 'propcount-support-chat'
-
-function readStored(): SupportChatMessage[] {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as SupportChatMessage[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+function fromApi(row: SupportMessageOut): SupportChatMessage[] {
+  const items: SupportChatMessage[] = [
+    {
+      id: `u-${row.id}`,
+      role: 'user',
+      text: row.message,
+      at: row.created_at,
+      status: 'sent',
+    },
+  ]
+  if (row.response?.trim()) {
+    items.push({
+      id: `s-${row.id}`,
+      role: 'support',
+      text: row.response.trim(),
+      at: row.updated_at || row.created_at,
+      status: 'sent',
+    })
   }
+  return items
 }
 
 export const useSupportChatStore = defineStore('supportChat', () => {
   const open = ref(false)
-  const messages = ref<SupportChatMessage[]>(readStored())
+  const messages = ref<SupportChatMessage[]>([])
   const draft = ref('')
   const sending = ref(false)
+  const loading = ref(false)
+  const unread = ref(0)
 
-  function persist() {
+  async function refreshUnread() {
+    if (!getAccessToken()) {
+      unread.value = 0
+      return
+    }
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.value))
+      unread.value = await getSupportUnreadCount()
     } catch {
-      /* quota / private mode */
+      unread.value = 0
     }
   }
 
-  function toggle() {
+  async function load() {
+    if (!getAccessToken()) return
+    loading.value = true
+    try {
+      const rows = await listSupportMessages()
+      const sorted = [...rows].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+      messages.value = sorted.flatMap(fromApi)
+    } catch {
+      /* keep current */
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function toggle() {
     open.value = !open.value
+    if (open.value) {
+      await load()
+      try {
+        await markSupportRead()
+        unread.value = 0
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   function close() {
@@ -49,7 +93,6 @@ export const useSupportChatStore = defineStore('supportChat', () => {
   async function send() {
     const text = draft.value.trim()
     if (!text || sending.value) return
-    const auth = useAuthStore()
     const item: SupportChatMessage = {
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       role: 'user',
@@ -60,20 +103,14 @@ export const useSupportChatStore = defineStore('supportChat', () => {
     messages.value.push(item)
     draft.value = ''
     sending.value = true
-    persist()
     try {
-      await sendSupportToTelegram({
-        text,
-        name: auth.user?.name,
-        email: auth.user?.email,
-        role: auth.user?.role,
-      })
+      await sendSupportMessage(text)
       item.status = 'sent'
+      await load()
     } catch {
       item.status = 'error'
     } finally {
       sending.value = false
-      persist()
     }
   }
 
@@ -82,8 +119,12 @@ export const useSupportChatStore = defineStore('supportChat', () => {
     messages,
     draft,
     sending,
+    loading,
+    unread,
     toggle,
     close,
     send,
+    load,
+    refreshUnread,
   }
 })

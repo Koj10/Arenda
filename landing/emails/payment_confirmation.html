@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <h1>Оплата счета подтверждена</h1>
+
+    <p>Здравствуйте, {{ tenant_name }}!</p>
+
+    <p>
+        Арендодатель подтвердил оплату счета №{{ invoice_id }} за период
+        <strong>{{ period }}</strong> на сумму {{ amount }}.
+    </p>
+
+    <p>
+        Спасибо! Текущий статус вашего счёта — «оплачен».
+    </p>
+</body>
+
+</html>
