@@ -584,6 +584,18 @@ export async function confirmInvoicePayment(invoiceId: number) {
   })
 }
 
+export async function markInvoicePaid(invoiceId: number) {
+  try {
+    return await confirmInvoicePayment(invoiceId)
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : 0
+    if (status === 400 || status === 409 || status === 422) {
+      return updateLandlordInvoice(invoiceId, { status: 'paid' })
+    }
+    throw err
+  }
+}
+
 export async function listNotifications() {
   return apiRequest('/notifications')
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Check, ChevronDown, ChevronUp, FileText } from '@lucide/vue'
-import { confirmInvoicePayment, deliverInvoiceToTenant, generateLandlordInvoices, getLandlordInvoice, getTenant, isTenantKnownRegistered, listLandlordInvoices, markTenantRegistered } from '@/api/landlord'
+import { deliverInvoiceToTenant, generateLandlordInvoices, getLandlordInvoice, getTenant, isTenantKnownRegistered, listLandlordInvoices, markInvoicePaid, markTenantRegistered } from '@/api/landlord'
 import { downloadFileBlob, formatApiError } from '@/api/http'
 import { num, type FileOut, type LandlordInvoiceOut } from '@/api/types'
 import { INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types/billing'
@@ -122,11 +122,15 @@ async function load() {
   }
 }
 
+function canConfirm(row: LandlordInvoiceOut) {
+  return statusOf(row) !== 'paid'
+}
+
 async function confirm(id: number) {
   confirmingId.value = id
   error.value = null
   try {
-    await confirmInvoicePayment(id)
+    await markInvoicePaid(id)
     await load()
     void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
       void useAccountingStore().loadAnalytics()
@@ -210,7 +214,7 @@ onMounted(() => {
       <div class="min-w-0">
         <h2 class="text-sm font-semibold text-white">Счета арендаторам</h2>
         <p class="text-xs text-slate-500 mt-1">
-          {{ collapseSummary || 'Счёт появляется, как только вы добавили арендатора.' }}
+          {{ collapseSummary || 'Подтвердите оплату, если арендатор заплатил не через приложение.' }}
         </p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
@@ -297,7 +301,7 @@ onMounted(() => {
                 <td class="px-5 py-3.5">
                   <div class="flex flex-col gap-2 items-start">
                     <button
-                      v-if="statusOf(row) === 'awaiting_confirmation'"
+                      v-if="canConfirm(row)"
                       type="button"
                       class="panel-btn-primary text-xs"
                       :disabled="confirmingId === row.id"
