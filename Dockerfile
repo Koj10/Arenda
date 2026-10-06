@@ -8,6 +8,7 @@ RUN npm run build:docker
 
 FROM nginx:1.27-alpine
 
+COPY deploy/00-http-body-size.conf /etc/nginx/conf.d/00-http-body-size.conf
 COPY deploy/propcount.http.conf /etc/nginx/templates/propcount.http.conf
 COPY deploy/propcount.conf /etc/nginx/templates/propcount.conf
 COPY deploy/api-proxy.conf /etc/nginx/snippets/api-proxy.conf
