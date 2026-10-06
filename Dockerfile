@@ -8,6 +8,7 @@ RUN npm run build:docker
 
 FROM nginx:1.27-alpine
 
+COPY deploy/nginx-main.conf /etc/nginx/nginx.conf
 COPY deploy/propcount.http.conf /etc/nginx/templates/propcount.http.conf
 COPY deploy/propcount.conf /etc/nginx/templates/propcount.conf
 COPY deploy/api-proxy.conf /etc/nginx/snippets/api-proxy.conf

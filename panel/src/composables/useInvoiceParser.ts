@@ -1,11 +1,11 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import type { InvoiceDocument, ParsedInvoiceAmount } from '@/types/billing'
 import { parseUtilityInvoice, toParsedAmount } from '@/composables/utilityInvoiceParse'
+import pdfWorkerSource from 'pdfjs-dist/build/pdf.worker.min.mjs?raw'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).href
+pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
+  new Blob([pdfWorkerSource], { type: 'text/javascript' }),
+)
 
 function normalizeAmount(raw: string): number | null {
   const cleaned = raw.replace(/\s/g, '').replace(',', '.')
