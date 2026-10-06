@@ -1,16 +1,12 @@
 name: PropCount
 
-# Сайт в Docker. API — https://api.propcount.ru
-# Хостовый nginx НЕ должен занимать 80/443 (иначе /login даёт 502).
+# Сайт в контейнере на :80, с хоста доступен как 127.0.0.1:3005
+# 80/443 на машине занимает nginx (deploy/host-nginx-site.conf)
 services:
   app:
     image: ghcr.io/koj10/arenda:${TAG:-latest}
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/certbot:/var/www/certbot
+      - "3005:80"
     dns:
       - 8.8.8.8
       - 1.1.1.1
