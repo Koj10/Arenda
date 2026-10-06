@@ -28,7 +28,7 @@ import { ApiError, formatApiError, getAccessToken, isPaymentRequired } from '@/a
 import { dataUrlToBlob, deleteFileApi, fileDisplayName, listFiles, uploadFileApi } from '@/api/auth'
 import * as landlordApi from '@/api/landlord'
 import { num } from '@/api/types'
-import type { CadastreSplitOut, FileOut, ObjectDetailOut } from '@/api/types'
+import type { CadastreSplitOut, FileOut, LeaseInTenantDetail, ObjectDetailOut } from '@/api/types'
 import { daysUntil, formatDateRu, todayISODate } from '@/utils/dates'
 
 const CADASTRE_AREA_STORAGE = 'propcount.cadastreSplitAreas'
@@ -36,6 +36,15 @@ const RETIRED_CADASTRE_STORAGE = 'propcount.retiredCadastres'
 
 function cadastreAreaKey(propertyId: number, number: string) {
   return `${propertyId}:${number.trim()}`
+}
+
+function isActiveLease(lease: LeaseInTenantDetail) {
+  const status = (lease.status || '').toLowerCase()
+  if (['terminated', 'ended', 'inactive', 'cancelled', 'canceled', 'closed'].includes(status)) {
+    return false
+  }
+  if (lease.terminated_at) return false
+  return true
 }
 
 function emailOrNull(value?: string | null) {
@@ -816,22 +825,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           const detail = await landlordApi.getTenant(row.id)
           const isRegistered = Boolean(detail.is_registered ?? row.is_registered)
           const email = contactEmailFor(row.id, detail.email ?? row.email, isRegistered)
-          const leases = detail.leases ?? []
-          if (!leases.length) {
-            tenants.value.push({
-              id: row.id,
-              company: row.name,
-              inn: row.inn,
-              email,
-              propertyId: 0,
-              space: '',
-              rent: 0,
-              contract: '',
-              status: 'active',
-              isRegistered,
-            })
-            continue
-          }
+          const leases = (detail.leases ?? []).filter((lease) => {
+            if (!isActiveLease(lease)) return false
+            if (lease.unit_id && !getSpaceById(lease.unit_id)) return false
+            return true
+          })
+          if (!leases.length) continue
           for (const lease of leases) {
             const space = lease.unit_id ? getSpaceById(lease.unit_id) : null
             tenants.value.push({
@@ -1212,6 +1211,10 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       } catch {
         /* список уже обновлён локально */
       }
+      tenants.value = tenants.value.filter((t) => {
+        if (t.propertyId !== space.propertyId) return true
+        return getSpacesForProperty(space.propertyId).some((s) => s.name === t.space)
+      })
       syncPropertyStats(space.propertyId)
       if (spaceDetailId.value === id) closeSpaceDetail()
       void import('@/stores/utilityBillsStore').then(({ useUtilityBillsStore }) => {
@@ -1543,12 +1546,43 @@ export const usePortfolioStore = defineStore('portfolio', () => {
 
   async function terminateLease(leaseId: number) {
     lastError.value = null
+    const row = getTenantByLeaseId(leaseId)
     try {
-      await landlordApi.terminateLease(leaseId)
-      await loadFromApi()
+      try {
+        await landlordApi.terminateLease(leaseId)
+      } catch {
+        /* снимем договор удалением, если terminate недоступен */
+      }
+      try {
+        await landlordApi.deleteLease(leaseId)
+      } catch {
+        /* terminate уже мог закрыть договор */
+      }
+      if (row) {
+        try {
+          const invoices = await landlordApi.listLandlordInvoices({ tenant_id: row.id })
+          for (const invoice of invoices) {
+            const status = invoice.computed_status || invoice.status
+            if (status === 'paid') continue
+            await landlordApi.deleteLandlordInvoice(invoice.id).catch(() => undefined)
+          }
+        } catch {
+          /* договор уже закрыт */
+        }
+      }
+      tenants.value = tenants.value.filter((t) => t.leaseId !== leaseId)
+      if (row) syncPropertyStats(row.propertyId)
       tenantDetailOpen.value = false
       tenantDetailId.value = null
       tenantDetailLeaseId.value = null
+      if (spaceDetailOpen.value) {
+        /* карточка помещения сразу без арендатора */
+      }
+      try {
+        await loadFromApi()
+      } catch {
+        /* локальный список уже обновлён */
+      }
       return true
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось завершить договор')

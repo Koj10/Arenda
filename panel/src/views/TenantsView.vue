@@ -19,9 +19,10 @@ const search = ref('')
 const rentInvoices = ref<LandlordInvoiceOut[]>([])
 
 const filtered = computed(() => {
-  if (!search.value) return store.tenants
+  const rows = store.tenants.filter((t) => Boolean(t.leaseId && t.propertyId && t.space))
+  if (!search.value) return rows
   const q = search.value.toLowerCase()
-  return store.tenants.filter(
+  return rows.filter(
     (t) =>
       t.company.toLowerCase().includes(q) ||
       t.inn.includes(q) ||

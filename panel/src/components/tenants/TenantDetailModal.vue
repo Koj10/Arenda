@@ -32,9 +32,7 @@ const space = computed(() => {
   return store.getSpacesForProperty(property.value.id).find((s) => s.name === tenant.value!.space) ?? null
 })
 
-const canTerminate = computed(() =>
-  Boolean(tenant.value?.leaseId && tenant.value.status !== 'overdue'),
-)
+const canTerminate = computed(() => Boolean(tenant.value?.leaseId))
 
 watch(
   () => tenant.value?.id,
