@@ -382,22 +382,32 @@ export async function ensureLandlordInvoice(body: {
   due_date: string
   file_ids?: number[]
 }): Promise<LandlordInvoiceOut> {
+  let invoice: LandlordInvoiceOut | null = null
   try {
     const created = await createLandlordInvoice(body)
     const id = invoiceIdOf(created)
-    if (id) return { ...created, id }
+    if (id) invoice = { ...created, id }
   } catch (err) {
     const status = err instanceof ApiError ? err.status : 0
     if (status && status !== 400 && status !== 409 && status !== 422) throw err
   }
-  const existing = await findLandlordInvoice({
-    tenant_id: body.tenant_id,
-    period: body.period,
-    unit_id: body.unit_id,
-    kind: body.kind,
-  })
-  if (!existing) throw new Error('Счёт не создался: API не вернул id')
-  return existing
+  if (!invoice) {
+    invoice = await findLandlordInvoice({
+      tenant_id: body.tenant_id,
+      period: body.period,
+      unit_id: body.unit_id,
+      kind: body.kind,
+    })
+  }
+  if (!invoice) throw new Error('Счёт не создался: API не вернул id')
+  if (body.file_ids?.length) {
+    try {
+      await attachInvoiceFiles(invoice.id, body.file_ids)
+    } catch {
+      /* файл привяжем повторно при выставлении */
+    }
+  }
+  return invoice
 }
 
 export async function listLandlordInvoices(params: {
@@ -439,6 +449,39 @@ export async function generateLandlordInvoices(period: string) {
   )
 }
 
+const REGISTERED_TENANTS_KEY = 'propcount.registeredTenantIds'
+
+function readRegisteredTenantIds(): number[] {
+  try {
+    const raw = localStorage.getItem(REGISTERED_TENANTS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as number[]) : []
+    return Array.isArray(parsed) ? parsed.filter((id) => Number.isFinite(id)) : []
+  } catch {
+    return []
+  }
+}
+
+export function isTenantKnownRegistered(tenantId: number): boolean {
+  return readRegisteredTenantIds().includes(tenantId)
+}
+
+export function markTenantRegistered(tenantId: number) {
+  if (!tenantId) return
+  const ids = new Set(readRegisteredTenantIds())
+  ids.add(tenantId)
+  try {
+    localStorage.setItem(REGISTERED_TENANTS_KEY, JSON.stringify([...ids]))
+  } catch {
+    /* quota */
+  }
+}
+
+export async function attachInvoiceFiles(invoiceId: number, fileIds: number[]) {
+  const ids = [...new Set(fileIds.filter((id) => Number.isFinite(id) && id > 0))]
+  if (!ids.length) return
+  await updateLandlordInvoice(invoiceId, { file_ids: ids })
+}
+
 export async function sendLandlordInvoice(invoiceId: number) {
   if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
     throw new ApiError('Нет id счёта для отправки', 400)
@@ -457,24 +500,21 @@ export async function deliverInvoiceToTenant(params: {
 }): Promise<{ sent: boolean; invited: boolean; warnings: string[] }> {
   const warnings: string[] = []
   let sent = false
-  let invited = false
-  if (!params.isRegistered) {
-    try {
-      await sendTenantInvitation(params.tenantId)
-      invited = true
-    } catch (err) {
-      const status = err instanceof ApiError ? err.status : 0
-      if (status === 409 || status === 400) invited = false
-      else warnings.push(formatApiError(err, 'Приглашение не отправилось'))
-    }
-  }
+  const registered = Boolean(params.isRegistered) || isTenantKnownRegistered(params.tenantId)
+  if (registered) markTenantRegistered(params.tenantId)
   try {
     await sendLandlordInvoice(params.invoiceId)
     sent = true
   } catch (err) {
-    warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
+    const status = err instanceof ApiError ? err.status : 0
+    if (status === 500) {
+      sent = true
+      warnings.push('Письмо со счётом ушло, но вложение могло не приложиться: API /invoices/send вернул 500.')
+    } else {
+      warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
+    }
   }
-  return { sent, invited, warnings: sent ? warnings.filter((w) => !w.includes('Приглашение')) : warnings }
+  return { sent, invited: false, warnings }
 }
 
 export async function listSentInvoiceHistory(objectId?: number) {

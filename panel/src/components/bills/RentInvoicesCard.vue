@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Check, ChevronDown, ChevronUp, FileText } from '@lucide/vue'
-import { confirmInvoicePayment, deliverInvoiceToTenant, generateLandlordInvoices, getLandlordInvoice, getTenant, listLandlordInvoices } from '@/api/landlord'
+import { confirmInvoicePayment, deliverInvoiceToTenant, generateLandlordInvoices, getLandlordInvoice, getTenant, isTenantKnownRegistered, listLandlordInvoices, markTenantRegistered } from '@/api/landlord'
 import { downloadFileBlob, formatApiError } from '@/api/http'
 import { num, type FileOut, type LandlordInvoiceOut } from '@/api/types'
 import { INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types/billing'
@@ -166,10 +166,11 @@ async function send(id: number) {
     let email: string | null = null
     try {
       const tenant = await getTenant(tenantId)
-      isRegistered = Boolean(tenant.is_registered)
+      isRegistered = Boolean(tenant.is_registered) || isTenantKnownRegistered(tenantId)
+      if (isRegistered) markTenantRegistered(tenantId)
       email = tenant.email ?? null
     } catch {
-      isRegistered = false
+      isRegistered = isTenantKnownRegistered(tenantId)
     }
     const result = await deliverInvoiceToTenant({
       invoiceId: id,
