@@ -141,6 +141,7 @@ function onClose() {
 <template>
   <Modal :open="store.tenantModalOpen" title="Добавить арендатора" size="lg" :z-index="110" @close="onClose">
     <div class="space-y-4">
+      <p v-if="errors.company" class="text-sm text-red-400">{{ errors.company }}</p>
       <div>
         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Компания</label>
         <input v-model="form.company" type="text" placeholder="ООО «Компания»" class="panel-input" :class="{ 'border-red-500': errors.company }" />
@@ -183,7 +184,7 @@ function onClose() {
       <div>
         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Объект</label>
         <select
-          v-model="form.propertyId"
+          v-model.number="form.propertyId"
           class="panel-input disabled:opacity-60 disabled:cursor-not-allowed"
           :class="{ 'border-red-500': errors.propertyId }"
           :disabled="lockedProperty"

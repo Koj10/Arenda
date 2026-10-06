@@ -237,7 +237,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   function getSpacesForProperty(propertyId: number) {
-    return spaces.value.filter((s) => s.propertyId === propertyId)
+    const id = Number(propertyId)
+    return spaces.value.filter((s) => s.propertyId === id)
   }
 
   function getCadastralParcelsForProperty(propertyId: number) {
@@ -361,7 +362,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   function getSpaceByName(propertyId: number, spaceName: string) {
-    return getSpacesForProperty(propertyId).find((s) => s.name === spaceName) ?? null
+    const name = spaceName.trim()
+    return getSpacesForProperty(propertyId).find((s) => s.name.trim() === name) ?? null
   }
 
   function getTenantForSpace(propertyId: number, spaceName: string) {
@@ -941,11 +943,22 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   async function addTenant(data: TenantFormData) {
-    if (!data.propertyId) return false
-    const existing = getTenantForSpace(data.propertyId, data.space)
-    if (existing) return false
-    const space = getSpaceByName(data.propertyId, data.space)
-    if (!space) return false
+    const propertyId = Number(data.propertyId)
+    if (!Number.isFinite(propertyId) || propertyId <= 0) {
+      lastError.value = 'Выберите объект'
+      return false
+    }
+    const spaceName = data.space.trim()
+    const existing = getTenantForSpace(propertyId, spaceName)
+    if (existing) {
+      lastError.value = 'Это помещение уже занято'
+      return false
+    }
+    const space = getSpaceByName(propertyId, spaceName)
+    if (!space) {
+      lastError.value = 'Помещение не найдено. Откройте объект и убедитесь, что оно создано.'
+      return false
+    }
     lastError.value = null
     try {
       const inn = data.inn.trim()
@@ -967,7 +980,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         }
       }
 
-      const uploadedFiles = await uploadPending(data.documents, 'contract')
+      const uploadedFiles = await uploadPending(data.documents, 'contract', 'lease')
       const today = todayISODate()
       const endDate = data.contract
       const rent = Number(data.rent)
