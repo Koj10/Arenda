@@ -43,6 +43,39 @@ function emailOrNull(value?: string | null) {
   return trimmed || null
 }
 
+const TENANT_CONTACT_EMAILS = 'propcount.tenantContactEmails'
+
+function readContactEmails(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(TENANT_CONTACT_EMAILS)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, string>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function rememberContactEmail(tenantId: number, email?: string | null) {
+  const value = (email ?? '').trim()
+  if (!tenantId || !value) return
+  const stored = readContactEmails()
+  stored[String(tenantId)] = value
+  try {
+    localStorage.setItem(TENANT_CONTACT_EMAILS, JSON.stringify(stored))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function contactEmailFor(tenantId: number, apiEmail?: string | null, isRegistered?: boolean) {
+  const stored = readContactEmails()[String(tenantId)]?.trim() ?? ''
+  const api = (apiEmail ?? '').trim()
+  if (stored) return stored
+  if (api && !isRegistered) rememberContactEmail(tenantId, api)
+  return stored || api
+}
+
 function readStoredCadastreAreas(): Record<string, number> {
   try {
     const raw = sessionStorage.getItem(CADASTRE_AREA_STORAGE)
@@ -772,7 +805,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         const tenantList = await landlordApi.listTenants()
         for (const row of tenantList) {
           const detail = await landlordApi.getTenant(row.id)
-          const email = (detail.email ?? row.email)?.trim() ?? ''
+          const isRegistered = Boolean(detail.is_registered ?? row.is_registered)
+          const email = contactEmailFor(row.id, detail.email ?? row.email, isRegistered)
           const leases = detail.leases ?? []
           if (!leases.length) {
             tenants.value.push({
@@ -785,7 +819,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               rent: 0,
               contract: '',
               status: 'active',
-              isRegistered: Boolean(detail.is_registered ?? row.is_registered),
+              isRegistered,
             })
             continue
           }
@@ -802,7 +836,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
               contract: lease.end_date,
               status: getTenantStatus(lease.end_date),
               leaseId: lease.id,
-              isRegistered: Boolean(detail.is_registered ?? row.is_registered),
+              isRegistered,
             })
             const leaseFiles = lease.documents ?? lease.files ?? []
             await hydrateLeaseDocuments(lease.id, leaseFiles)
@@ -979,6 +1013,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           tenant = await landlordApi.updateTenant(existingTenant.id, { email: emailOrNull(data.email) })
         }
       }
+      rememberContactEmail(tenant.id, data.email)
 
       const uploadedFiles = await uploadPending(data.documents, 'contract', 'lease')
       const today = todayISODate()
@@ -1351,7 +1386,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           end_date: data.contract,
         })
       }
-      const email = (updated.email ?? data.email).trim()
+      const email = (data.email ?? updated.email ?? '').trim()
+      rememberContactEmail(tenant.id, email)
       for (const item of tenants.value) {
         if (item.id !== tenant.id) continue
         item.company = data.company.trim()

@@ -439,27 +439,14 @@ export async function generateLandlordInvoices(period: string) {
   )
 }
 
-export async function sendLandlordInvoice(invoiceId: number, email?: string | null) {
+export async function sendLandlordInvoice(invoiceId: number) {
   if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
     throw new ApiError('Нет id счёта для отправки', 400)
   }
-  const body: Record<string, unknown> = { invoice_id: invoiceId }
-  if (email?.trim()) body.email = email.trim()
-  try {
-    return await apiRequest<Record<string, unknown>>(
-      `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
-      { method: 'POST', body },
-    )
-  } catch (err) {
-    const status = err instanceof ApiError ? err.status : 0
-    if (status === 422) {
-      return apiRequest<Record<string, unknown>>(
-        `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
-        { method: 'POST', body: { invoice_id: invoiceId } },
-      )
-    }
-    throw err
-  }
+  return apiRequest<Record<string, unknown>>(
+    `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
+    { method: 'POST' },
+  )
 }
 
 export async function deliverInvoiceToTenant(params: {
@@ -477,29 +464,17 @@ export async function deliverInvoiceToTenant(params: {
       invited = true
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0
-      if (status === 409) {
-        invited = true
-      } else if (!params.email?.trim()) {
-        warnings.push('Арендатор не в PropCount и нет email — приглашение не отправлено')
-      } else {
-        warnings.push(formatApiError(err, 'Приглашение не отправилось'))
-      }
+      if (status === 409 || status === 400) invited = false
+      else warnings.push(formatApiError(err, 'Приглашение не отправилось'))
     }
   }
   try {
-    await sendLandlordInvoice(params.invoiceId, params.email)
+    await sendLandlordInvoice(params.invoiceId)
     sent = true
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 0
-    if (status === 500) {
-      warnings.push(
-        'Счёт создан, приглашение ушло, письмо со счётом нет: API POST /landlord/invoices/send отвечает 500.',
-      )
-    } else {
-      warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
-    }
+    warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
   }
-  return { sent, invited, warnings }
+  return { sent, invited, warnings: sent ? warnings.filter((w) => !w.includes('Приглашение')) : warnings }
 }
 
 export async function listSentInvoiceHistory(objectId?: number) {

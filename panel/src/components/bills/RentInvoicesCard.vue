@@ -177,8 +177,14 @@ async function send(id: number) {
       isRegistered,
       email,
     })
-    if (result.warnings.length) error.value = result.warnings.join('. ')
-    await load()
+    if (!result.sent) {
+      error.value = result.warnings.join('. ') || 'Не удалось отправить счёт'
+    }
+    try {
+      await load()
+    } catch {
+      /* отправка уже прошла */
+    }
   } catch (err) {
     error.value = formatApiError(err, 'Не удалось отправить счёт')
   } finally {

@@ -354,7 +354,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       const detail = await getTenant(tenantId)
       return {
         isRegistered: Boolean(detail.is_registered),
-        email: detail.email ?? local?.email ?? null,
+        email: local?.email ?? detail.email ?? null,
       }
     } catch {
       return { isRegistered: Boolean(local?.isRegistered), email: local?.email ?? null }
@@ -377,7 +377,11 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     } else {
       notes.push('Счёт создан, но письмо на оплату не ушло.')
     }
-    statementError.value = result.warnings.length ? result.warnings.join('. ') : null
+    statementError.value = result.sent
+      ? null
+      : result.warnings.length
+        ? result.warnings.join('. ')
+        : 'Счёт создан, но письмо на оплату не ушло'
     if (notes.length) statementInfo.value = notes.join(' ')
     return result
   }
@@ -458,8 +462,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         row.issued = true
         if (result.invited) notices.push('отправлены приглашения незарегистрированным')
         if (result.sent) notices.push('счета ушли на почту')
-        else problems.push('счёт создан, письмо на оплату не ушло')
-        problems.push(...result.warnings)
+        else problems.push(...(result.warnings.length ? result.warnings : ['счёт создан, письмо на оплату не ушло']))
       }
       statementError.value = problems.length ? [...new Set(problems)].join('. ') : null
       statementInfo.value = notices.length ? [...new Set(notices)].join('. ') : null
