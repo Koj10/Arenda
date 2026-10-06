@@ -61,7 +61,15 @@ export function formatApiError(err: unknown, fallback = 'Ошибка запро
       return 'Такая запись уже есть. Для кадастра укажите другой номер.'
     }
     if (err.status === 500) {
-      return 'Сервер не обработал запрос. Проверьте данные и повторите, либо укажите другие кадастровые номера.'
+      const body = err.body as { detail?: unknown; message?: string } | string | null
+      if (typeof body === 'string' && body.trim() && !body.trim().startsWith('<')) return body
+      if (body && typeof body === 'object') {
+        if (typeof body.detail === 'string' && body.detail.trim() && body.detail !== 'Internal Server Error') {
+          return body.detail
+        }
+        if (body.message) return body.message
+      }
+      return 'Сервер вернул 500. Счёт мог создаться, но письмо не отправилось — смотрите лог API на этом запросе.'
     }
     if (err.status === 413) {
       return 'Файл больше 50 МБ — сервер отклонил загрузку. Счёт можно выставить без вложения.'

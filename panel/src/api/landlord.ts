@@ -370,7 +370,7 @@ export async function findLandlordInvoice(params: {
     if (params.unit_id != null && row.unit_id != null && row.unit_id !== params.unit_id) return false
     return true
   })
-  return matched.sort((a, b) => b.id - a.id)[0] ?? list.sort((a, b) => b.id - a.id)[0] ?? null
+  return matched.sort((a, b) => b.id - a.id)[0] ?? null
 }
 
 export async function ensureLandlordInvoice(body: {
@@ -439,28 +439,26 @@ export async function generateLandlordInvoices(period: string) {
   )
 }
 
-export async function sendLandlordInvoice(invoiceId: number) {
+export async function sendLandlordInvoice(invoiceId: number, email?: string | null) {
   if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
     throw new ApiError('Нет id счёта для отправки', 400)
   }
+  const body: Record<string, unknown> = { invoice_id: invoiceId }
+  if (email?.trim()) body.email = email.trim()
   try {
     return await apiRequest<Record<string, unknown>>(
       `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
-      { method: 'POST' },
+      { method: 'POST', body },
     )
   } catch (err) {
     const status = err instanceof ApiError ? err.status : 0
-    if (status !== 404 && status !== 405 && status !== 422) throw err
-    try {
-      return await apiRequest<Record<string, unknown>>('/landlord/invoices/send', {
-        method: 'POST',
-        body: { invoice_id: invoiceId },
-      })
-    } catch {
-      return apiRequest<Record<string, unknown>>(`/landlord/invoices/${invoiceId}/send`, {
-        method: 'POST',
-      })
+    if (status === 422) {
+      return apiRequest<Record<string, unknown>>(
+        `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
+        { method: 'POST', body: { invoice_id: invoiceId } },
+      )
     }
+    throw err
   }
 }
 
@@ -489,10 +487,17 @@ export async function deliverInvoiceToTenant(params: {
     }
   }
   try {
-    await sendLandlordInvoice(params.invoiceId)
+    await sendLandlordInvoice(params.invoiceId, params.email)
     sent = true
   } catch (err) {
-    warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
+    const status = err instanceof ApiError ? err.status : 0
+    if (status === 500) {
+      warnings.push(
+        'Счёт создан, приглашение ушло, письмо со счётом нет: API POST /landlord/invoices/send отвечает 500.',
+      )
+    } else {
+      warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
+    }
   }
   return { sent, invited, warnings }
 }
