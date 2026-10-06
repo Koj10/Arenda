@@ -1,13 +1,9 @@
 name: PropCount
 
-# Сайт в контейнере на :80, с хоста доступен как 127.0.0.1:3005
-# 80/443 на машине занимает nginx (deploy/host-nginx-site.conf)
+# Сайт в Docker. API — отдельный проект на https://api.propcount.ru
 services:
   app:
     image: ghcr.io/koj10/arenda:${TAG:-latest}
     ports:
       - "3005:80"
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     restart: unless-stopped
