@@ -64,7 +64,7 @@ export function formatApiError(err: unknown, fallback = 'Ошибка запро
       return 'Сервер не обработал запрос. Проверьте данные и повторите, либо укажите другие кадастровые номера.'
     }
     if (err.status === 413) {
-      return 'Файл слишком большой для загрузки (лимит прокси). Счёт можно выставить без вложения.'
+      return 'Файл больше 50 МБ — лимит загрузки API. Выберите файл меньше или выставите счёт без вложения.'
     }
     if (err.status === 402) {
       const body = err.body as { detail?: unknown; message?: string } | string | null

@@ -180,6 +180,8 @@ async function submitPay() {
       const uploaded = await uploadFileApi(payFile.value, {
         filename: payFile.value.name,
         kind: 'receipt',
+        linked_type: 'invoice',
+        linked_id: payBill.value.id,
       })
       fileIds.push(uploaded.id)
     }

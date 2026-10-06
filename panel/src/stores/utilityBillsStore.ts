@@ -246,7 +246,12 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         if (first.document.dataUrl) {
           const uploaded = await uploadFileApi(
             dataUrlToBlob(first.document.dataUrl, first.document.mimeType),
-            { filename: first.document.name, kind: 'supporting' },
+            {
+              filename: first.document.name,
+              kind: 'supporting',
+              linked_type: 'object',
+              linked_id: propertyId,
+            },
           )
           fileId = uploaded.id
         }
@@ -292,7 +297,13 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       try {
         const uploaded = await uploadFileApi(
           dataUrlToBlob(item.document.dataUrl, item.document.mimeType),
-          { filename: item.document.name, kind: 'supporting' },
+          {
+            filename: item.document.name,
+            kind: 'supporting',
+            ...(current?.propertyId
+              ? { linked_type: 'object' as const, linked_id: current.propertyId }
+              : {}),
+          },
         )
         ids.push(uploaded.id)
       } catch (err) {
@@ -304,7 +315,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       if (skippedLarge && ids.length === 0) {
         current.warnings = [
           ...current.warnings,
-          'Вложения не загрузились: прокси отклонил файл (413). Счета выставляются без сканов — поднимите client_max_body_size на nginx до 50m.',
+          'Вложения не загрузились: файл больше 50 МБ (лимит API). Счета выставляются без сканов.',
         ]
       }
     }
@@ -389,7 +400,12 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       if (data.document?.dataUrl) {
         const uploaded = await uploadFileApi(
           dataUrlToBlob(data.document.dataUrl, data.document.mimeType),
-          { filename: data.document.name, kind: 'supporting' },
+          {
+            filename: data.document.name,
+            kind: 'supporting',
+            linked_type: 'object',
+            linked_id: data.propertyId,
+          },
         )
         fileId = uploaded.id
       }
