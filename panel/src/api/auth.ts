@@ -108,6 +108,16 @@ export async function updateMeApi(params: { name?: string; inn?: string }) {
   return apiRequest<UserPublic>(`/me${queryString(params)}`, { method: 'PATCH' })
 }
 
+export function pickProfileInn(
+  ...sources: Array<{ inn?: string | null } | null | undefined>
+): string | undefined {
+  for (const src of sources) {
+    const value = src?.inn?.trim()
+    if (value) return value
+  }
+  return undefined
+}
+
 export function oauthUrl(provider: 'google' | 'apple'): string {
   return `${getApiBaseUrl()}/auth/${provider}`
 }

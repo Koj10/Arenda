@@ -7,7 +7,9 @@ import { formatApiError, getAccessToken, setTokens } from '@/api/http'
 import type { AuthResponse } from '@/api/types'
 import {
   fetchMe,
+  fetchTenantProfileApi,
   logoutApi,
+  pickProfileInn,
   selectRoleApi,
   updateMeApi,
   updateTenantProfileApi,
@@ -60,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
   const pendingRegistration = computed(() => pendingRoleChoice.value)
 
   let remoteLoadsStarted = false
+  let profileHydrated = false
 
   function persistUser() {
     if (user.value) localStorage.setItem(USER_KEY, JSON.stringify(user.value))
@@ -125,6 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
       name: session.user.name,
       email: session.user.email,
       role,
+      inn: pickProfileInn(session.user, user.value),
     }))
   }
 
@@ -140,6 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
       inn: options?.inn,
       id: options?.id,
     }))
+    void hydrateFromApi()
   }
 
   function beginRoleChoice(email: string, name: string, mode: RoleChoiceMode = 'register') {
@@ -167,6 +172,9 @@ export const useAuthStore = defineStore('auth', () => {
       const session = await selectRoleApi(role)
       applyAuthResponse(session, role)
       let tenantInnValue = inn?.trim()
+      if (tenantInnValue) {
+        await updateMeApi({ name: pending.name, inn: tenantInnValue })
+      }
       if (role === 'tenant' && tenantInnValue) {
         const profile = await updateTenantProfileApi({
           company_name: pending.name,
@@ -175,6 +183,7 @@ export const useAuthStore = defineStore('auth', () => {
         tenantInnValue = profile.inn
         updateProfile({ inn: tenantInnValue })
       }
+      await hydrateFromApi()
       return { ok: true }
     } catch (err) {
       return { ok: false, error: formatApiError(err, 'Не удалось выбрать роль') }
@@ -197,6 +206,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     remoteLoadsStarted = false
+    profileHydrated = false
     void logoutApi()
     user.value = null
     clearPendingRoleChoice()
@@ -228,16 +238,17 @@ export const useAuthStore = defineStore('auth', () => {
     const inn = patch.inn?.trim()
     if (inn && !isValidInn(inn)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
     try {
-      const me = await updateMeApi({ name, inn: inn || undefined })
+      const updated = await updateMeApi({ name, inn: inn || undefined })
       if (user.value.role === 'tenant' && inn) {
-        const profile = await updateTenantProfileApi({
+        await updateTenantProfileApi({
           company_name: name,
           inn,
         })
-        updateProfile({ name: me.name || name, inn: profile.inn })
-        return { ok: true }
       }
-      updateProfile({ name: me.name || name, inn: inn || user.value.inn })
+      profileHydrated = false
+      await hydrateFromApi()
+      const savedInn = pickProfileInn(user.value, updated, { inn })
+      updateProfile({ name: updated.name || name, inn: savedInn })
       return { ok: true }
     } catch (err) {
       return { ok: false, error: formatApiError(err, 'Не удалось сохранить профиль') }
@@ -252,12 +263,21 @@ export const useAuthStore = defineStore('auth', () => {
         beginRoleChoice(me.user.email, me.user.name, 'login')
         return
       }
+      let inn = pickProfileInn(me.tenant_profile, me.user, me, user.value)
+      if (me.current_role === 'tenant' && !inn) {
+        try {
+          inn = pickProfileInn(await fetchTenantProfileApi())
+        } catch {
+          /* профиль арендатора ещё не создан */
+        }
+      }
+      profileHydrated = true
       applyUser(toUser({
         id: me.user.id,
         name: me.user.name,
         email: me.user.email,
         role: me.current_role,
-        inn: me.tenant_profile?.inn ?? user.value?.inn,
+        inn,
       }))
     } catch {
       /* keep local snapshot */
@@ -290,7 +310,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     if (user.value) {
-      if (getAccessToken()) kickRemoteLoads()
+      if (getAccessToken()) {
+        kickRemoteLoads()
+        if (!profileHydrated) void hydrateFromApi()
+      }
       return
     }
 

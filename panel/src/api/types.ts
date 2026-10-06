@@ -6,6 +6,7 @@ export interface UserPublic {
   email: string
   provider?: string | null
   created_at: string
+  inn?: string | null
 }
 
 export interface TenantProfileOut {
@@ -30,6 +31,7 @@ export interface MeResponse {
   roles: ApiRole[]
   current_role: ApiRole | '' | null
   tenant_profile?: TenantProfileOut | null
+  inn?: string | null
 }
 
 export interface ObjectListItem {

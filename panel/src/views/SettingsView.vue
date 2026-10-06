@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TenantLayout from '@/components/layout/TenantLayout.vue'
@@ -27,6 +27,14 @@ const emailNotify = ref(true)
 const pushNotify = ref(true)
 const saved = ref(false)
 const requisitesSaved = ref(false)
+
+watch(
+  () => [auth.user?.name, auth.user?.inn] as const,
+  ([nextName, nextInn]) => {
+    if (nextName) name.value = nextName
+    if (nextInn) inn.value = nextInn
+  },
+)
 
 async function saveProfile() {
   profileError.value = ''
@@ -96,11 +104,11 @@ onMounted(() => {
               v-model="inn"
               type="text"
               inputmode="numeric"
-              placeholder="Для арендатора обязателен. Для арендодателя — только в этом браузере"
+              placeholder="10 или 12 цифр"
               class="panel-input font-mono"
             />
             <span class="text-[11px] text-slate-600 mt-1.5 block">
-              Для арендатора ИНН сохраняется в профиле. Для арендодателя имя и ИНН уходят в PATCH /me.
+              Сохраняется в профиле аккаунта и подтягивается после входа.
             </span>
           </label>
           <p v-if="profileError" class="text-xs text-red-400">{{ profileError }}</p>

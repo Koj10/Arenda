@@ -1531,19 +1531,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
-  async function inviteTenant(id: number) {
-    const tenant = getTenantById(id)
-    if (!tenant) return false
-    lastError.value = null
-    try {
-      await landlordApi.sendTenantInvitation(tenant.id)
-      return true
-    } catch (err) {
-      lastError.value = formatApiError(err, 'Не удалось отправить приглашение')
-      return false
-    }
-  }
-
   async function terminateLease(leaseId: number) {
     lastError.value = null
     const row = getTenantByLeaseId(leaseId)
@@ -1722,7 +1709,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     addTenant,
     updateSpace,
     updateTenant,
-    inviteTenant,
     terminateLease,
     addCadastralParcel,
     updateCadastralParcel,
