@@ -956,27 +956,91 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  async function tryDelete(task: () => Promise<unknown>) {
+    try {
+      await task()
+    } catch {
+      /* связанная запись могла уже исчезнуть */
+    }
+  }
+
+  async function clearPropertyDependencies(propertyId: number, address: string) {
+    let unitIds = new Set(getSpacesForProperty(propertyId).map((s) => s.id))
+    try {
+      const detail = await landlordApi.getObject(propertyId)
+      applyObjectDetail(detail)
+      unitIds = new Set((detail.units ?? []).map((u) => u.id))
+    } catch {
+      /* берём локальный список помещений */
+    }
+
+    for (const space of [...getSpacesForProperty(propertyId)]) {
+      await detachSpaceLeases(space)
+      await tryDelete(() => landlordApi.updateUnit(space.id, { cadastre_id: null }))
+    }
+
+    try {
+      const invoices = await landlordApi.listLandlordInvoices()
+      for (const invoice of invoices) {
+        const onObject =
+          (invoice.unit_id != null && unitIds.has(invoice.unit_id)) ||
+          Boolean(address && invoice.object_address && invoice.object_address === address)
+        if (onObject) await tryDelete(() => landlordApi.deleteLandlordInvoice(invoice.id))
+      }
+    } catch {
+      /* счета могут остаться, объект всё равно пробуем удалить */
+    }
+
+    try {
+      const bills = await landlordApi.listObjectBills(propertyId)
+      for (const bill of bills) {
+        await tryDelete(() => landlordApi.deleteUtilityBill(bill.id))
+      }
+    } catch {
+      /* DELETE /bills может быть не описан в OpenAPI */
+    }
+
+    try {
+      const txs = await landlordApi.listTransactions({ object_id: propertyId })
+      for (const tx of txs) {
+        await tryDelete(() => landlordApi.deleteTransaction(tx.id))
+      }
+    } catch {
+      /* */
+    }
+
+    const objectFiles = await loadLinkedFiles('object', propertyId).catch(() => [])
+    for (const file of objectFiles) {
+      await tryDelete(() => deleteFileApi(file.id))
+    }
+
+    for (const space of [...getSpacesForProperty(propertyId)]) {
+      await tryDelete(() => landlordApi.deleteUnit(space.id))
+    }
+
+    try {
+      const leftover = await landlordApi.getObject(propertyId)
+      for (const unit of leftover.units ?? []) {
+        await tryDelete(() => landlordApi.deleteUnit(unit.id))
+      }
+      for (const entry of leftover.cadastre_entries ?? []) {
+        if (entry.id) await tryDelete(() => landlordApi.deleteCadastre(entry.id))
+      }
+    } catch {
+      /* объекта уже нет */
+    }
+
+    for (const parcel of [...getCadastralParcelsForProperty(propertyId)]) {
+      await tryDelete(() => landlordApi.deleteCadastre(parcel.id))
+    }
+  }
+
   async function removeProperty(id: number) {
     const property = getPropertyById(id)
     if (!property) return false
     lastError.value = null
     try {
-      const spaceList = [...getSpacesForProperty(id)]
-      for (const space of spaceList) {
-        await detachSpaceLeases(space)
-        try {
-          await landlordApi.deleteUnit(space.id)
-        } catch {
-          /* удаление объекта может снести помещения само */
-        }
-      }
-      for (const parcel of [...getCadastralParcelsForProperty(id)]) {
-        try {
-          await landlordApi.deleteCadastre(parcel.id)
-        } catch {
-          /* не блокируем удаление объекта */
-        }
-      }
+      await clearPropertyDependencies(id, property.address)
       await landlordApi.deleteObject(id)
       const spaceIds = new Set(getSpacesForProperty(id).map((s) => s.id))
       properties.value = properties.value.filter((p) => p.id !== id)

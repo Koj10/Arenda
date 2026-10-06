@@ -309,6 +309,10 @@ export async function getUtilityBill(billId: number) {
   return apiRequest<UtilityBillDetailOut>(`/landlord/bills/${billId}`)
 }
 
+export async function deleteUtilityBill(billId: number) {
+  return apiRequest<void>(`/landlord/bills/${billId}`, { method: 'DELETE' })
+}
+
 export async function listBillObjects(q?: string) {
   return apiRequest<BillObjectOut[]>(`/landlord/bills/objects${queryString({ q })}`)
 }
