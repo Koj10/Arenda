@@ -58,7 +58,7 @@ export function formatApiError(err: unknown, fallback = 'Ошибка запро
         if (typeof body.detail === 'string' && body.detail.trim()) return body.detail
         if (body.message) return body.message
       }
-      return 'Такая запись уже есть. Для кадастра укажите другой номер.'
+      return 'Конфликт данных. Запись уже есть или связана с договорами, счетами или кадастром.'
     }
     if (err.status === 500) {
       const body = err.body as { detail?: unknown; message?: string } | string | null

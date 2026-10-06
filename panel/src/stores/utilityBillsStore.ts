@@ -279,7 +279,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         if (first.document.dataUrl) {
           const uploaded = await uploadFileApi(
             dataUrlToBlob(first.document.dataUrl, first.document.mimeType),
-            { filename: first.document.name, kind: 'supporting', linked_type: 'bill' },
+            { filename: first.document.name, kind: 'supporting' },
           )
           fileId = uploaded.id
           if (fileId && !ids.includes(fileId)) ids.push(fileId)
@@ -335,7 +335,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       try {
         const uploaded = await uploadFileApi(
           dataUrlToBlob(item.document.dataUrl, item.document.mimeType),
-          { filename: item.document.name, kind: 'supporting', linked_type: 'bill' },
+          { filename: item.document.name, kind: 'supporting' },
         )
         ids.push(uploaded.id)
       } catch (err) {

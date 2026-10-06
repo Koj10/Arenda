@@ -486,24 +486,10 @@ export async function sendLandlordInvoice(invoiceId: number, email?: string | nu
   if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
     throw new ApiError('Нет id счёта для отправки', 400)
   }
-  const to = email?.trim() || undefined
-  const body: Record<string, unknown> = { invoice_id: invoiceId }
-  if (to) body.email = to
-  try {
-    return await apiRequest<Record<string, unknown>>(
-      `/landlord/invoices/send${queryString({ invoice_id: invoiceId, email: to })}`,
-      { method: 'POST', body },
-    )
-  } catch (err) {
-    const status = err instanceof ApiError ? err.status : 0
-    if (status === 422) {
-      return apiRequest<Record<string, unknown>>(
-        `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
-        { method: 'POST' },
-      )
-    }
-    throw err
-  }
+  return apiRequest<Record<string, unknown>>(
+    `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
+    { method: 'POST' },
+  )
 }
 
 export async function deliverInvoiceToTenant(params: {

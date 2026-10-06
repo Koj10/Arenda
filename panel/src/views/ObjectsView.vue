@@ -177,7 +177,7 @@ async function onDeleteProperty(p: (typeof store.properties)[number]) {
                   class="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-40"
                   :disabled="deletingId === p.id"
                   title="Удалить объект"
-                  @click="onDeleteProperty(p)"
+                  @click.stop="onDeleteProperty(p)"
                 >
                   <Trash2 class="w-4 h-4" />
                 </button>

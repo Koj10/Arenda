@@ -933,11 +933,50 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
+  async function detachSpaceLeases(space: Space) {
+    const related = tenants.value.filter(
+      (t) => t.propertyId === space.propertyId && t.space === space.name && t.leaseId,
+    )
+    for (const tenant of related) {
+      if (!tenant.leaseId) continue
+      try {
+        await landlordApi.deleteLease(tenant.leaseId)
+      } catch {
+        try {
+          await landlordApi.terminateLease(tenant.leaseId)
+        } catch {
+          /* договор мог быть уже закрыт */
+        }
+        try {
+          await landlordApi.deleteLease(tenant.leaseId)
+        } catch {
+          /* unit всё равно попробуем удалить */
+        }
+      }
+    }
+  }
+
   async function removeProperty(id: number) {
     const property = getPropertyById(id)
     if (!property) return false
     lastError.value = null
     try {
+      const spaceList = [...getSpacesForProperty(id)]
+      for (const space of spaceList) {
+        await detachSpaceLeases(space)
+        try {
+          await landlordApi.deleteUnit(space.id)
+        } catch {
+          /* удаление объекта может снести помещения само */
+        }
+      }
+      for (const parcel of [...getCadastralParcelsForProperty(id)]) {
+        try {
+          await landlordApi.deleteCadastre(parcel.id)
+        } catch {
+          /* не блокируем удаление объекта */
+        }
+      }
       await landlordApi.deleteObject(id)
       const spaceIds = new Set(getSpacesForProperty(id).map((s) => s.id))
       properties.value = properties.value.filter((p) => p.id !== id)
@@ -1085,7 +1124,18 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (!space) return false
     lastError.value = null
     try {
-      await landlordApi.deleteUnit(id)
+      await detachSpaceLeases(space)
+      try {
+        await landlordApi.deleteUnit(id)
+      } catch (err) {
+        const status = err instanceof ApiError ? err.status : 0
+        if (status === 400 || status === 409) {
+          await detachSpaceLeases(space)
+          await landlordApi.deleteUnit(id)
+        } else {
+          throw err
+        }
+      }
       const parcelId = space.cadastralParcelId
       spaces.value = spaces.value.filter((s) => s.id !== id)
       tenants.value = tenants.value.filter(

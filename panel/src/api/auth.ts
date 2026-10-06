@@ -1,4 +1,4 @@
-import { apiRequest, apiUpload, clearTokens, getApiBaseUrl, queryString, setTokens } from '@/api/http'
+import { ApiError, apiRequest, apiUpload, clearTokens, getApiBaseUrl, queryString, setTokens } from '@/api/http'
 import { asList, type AuthResponse, type FileOut, type MeResponse, type TenantProfileOut, type UserPublic } from '@/api/types'
 
 export function persistAuth(session: AuthResponse) {
@@ -121,9 +121,21 @@ export async function uploadFileApi(file: Blob, extra: {
   const form = new FormData()
   form.append('file', file, extra.filename)
   if (extra.kind) form.append('kind', extra.kind)
-  if (extra.linked_type) form.append('linked_type', extra.linked_type)
-  if (extra.linked_id != null) form.append('linked_id', String(extra.linked_id))
-  return apiUpload<FileOut>('/files', form)
+  if (extra.linked_type && extra.linked_id != null) {
+    form.append('linked_type', extra.linked_type)
+    form.append('linked_id', String(extra.linked_id))
+  }
+  try {
+    return await apiUpload<FileOut>('/files', form)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 422 && extra.linked_type) {
+      const retry = new FormData()
+      retry.append('file', file, extra.filename)
+      if (extra.kind) retry.append('kind', extra.kind)
+      return apiUpload<FileOut>('/files', retry)
+    }
+    throw err
+  }
 }
 
 export async function listFiles(params: {
