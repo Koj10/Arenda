@@ -1,4 +1,4 @@
-import { apiDownload, apiRequest, queryString } from '@/api/http'
+import { apiDownload, apiRequest, formatApiError, queryString, ApiError } from '@/api/http'
 import { asList } from '@/api/types'
 import type {
   CadastreOut,
@@ -369,6 +369,39 @@ export async function sendLandlordInvoice(invoiceId: number) {
     `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
     { method: 'POST' },
   )
+}
+
+export async function deliverInvoiceToTenant(params: {
+  invoiceId: number
+  tenantId: number
+  isRegistered?: boolean
+  email?: string | null
+}): Promise<{ sent: boolean; invited: boolean; warnings: string[] }> {
+  const warnings: string[] = []
+  let sent = false
+  let invited = false
+  try {
+    await sendLandlordInvoice(params.invoiceId)
+    sent = true
+  } catch (err) {
+    warnings.push(formatApiError(err, 'Счёт создан, письмо со счётом не ушло'))
+  }
+  if (!params.isRegistered) {
+    try {
+      await sendTenantInvitation(params.tenantId)
+      invited = true
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0
+      if (status === 409) {
+        invited = true
+      } else if (!params.email?.trim()) {
+        warnings.push('Арендатор не в PropCount и нет email — приглашение не отправлено')
+      } else {
+        warnings.push(formatApiError(err, 'Приглашение не отправилось'))
+      }
+    }
+  }
+  return { sent, invited, warnings }
 }
 
 export async function listSentInvoiceHistory(objectId?: number) {

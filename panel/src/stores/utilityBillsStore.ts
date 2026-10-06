@@ -21,7 +21,9 @@ import { formatDateRu } from '@/utils/dates'
 import {
   createLandlordInvoice,
   createUtilityBill,
+  deliverInvoiceToTenant,
   getObjectPayers,
+  getTenant,
   getUtilityBill,
   listObjectBills,
   listObjectMeters,
@@ -167,6 +169,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
 
   const statement = ref<UtilityStatement | null>(null)
   const statementError = ref<string | null>(null)
+  const statementInfo = ref<string | null>(null)
   const issuing = ref(false)
 
   function closeAddBillModal() {
@@ -177,6 +180,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
   function closeStatement() {
     statement.value = null
     statementError.value = null
+    statementInfo.value = null
   }
 
   async function calculateStatement(params: {
@@ -186,6 +190,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     items: UtilityUploadItem[]
   }): Promise<boolean> {
     statementError.value = null
+    statementInfo.value = null
     const portfolio = usePortfolioStore()
     const property = portfolio.getPropertyById(params.propertyId)
     if (!property) {
@@ -311,6 +316,39 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     return ids
   }
 
+  async function tenantNotifyProfile(tenantId: number) {
+    const local = usePortfolioStore().getTenantById(tenantId)
+    try {
+      const detail = await getTenant(tenantId)
+      return {
+        isRegistered: Boolean(detail.is_registered),
+        email: detail.email ?? local?.email ?? null,
+      }
+    } catch {
+      return { isRegistered: Boolean(local?.isRegistered), email: local?.email ?? null }
+    }
+  }
+
+  async function deliverCreatedInvoice(tenantId: number, invoiceId: number) {
+    const profile = await tenantNotifyProfile(tenantId)
+    const result = await deliverInvoiceToTenant({
+      invoiceId,
+      tenantId,
+      isRegistered: profile.isRegistered,
+      email: profile.email,
+    })
+    const notes: string[] = []
+    if (result.sent && result.invited) {
+      notes.push('Счёт отправлен на почту. Арендатор не в PropCount — отправлено приглашение.')
+    } else if (result.sent && !profile.isRegistered) {
+      notes.push('Счёт отправлен на почту.')
+    } else if (result.sent) {
+      notes.push('Счёт отправлен арендатору.')
+    }
+    statementError.value = result.warnings.length ? result.warnings.join('. ') : null
+    if (notes.length) statementInfo.value = notes.join(' ')
+  }
+
   async function issueStatementRow(spaceId: number): Promise<boolean> {
     const current = statement.value
     if (!current) return false
@@ -318,9 +356,10 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     if (!row || row.issued || row.destination !== 'tenant' || !row.tenantId || row.total <= 0) return false
     issuing.value = true
     statementError.value = null
+    statementInfo.value = null
     try {
       const fileIds = await uploadStatementFiles(current.items)
-      await createLandlordInvoice({
+      const invoice = await createLandlordInvoice({
         tenant_id: row.tenantId,
         unit_id: row.spaceId,
         kind: 'utility',
@@ -329,6 +368,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         due_date: current.dueDate,
         file_ids: fileIds.length ? fileIds : undefined,
       })
+      await deliverCreatedInvoice(row.tenantId, invoice.id)
       row.issued = true
       void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
         void useAccountingStore().loadAnalytics()
@@ -354,10 +394,13 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     }
     issuing.value = true
     statementError.value = null
+    statementInfo.value = null
     try {
       const fileIds = await uploadStatementFiles(current.items)
+      const notices: string[] = []
+      const problems: string[] = []
       for (const row of pending) {
-        await createLandlordInvoice({
+        const invoice = await createLandlordInvoice({
           tenant_id: row.tenantId!,
           unit_id: row.spaceId,
           kind: 'utility',
@@ -367,7 +410,19 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
           file_ids: fileIds.length ? fileIds : undefined,
         })
         row.issued = true
+        const profile = await tenantNotifyProfile(row.tenantId!)
+        const result = await deliverInvoiceToTenant({
+          invoiceId: invoice.id,
+          tenantId: row.tenantId!,
+          isRegistered: profile.isRegistered,
+          email: profile.email,
+        })
+        if (result.invited) notices.push('отправлены приглашения незарегистрированным')
+        if (result.sent) notices.push('счета ушли на почту')
+        problems.push(...result.warnings)
       }
+      statementError.value = problems.length ? [...new Set(problems)].join('. ') : null
+      statementInfo.value = notices.length ? [...new Set(notices)].join('. ') : null
       void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
         void useAccountingStore().loadAnalytics()
       })
@@ -517,6 +572,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     addPropertyBill,
     statement,
     statementError,
+    statementInfo,
     issuing,
     closeStatement,
     calculateStatement,
