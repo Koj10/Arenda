@@ -313,6 +313,22 @@ export async function listBillObjects(q?: string) {
   return apiRequest<BillObjectOut[]>(`/landlord/bills/objects${queryString({ q })}`)
 }
 
+function moneyAmount(value: number) {
+  return Math.round(Number(value) * 100) / 100
+}
+
+export function invoiceIdOf(raw: unknown): number | null {
+  if (raw == null) return null
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return raw
+  if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw)
+  if (typeof raw !== 'object') return null
+  const row = raw as Record<string, unknown>
+  const nested = row.invoice
+  const id = row.id ?? row.invoice_id ?? (nested && typeof nested === 'object' ? (nested as { id?: unknown }).id : null)
+  const n = Number(id)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 export async function createLandlordInvoice(body: {
   tenant_id: number
   unit_id?: number | null
@@ -322,7 +338,66 @@ export async function createLandlordInvoice(body: {
   due_date: string
   file_ids?: number[]
 }) {
-  return apiRequest<LandlordInvoiceOut>('/landlord/invoices', { method: 'POST', body })
+  const payload = {
+    tenant_id: body.tenant_id,
+    unit_id: body.unit_id ?? undefined,
+    kind: body.kind ?? 'utility',
+    period: body.period,
+    amount: moneyAmount(body.amount),
+    due_date: String(body.due_date).slice(0, 10),
+    file_ids: body.file_ids?.length ? body.file_ids : undefined,
+  }
+  try {
+    return await apiRequest<LandlordInvoiceOut>('/landlord/invoices', { method: 'POST', body: payload })
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 422 && payload.file_ids?.length) {
+      const { file_ids: _files, ...withoutFiles } = payload
+      return apiRequest<LandlordInvoiceOut>('/landlord/invoices', { method: 'POST', body: withoutFiles })
+    }
+    throw err
+  }
+}
+
+export async function findLandlordInvoice(params: {
+  tenant_id: number
+  period: string
+  unit_id?: number | null
+  kind?: 'utility' | 'rent'
+}) {
+  const list = await listLandlordInvoices({ tenant_id: params.tenant_id, period: params.period })
+  const matched = list.filter((row) => {
+    if (params.kind && row.kind && row.kind !== params.kind) return false
+    if (params.unit_id != null && row.unit_id != null && row.unit_id !== params.unit_id) return false
+    return true
+  })
+  return matched.sort((a, b) => b.id - a.id)[0] ?? list.sort((a, b) => b.id - a.id)[0] ?? null
+}
+
+export async function ensureLandlordInvoice(body: {
+  tenant_id: number
+  unit_id?: number | null
+  kind?: 'utility' | 'rent'
+  period: string
+  amount: number
+  due_date: string
+  file_ids?: number[]
+}): Promise<LandlordInvoiceOut> {
+  try {
+    const created = await createLandlordInvoice(body)
+    const id = invoiceIdOf(created)
+    if (id) return { ...created, id }
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : 0
+    if (status && status !== 400 && status !== 409 && status !== 422) throw err
+  }
+  const existing = await findLandlordInvoice({
+    tenant_id: body.tenant_id,
+    period: body.period,
+    unit_id: body.unit_id,
+    kind: body.kind,
+  })
+  if (!existing) throw new Error('Счёт не создался: API не вернул id')
+  return existing
 }
 
 export async function listLandlordInvoices(params: {
@@ -365,10 +440,28 @@ export async function generateLandlordInvoices(period: string) {
 }
 
 export async function sendLandlordInvoice(invoiceId: number) {
-  return apiRequest<Record<string, unknown>>(
-    `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
-    { method: 'POST' },
-  )
+  if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
+    throw new ApiError('Нет id счёта для отправки', 400)
+  }
+  try {
+    return await apiRequest<Record<string, unknown>>(
+      `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
+      { method: 'POST' },
+    )
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : 0
+    if (status !== 404 && status !== 405 && status !== 422) throw err
+    try {
+      return await apiRequest<Record<string, unknown>>('/landlord/invoices/send', {
+        method: 'POST',
+        body: { invoice_id: invoiceId },
+      })
+    } catch {
+      return apiRequest<Record<string, unknown>>(`/landlord/invoices/${invoiceId}/send`, {
+        method: 'POST',
+      })
+    }
+  }
 }
 
 export async function deliverInvoiceToTenant(params: {
@@ -380,12 +473,6 @@ export async function deliverInvoiceToTenant(params: {
   const warnings: string[] = []
   let sent = false
   let invited = false
-  try {
-    await sendLandlordInvoice(params.invoiceId)
-    sent = true
-  } catch (err) {
-    warnings.push(formatApiError(err, 'Счёт создан, письмо со счётом не ушло'))
-  }
   if (!params.isRegistered) {
     try {
       await sendTenantInvitation(params.tenantId)
@@ -400,6 +487,12 @@ export async function deliverInvoiceToTenant(params: {
         warnings.push(formatApiError(err, 'Приглашение не отправилось'))
       }
     }
+  }
+  try {
+    await sendLandlordInvoice(params.invoiceId)
+    sent = true
+  } catch (err) {
+    warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
   }
   return { sent, invited, warnings }
 }

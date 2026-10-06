@@ -195,4 +195,6 @@ export interface UtilityStatement {
   warnings: string[]
   /** Уже загруженные вложения; пустой массив = пробовали, не вышло */
   fileIds?: number[]
+  billIds?: number[]
+  billInvoices?: { id: number; tenantId: number; unitId: number | null }[]
 }

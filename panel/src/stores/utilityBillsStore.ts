@@ -19,12 +19,13 @@ import { getAccessToken, formatApiError, ApiError } from '@/api/http'
 import { dataUrlToBlob, uploadFileApi } from '@/api/auth'
 import { formatDateRu } from '@/utils/dates'
 import {
-  createLandlordInvoice,
-  createUtilityBill,
   deliverInvoiceToTenant,
+  ensureLandlordInvoice,
+  createUtilityBill,
   getObjectPayers,
   getTenant,
   getUtilityBill,
+  invoiceIdOf,
   listObjectBills,
   listObjectMeters,
   updateUnitPayer,
@@ -220,8 +221,31 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       },
     })
     closeAddBillModal()
-    void persistUploadedBills(params.propertyId, params.period, params.dueDate, params.items)
+    await persistUploadedBills(params.propertyId, params.period, params.dueDate, params.items)
     return true
+  }
+
+  function rememberBillInvoices(detail: UtilityBillDetailOut) {
+    const current = statement.value
+    if (!current) return
+    current.billIds = [...new Set([...(current.billIds ?? []), detail.id])]
+    const extra = (detail.invoices ?? []).map((row) => ({
+      id: row.id,
+      tenantId: row.tenant_id,
+      unitId: row.unit_id ?? null,
+    }))
+    current.billInvoices = [...(current.billInvoices ?? []), ...extra]
+  }
+
+  function takeBillInvoiceId(tenantId: number, spaceId: number): number | null {
+    const current = statement.value
+    if (!current?.billInvoices?.length) return null
+    const index = current.billInvoices.findIndex(
+      (row) => row.tenantId === tenantId && (row.unitId == null || row.unitId === spaceId),
+    )
+    if (index < 0) return null
+    const [row] = current.billInvoices.splice(index, 1)
+    return row?.id ?? null
   }
 
   async function persistUploadedBills(
@@ -273,6 +297,14 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         })
         if (!propertyBills.value.some((bill) => bill.id === created.id)) {
           propertyBills.value.unshift(mapPropertyBill(created, created))
+        }
+        rememberBillInvoices(created)
+        if (!(created.invoices ?? []).length) {
+          try {
+            rememberBillInvoices(await getUtilityBill(created.id))
+          } catch {
+            /* id счетов возьмём при выставлении */
+          }
         }
       } catch {
         /* расчёт уже показан, сохранение не блокирует */
@@ -340,13 +372,33 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     const notes: string[] = []
     if (result.sent && result.invited) {
       notes.push('Счёт отправлен на почту. Арендатор не в PropCount — отправлено приглашение.')
-    } else if (result.sent && !profile.isRegistered) {
-      notes.push('Счёт отправлен на почту.')
     } else if (result.sent) {
       notes.push('Счёт отправлен арендатору.')
+    } else {
+      notes.push('Счёт создан, но письмо на оплату не ушло.')
     }
     statementError.value = result.warnings.length ? result.warnings.join('. ') : null
     if (notes.length) statementInfo.value = notes.join(' ')
+    return result
+  }
+
+  async function invoiceIdForRow(row: { tenantId: number; spaceId: number; total: number }, fileIds: number[]) {
+    const current = statement.value
+    if (!current) throw new Error('Нет выписки')
+    const fromBill = takeBillInvoiceId(row.tenantId, row.spaceId)
+    if (fromBill) return fromBill
+    const invoice = await ensureLandlordInvoice({
+      tenant_id: row.tenantId,
+      unit_id: row.spaceId,
+      kind: 'utility',
+      period: current.period,
+      amount: row.total,
+      due_date: current.dueDate,
+      file_ids: fileIds.length ? fileIds : undefined,
+    })
+    const id = invoiceIdOf(invoice)
+    if (!id) throw new Error('API не вернул id счёта')
+    return id
   }
 
   async function issueStatementRow(spaceId: number): Promise<boolean> {
@@ -359,16 +411,8 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
     statementInfo.value = null
     try {
       const fileIds = await uploadStatementFiles(current.items)
-      const invoice = await createLandlordInvoice({
-        tenant_id: row.tenantId,
-        unit_id: row.spaceId,
-        kind: 'utility',
-        period: current.period,
-        amount: row.total,
-        due_date: current.dueDate,
-        file_ids: fileIds.length ? fileIds : undefined,
-      })
-      await deliverCreatedInvoice(row.tenantId, invoice.id)
+      const invoiceId = await invoiceIdForRow({ tenantId: row.tenantId, spaceId: row.spaceId, total: row.total }, fileIds)
+      await deliverCreatedInvoice(row.tenantId, invoiceId)
       row.issued = true
       void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
         void useAccountingStore().loadAnalytics()
@@ -400,25 +444,21 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       const notices: string[] = []
       const problems: string[] = []
       for (const row of pending) {
-        const invoice = await createLandlordInvoice({
-          tenant_id: row.tenantId!,
-          unit_id: row.spaceId,
-          kind: 'utility',
-          period: current.period,
-          amount: row.total,
-          due_date: current.dueDate,
-          file_ids: fileIds.length ? fileIds : undefined,
-        })
-        row.issued = true
+        const invoiceId = await invoiceIdForRow(
+          { tenantId: row.tenantId!, spaceId: row.spaceId, total: row.total },
+          fileIds,
+        )
         const profile = await tenantNotifyProfile(row.tenantId!)
         const result = await deliverInvoiceToTenant({
-          invoiceId: invoice.id,
+          invoiceId,
           tenantId: row.tenantId!,
           isRegistered: profile.isRegistered,
           email: profile.email,
         })
+        row.issued = true
         if (result.invited) notices.push('отправлены приглашения незарегистрированным')
         if (result.sent) notices.push('счета ушли на почту')
+        else problems.push('счёт создан, письмо на оплату не ушло')
         problems.push(...result.warnings)
       }
       statementError.value = problems.length ? [...new Set(problems)].join('. ') : null
