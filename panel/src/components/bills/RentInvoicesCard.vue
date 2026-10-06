@@ -7,6 +7,7 @@ import { num, type FileOut, type LandlordInvoiceOut } from '@/api/types'
 import { INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types/billing'
 import type { InvoiceStatus, PaymentMethod } from '@/types/billing'
 import { currentPeriod } from '@/utils/dates'
+import { usePortfolioStore } from '@/stores/portfolioStore'
 
 type StatusFilter = InvoiceStatus | 'all'
 
@@ -172,9 +173,10 @@ async function send(id: number) {
       const tenant = await getTenant(tenantId)
       isRegistered = Boolean(tenant.is_registered) || isTenantKnownRegistered(tenantId)
       if (isRegistered) markTenantRegistered(tenantId)
-      email = tenant.email ?? null
+      email = usePortfolioStore().getTenantContactEmail(tenantId) || tenant.email || null
     } catch {
       isRegistered = isTenantKnownRegistered(tenantId)
+      email = usePortfolioStore().getTenantContactEmail(tenantId) || null
     }
     const result = await deliverInvoiceToTenant({
       invoiceId: id,

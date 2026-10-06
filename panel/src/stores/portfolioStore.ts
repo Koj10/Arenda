@@ -76,6 +76,10 @@ function contactEmailFor(tenantId: number, apiEmail?: string | null, isRegistere
   return stored || api
 }
 
+function storedContactEmail(tenantId: number) {
+  return readContactEmails()[String(tenantId)]?.trim() || ''
+}
+
 function readStoredCadastreAreas(): Record<string, number> {
   try {
     const raw = sessionStorage.getItem(CADASTRE_AREA_STORAGE)
@@ -259,6 +263,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
 
   function getTenantById(id: number) {
     return tenants.value.find((t) => t.id === id)
+  }
+
+  function getTenantContactEmail(tenantId: number) {
+    const local = getTenantById(tenantId)?.email?.trim() ?? ''
+    return storedContactEmail(tenantId) || local
   }
 
   function getTenantByLeaseId(leaseId: number) {
@@ -1523,6 +1532,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     buildSpaceReportRow,
     getPropertyById,
     getTenantById,
+    getTenantContactEmail,
     getTenantByLeaseId,
     getTenantsByInn,
     getLeasesByInn,

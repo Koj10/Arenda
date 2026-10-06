@@ -264,6 +264,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       list.push(item)
       groups.set(key, list)
     }
+    const ids: number[] = [...(statement.value?.fileIds ?? [])]
     for (const group of groups.values()) {
       const first = group[0]!
       const amounts: Record<string, number> = {}
@@ -278,9 +279,10 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         if (first.document.dataUrl) {
           const uploaded = await uploadFileApi(
             dataUrlToBlob(first.document.dataUrl, first.document.mimeType),
-            { filename: first.document.name, kind: 'supporting' },
+            { filename: first.document.name, kind: 'supporting', linked_type: 'bill' },
           )
           fileId = uploaded.id
+          if (fileId && !ids.includes(fileId)) ids.push(fileId)
         }
       } catch {
         fileId = undefined
@@ -313,6 +315,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
         /* расчёт уже показан, сохранение не блокирует */
       }
     }
+    if (statement.value && ids.length) statement.value.fileIds = ids
     void import('@/stores/accountingStore').then(({ useAccountingStore }) => {
       void useAccountingStore().loadAnalytics()
     })
@@ -320,19 +323,19 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
 
   async function uploadStatementFiles(items: UtilityUploadItem[]): Promise<number[]> {
     const current = statement.value
-    if (current?.fileIds) return current.fileIds
+    if (current?.fileIds?.length) return current.fileIds
 
     const ids: number[] = []
     const seen = new Set<string>()
     let skippedLarge = false
     for (const item of items) {
-      const key = `${item.document.name}:${item.document.size}:${item.document.dataUrl.slice(0, 40)}`
+      const key = `${item.document.name}:${item.document.size}`
       if (seen.has(key) || !item.document.dataUrl) continue
       seen.add(key)
       try {
         const uploaded = await uploadFileApi(
           dataUrlToBlob(item.document.dataUrl, item.document.mimeType),
-          { filename: item.document.name, kind: 'supporting' },
+          { filename: item.document.name, kind: 'supporting', linked_type: 'bill' },
         )
         ids.push(uploaded.id)
       } catch (err) {
@@ -353,6 +356,7 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
 
   async function tenantNotifyProfile(tenantId: number) {
     const local = usePortfolioStore().getTenantById(tenantId)
+    const cardEmail = usePortfolioStore().getTenantContactEmail(tenantId)
     try {
       const detail = await getTenant(tenantId)
       const isRegistered =
@@ -360,45 +364,23 @@ export const useUtilityBillsStore = defineStore('utilityBills', () => {
       if (isRegistered) markTenantRegistered(tenantId)
       return {
         isRegistered,
-        email: local?.email ?? detail.email ?? null,
+        email: cardEmail || local?.email || detail.email || null,
       }
     } catch {
       return {
         isRegistered: Boolean(local?.isRegistered) || isTenantKnownRegistered(tenantId),
-        email: local?.email ?? null,
+        email: cardEmail || local?.email || null,
       }
     }
   }
 
-  async function attachStatementDocuments(invoiceId: number, items: UtilityUploadItem[], existingIds: number[]) {
-    const ids = [...existingIds]
-    const seen = new Set<string>()
-    for (const item of items) {
-      const key = `${item.document.name}:${item.document.size}`
-      if (seen.has(key) || !item.document.dataUrl) continue
-      seen.add(key)
-      try {
-        const uploaded = await uploadFileApi(
-          dataUrlToBlob(item.document.dataUrl, item.document.mimeType),
-          {
-            filename: item.document.name,
-            kind: 'supporting',
-            linked_type: 'invoice',
-            linked_id: invoiceId,
-          },
-        )
-        ids.push(uploaded.id)
-      } catch {
-        /* 413 или ошибка загрузки — счёт всё равно выставляем */
-      }
-    }
-    const unique = [...new Set(ids)]
-    if (unique.length) {
-      try {
-        await attachInvoiceFiles(invoiceId, unique)
-      } catch {
-        /* send пойдёт без вложения, если PATCH не принял */
-      }
+  async function attachStatementDocuments(invoiceId: number, _items: UtilityUploadItem[], existingIds: number[]) {
+    const unique = [...new Set(existingIds.filter((id) => Number.isFinite(id) && id > 0))]
+    if (!unique.length) return unique
+    try {
+      await attachInvoiceFiles(invoiceId, unique)
+    } catch {
+      /* send пойдёт без новой копии файла */
     }
     return unique
   }

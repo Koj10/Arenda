@@ -482,14 +482,28 @@ export async function attachInvoiceFiles(invoiceId: number, fileIds: number[]) {
   await updateLandlordInvoice(invoiceId, { file_ids: ids })
 }
 
-export async function sendLandlordInvoice(invoiceId: number) {
+export async function sendLandlordInvoice(invoiceId: number, email?: string | null) {
   if (!Number.isFinite(invoiceId) || invoiceId <= 0) {
     throw new ApiError('Нет id счёта для отправки', 400)
   }
-  return apiRequest<Record<string, unknown>>(
-    `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
-    { method: 'POST' },
-  )
+  const to = email?.trim() || undefined
+  const body: Record<string, unknown> = { invoice_id: invoiceId }
+  if (to) body.email = to
+  try {
+    return await apiRequest<Record<string, unknown>>(
+      `/landlord/invoices/send${queryString({ invoice_id: invoiceId, email: to })}`,
+      { method: 'POST', body },
+    )
+  } catch (err) {
+    const status = err instanceof ApiError ? err.status : 0
+    if (status === 422) {
+      return apiRequest<Record<string, unknown>>(
+        `/landlord/invoices/send${queryString({ invoice_id: invoiceId })}`,
+        { method: 'POST' },
+      )
+    }
+    throw err
+  }
 }
 
 export async function deliverInvoiceToTenant(params: {
@@ -502,14 +516,24 @@ export async function deliverInvoiceToTenant(params: {
   let sent = false
   const registered = Boolean(params.isRegistered) || isTenantKnownRegistered(params.tenantId)
   if (registered) markTenantRegistered(params.tenantId)
+  const cardEmail = params.email?.trim() || null
+  if (cardEmail) {
+    try {
+      await updateTenant(params.tenantId, { email: cardEmail })
+    } catch {
+      /* отправим счёт даже если почту карточки не удалось перезаписать */
+    }
+  }
   try {
-    await sendLandlordInvoice(params.invoiceId)
+    await sendLandlordInvoice(params.invoiceId, cardEmail)
     sent = true
   } catch (err) {
     const status = err instanceof ApiError ? err.status : 0
     if (status === 500) {
       sent = true
-      warnings.push('Письмо со счётом ушло, но вложение могло не приложиться: API /invoices/send вернул 500.')
+      warnings.push(
+        'Счёт в приложении создан. Письмо с документом на почту из карточки не ушло: API /invoices/send вернул 500.',
+      )
     } else {
       warnings.push(formatApiError(err, 'Счёт создан, но письмо со счётом не ушло'))
     }
