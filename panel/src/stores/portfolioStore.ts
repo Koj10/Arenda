@@ -516,13 +516,16 @@ export const usePortfolioStore = defineStore('portfolio', () => {
 
   async function removeDocument(id: number) {
     const existing = documents.value.find((d) => d.id === id)
+    lastError.value = null
     try {
       await deleteFileApi(id)
-    } catch {
-      /* API может не отдавать DELETE — убираем из списка */
+    } catch (err) {
+      lastError.value = formatApiError(err, 'Не удалось удалить файл')
+      return false
     }
     if (existing?.entityType === 'tenant') forgetStoredLeaseFile(existing.entityId, id)
     documents.value = documents.value.filter((d) => d.id !== id)
+    return true
   }
 
   function formatMoney(value: number) {

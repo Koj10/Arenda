@@ -21,14 +21,16 @@ export async function registerApi(data: {
   password: string
   password_confirm: string
   terms: boolean
-}): Promise<AuthResponse> {
-  const session = await apiRequest<AuthResponse>('/auth/register', {
+}): Promise<AuthResponse | { detail?: string }> {
+  const raw = await apiRequest<AuthResponse | { detail?: string }>('/auth/register', {
     method: 'POST',
     skipAuth: true,
     body: data,
   })
-  persistAuth(session)
-  return session
+  if (raw && typeof raw === 'object' && 'access_token' in raw && raw.access_token) {
+    persistAuth(raw)
+  }
+  return raw
 }
 
 export async function logoutApi() {

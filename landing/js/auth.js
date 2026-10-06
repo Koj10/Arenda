@@ -231,26 +231,16 @@ function isUnverified(email) {
   return sessionStorage.getItem(PENDING_VERIFY_KEY) === value || unverifiedEmails().includes(value)
 }
 
-function verificationUnavailableMessage() {
-  return 'Сервер создаёт аккаунт сразу и не шлёт код: нет /auth/verify-email. Пока эту ручку не включат, подтвердить почту нельзя.'
+function isVerifyCode(value) {
+  return /^\d{6}$/.test(String(value || '').trim())
 }
 
 async function confirmEmail(email, code) {
-  try {
-    return await apiPost('/auth/verify-email', { email: normalizeEmail(email), code })
-  } catch (err) {
-    if (err.status === 404) throw new Error(verificationUnavailableMessage())
-    throw err
-  }
+  return apiPost('/auth/verify-email', { email: normalizeEmail(email), code: String(code).trim() })
 }
 
 async function resendVerification(email) {
-  try {
-    await apiPost('/auth/resend-verification', { email: normalizeEmail(email) })
-  } catch (err) {
-    if (err.status === 404) throw new Error(verificationUnavailableMessage())
-    throw err
-  }
+  await apiPost('/auth/resend-verification', { email: normalizeEmail(email) })
 }
 
 function bindCodeModal(root) {
@@ -306,7 +296,7 @@ function ensureCodeModal() {
                 placeholder="Код из письма"
                 inputmode="numeric"
                 autocomplete="one-time-code"
-                maxlength="64"
+                maxlength="6"
               />
             </div>
             <p class="field-error"></p>
@@ -510,8 +500,8 @@ async function onCodeModalSubmit(e) {
   }
 
   let valid = true
-  if (!isReset && code.length < 4) {
-    showFieldError(codeInput, 'Введите код из письма')
+  if (!isReset && !isVerifyCode(code)) {
+    showFieldError(codeInput, 'Введите 6-значный код из письма')
     valid = false
   }
   if (isReset && codeModalState.step === 'password') {
@@ -617,8 +607,8 @@ function initLoginForm() {
 
     const btn = form.querySelector('[type="submit"]')
     setButtonLoading(btn, true)
+    const emailValue = email.value.trim()
     try {
-      const emailValue = email.value.trim()
       const session = await apiPost('/auth/login', {
         email: emailValue,
         password: password.value,
@@ -634,6 +624,16 @@ function initLoginForm() {
       }
       afterAuth(session, 'login')
     } catch (err) {
+      if (err.status === 403) {
+        markUnverified(emailValue)
+        openCodeModal({
+          mode: 'register',
+          email: emailValue,
+          pendingPassword: password.value,
+        })
+        setButtonLoading(btn, false)
+        return
+      }
       showFormError(form, err.message || 'Не удалось войти')
       setButtonLoading(btn, false)
     }
@@ -776,8 +776,8 @@ function initVerifyEmailForm() {
       showFieldError(emailField, 'Введите корректный email')
       return
     }
-    if (code.length < 4) {
-      showFieldError(codeField, 'Введите код из письма')
+    if (!isVerifyCode(code)) {
+      showFieldError(codeField, 'Введите 6-значный код из письма')
       return
     }
     const btn = form.querySelector('[type="submit"]')
