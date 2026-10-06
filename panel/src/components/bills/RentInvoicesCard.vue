@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Check, ChevronDown, ChevronUp, FileText } from '@lucide/vue'
-import { confirmInvoicePayment, generateLandlordInvoices, getLandlordInvoice, listLandlordInvoices, sendLandlordInvoice } from '@/api/landlord'
+import { confirmInvoicePayment, deliverInvoiceToTenant, generateLandlordInvoices, getLandlordInvoice, getTenant, listLandlordInvoices } from '@/api/landlord'
 import { downloadFileBlob, formatApiError } from '@/api/http'
 import { num, type FileOut, type LandlordInvoiceOut } from '@/api/types'
 import { INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types/billing'
@@ -156,7 +156,28 @@ async function send(id: number) {
   sendingId.value = id
   error.value = null
   try {
-    await sendLandlordInvoice(id)
+    const invoice = invoices.value.find((row) => row.id === id)
+    const tenantId = invoice?.tenant_id
+    if (!tenantId) {
+      error.value = 'У счёта нет арендатора'
+      return
+    }
+    let isRegistered = false
+    let email: string | null = null
+    try {
+      const tenant = await getTenant(tenantId)
+      isRegistered = Boolean(tenant.is_registered)
+      email = tenant.email ?? null
+    } catch {
+      isRegistered = false
+    }
+    const result = await deliverInvoiceToTenant({
+      invoiceId: id,
+      tenantId,
+      isRegistered,
+      email,
+    })
+    if (result.warnings.length) error.value = result.warnings.join('. ')
     await load()
   } catch (err) {
     error.value = formatApiError(err, 'Не удалось отправить счёт')

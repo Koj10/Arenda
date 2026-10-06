@@ -53,6 +53,7 @@ function close() {
         <p v-for="(warn, i) in statement.warnings" :key="i">{{ warn }}</p>
       </div>
       <p v-if="utilityBills.statementError" class="text-sm text-rose-400">{{ utilityBills.statementError }}</p>
+      <p v-if="utilityBills.statementInfo" class="text-sm text-emerald-brand">{{ utilityBills.statementInfo }}</p>
 
       <div class="overflow-x-auto -mx-1 px-1">
         <table class="w-full text-xs min-w-[720px]">
