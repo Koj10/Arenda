@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { FileUp, Loader2, Sparkles, Trash2 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 import { useUtilityBillsStore } from '@/stores/utilityBillsStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import {
@@ -27,6 +28,12 @@ const parsing = ref(false)
 const errors = ref<Record<string, string>>({})
 const inputRef = ref<HTMLInputElement | null>(null)
 
+const { snapshot, requestClose } = useUnsavedClose(() => ({
+  period: period.value,
+  dueDate: dueDate.value,
+  items: items.value,
+}))
+
 const inputClass = 'panel-input'
 
 const property = computed(() =>
@@ -45,11 +52,14 @@ watch(
     dueDate.value = todayISODate()
     items.value = []
     errors.value = {}
+    snapshot()
   },
 )
 
 function resetAndClose() {
-  utilityBills.closeAddBillModal()
+  requestClose(() => {
+    utilityBills.closeAddBillModal()
+  })
 }
 
 function newId() {

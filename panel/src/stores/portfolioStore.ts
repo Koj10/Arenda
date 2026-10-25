@@ -21,6 +21,7 @@ import type {
   CadastralParcelFormData,
   SplitCadastralFormData,
   SpaceUpdateData,
+  TenantContact,
   TenantUpdateData,
 } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS } from '@/types/portfolio'
@@ -53,6 +54,8 @@ function emailOrNull(value?: string | null) {
 }
 
 const TENANT_CONTACT_EMAILS = 'propcount.tenantContactEmails'
+const TENANT_CONTACTS = 'propcount.tenantContacts'
+const LEASE_AUTO_RENEWAL = 'propcount.leaseAutoRenewal'
 
 function readContactEmails(): Record<string, string> {
   try {
@@ -87,6 +90,105 @@ function contactEmailFor(tenantId: number, apiEmail?: string | null, isRegistere
 
 function storedContactEmail(tenantId: number) {
   return readContactEmails()[String(tenantId)]?.trim() || ''
+}
+
+function normalizeTenantContacts(list?: TenantContact[] | null): TenantContact[] {
+  if (!Array.isArray(list)) return []
+  return list
+    .map((row) => ({
+      name: String(row?.name ?? '').trim(),
+      phone: String(row?.phone ?? '').trim(),
+    }))
+    .filter((row) => row.name && row.phone)
+}
+
+function readStoredContacts(): Record<string, TenantContact[]> {
+  try {
+    const raw = localStorage.getItem(TENANT_CONTACTS)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, TenantContact[]>
+    if (!parsed || typeof parsed !== 'object') return {}
+    const result: Record<string, TenantContact[]> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      result[key] = normalizeTenantContacts(value)
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+function rememberTenantContacts(tenantId: number, contacts?: TenantContact[] | null) {
+  if (!tenantId) return
+  const stored = readStoredContacts()
+  const normalized = normalizeTenantContacts(contacts)
+  if (normalized.length) stored[String(tenantId)] = normalized
+  else delete stored[String(tenantId)]
+  try {
+    localStorage.setItem(TENANT_CONTACTS, JSON.stringify(stored))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function storedTenantContacts(tenantId: number): TenantContact[] {
+  return readStoredContacts()[String(tenantId)] ?? []
+}
+
+/**
+ * Contacts из ответа API.
+ * Если поля нет (старый бэкенд) или API вернул [] при загрузке — берём локальный кэш
+ * (одноразовая миграция до первого сохранения в БД).
+ * После явного сохранения передавайте `trustEmpty: true`, чтобы пустой список не
+ * откатывался к кэшу.
+ */
+function contactsFromApi(
+  tenantId: number,
+  apiContacts?: TenantContact[] | null,
+  opts?: { trustEmpty?: boolean },
+): TenantContact[] {
+  if (Array.isArray(apiContacts)) {
+    const fromApi = normalizeTenantContacts(apiContacts)
+    if (fromApi.length || opts?.trustEmpty) {
+      rememberTenantContacts(tenantId, fromApi)
+      return fromApi
+    }
+    const local = storedTenantContacts(tenantId)
+    return local.length ? local : fromApi
+  }
+  return storedTenantContacts(tenantId)
+}
+
+function readLeaseAutoRenewal(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(LEASE_AUTO_RENEWAL)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, boolean>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function rememberLeaseAutoRenewal(leaseId: number, value: boolean) {
+  if (!leaseId) return
+  const stored = readLeaseAutoRenewal()
+  if (value) stored[String(leaseId)] = true
+  else delete stored[String(leaseId)]
+  try {
+    localStorage.setItem(LEASE_AUTO_RENEWAL, JSON.stringify(stored))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/** API → флаг; если поля ещё нет — локальный кэш. */
+function autoRenewalFromApi(leaseId: number, apiValue?: boolean | null): boolean {
+  if (typeof apiValue === 'boolean') {
+    rememberLeaseAutoRenewal(leaseId, apiValue)
+    return apiValue
+  }
+  return Boolean(readLeaseAutoRenewal()[String(leaseId)])
 }
 
 function readStoredCadastreAreas(): Record<string, number> {
@@ -593,11 +695,22 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     return `${new Intl.NumberFormat('ru-RU').format(area)} м²`
   }
 
-  function getTenantStatus(contract: string): TenantStatus {
+  function getTenantStatus(contract: string, autoRenewal = false): TenantStatus {
     const days = daysUntil(contract)
-    if (days < 0) return 'overdue'
+    // Просрочен + автопролонгация → бессрочный договор, статус остаётся активным
+    if (days < 0) return autoRenewal ? 'active' : 'overdue'
     if (days <= 60) return 'expiring'
     return 'active'
+  }
+
+  /** Договор бессрочный: автопролонгация и срок уже прошёл */
+  function isContractIndefinite(contract: string, autoRenewal: boolean) {
+    return Boolean(autoRenewal && daysUntil(contract) < 0)
+  }
+
+  function formatContractEnd(contract: string, autoRenewal = false) {
+    if (isContractIndefinite(contract, autoRenewal)) return 'Бессрочный'
+    return formatDateRu(contract)
   }
 
   function applyObjectDetail(detail: ObjectDetailOut) {
@@ -825,6 +938,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           const detail = await landlordApi.getTenant(row.id)
           const isRegistered = Boolean(detail.is_registered ?? row.is_registered)
           const email = contactEmailFor(row.id, detail.email ?? row.email, isRegistered)
+          const contacts = contactsFromApi(row.id, detail.contacts ?? row.contacts)
           const leases = (detail.leases ?? []).filter((lease) => {
             if (!isActiveLease(lease)) return false
             if (lease.unit_id && !getSpaceById(lease.unit_id)) return false
@@ -833,16 +947,19 @@ export const usePortfolioStore = defineStore('portfolio', () => {
           if (!leases.length) continue
           for (const lease of leases) {
             const space = lease.unit_id ? getSpaceById(lease.unit_id) : null
+            const autoRenewal = autoRenewalFromApi(lease.id, lease.auto_renewal)
             tenants.value.push({
               id: row.id,
               company: row.name,
               inn: row.inn,
               email,
+              contacts: contacts.map((c) => ({ ...c })),
               propertyId: space?.propertyId ?? lease.object_id ?? 0,
               space: space?.name ?? lease.unit_number ?? '',
               rent: num(lease.rent_monthly),
               contract: lease.end_date,
-              status: getTenantStatus(lease.end_date),
+              autoRenewal,
+              status: getTenantStatus(lease.end_date, autoRenewal),
               leaseId: lease.id,
               isRegistered,
             })
@@ -1108,11 +1225,13 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     try {
       const inn = data.inn.trim()
       let tenant
+      const contactsPayload = normalizeTenantContacts(data.contacts)
       try {
         tenant = await landlordApi.createTenant({
           name: data.company.trim(),
           inn,
           email: emailOrNull(data.email),
+          contacts: contactsPayload,
         })
       } catch (err) {
         if (!(err instanceof ApiError) || err.status !== 409) throw err
@@ -1120,11 +1239,22 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         const existingTenant = list.find((row) => row.inn === inn)
         if (!existingTenant) throw err
         tenant = existingTenant
+        const patch: { email?: string | null; contacts?: TenantContact[] } = {}
         if (emailOrNull(data.email) && emailOrNull(data.email) !== (existingTenant.email ?? '').trim()) {
-          tenant = await landlordApi.updateTenant(existingTenant.id, { email: emailOrNull(data.email) })
+          patch.email = emailOrNull(data.email)
+        }
+        if (contactsPayload.length) patch.contacts = contactsPayload
+        if (Object.keys(patch).length) {
+          tenant = await landlordApi.updateTenant(existingTenant.id, patch)
         }
       }
       rememberContactEmail(tenant.id, data.email)
+      rememberTenantContacts(
+        tenant.id,
+        Array.isArray(tenant.contacts) && tenant.contacts.length
+          ? tenant.contacts
+          : contactsPayload,
+      )
 
       const uploadedFiles = await uploadPending(data.documents, 'contract', 'lease')
       const today = todayISODate()
@@ -1135,14 +1265,30 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         return false
       }
 
-      const lease = await landlordApi.createLease({
+      const leaseBody = {
         tenant_id: tenant.id,
         unit_id: space.id,
         rent_monthly: rent,
         start_date: endDate < today ? endDate : today,
         end_date: endDate,
+        auto_renewal: Boolean(data.autoRenewal),
         file_ids: uploadedFiles.length ? uploadedFiles.map((file) => file.id) : undefined,
-      })
+      }
+      let lease
+      try {
+        lease = await landlordApi.createLease(leaseBody)
+      } catch (err) {
+        // Старый API без auto_renewal — создаём без поля
+        if (!(err instanceof ApiError) || (err.status !== 422 && err.status !== 400)) throw err
+        const { auto_renewal: _ignored, ...legacyBody } = leaseBody
+        lease = await landlordApi.createLease(legacyBody)
+      }
+      if (lease?.id) {
+        rememberLeaseAutoRenewal(
+          lease.id,
+          typeof lease.auto_renewal === 'boolean' ? lease.auto_renewal : Boolean(data.autoRenewal),
+        )
+      }
       if (lease?.id && uploadedFiles.length) rememberLeaseFiles(lease.id, uploadedFiles)
       await loadFromApi()
     tenantModalOpen.value = false
@@ -1501,32 +1647,79 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (!tenant) return false
     lastError.value = null
     try {
+      const contactsPayload = data.contacts !== undefined
+        ? normalizeTenantContacts(data.contacts)
+        : undefined
       const updated = await landlordApi.updateTenant(tenant.id, {
         name: data.company.trim(),
         inn: data.inn.trim(),
         email: emailOrNull(data.email),
+        ...(contactsPayload !== undefined ? { contacts: contactsPayload } : {}),
       })
+      const autoRenewal = data.autoRenewal !== undefined ? Boolean(data.autoRenewal) : tenant.autoRenewal
       if (tenant.leaseId) {
-        await landlordApi.updateLease(tenant.leaseId, {
+        const leasePatch = {
           rent_monthly: data.rent,
           end_date: data.contract,
-        })
+          auto_renewal: autoRenewal,
+        }
+        try {
+          await landlordApi.updateLease(tenant.leaseId, leasePatch)
+        } catch (err) {
+          if (!(err instanceof ApiError) || (err.status !== 422 && err.status !== 400)) throw err
+          const { auto_renewal: _ignored, ...legacyPatch } = leasePatch
+          await landlordApi.updateLease(tenant.leaseId, legacyPatch)
+        }
+        rememberLeaseAutoRenewal(tenant.leaseId, autoRenewal)
       }
       const email = (data.email ?? updated.email ?? '').trim()
       rememberContactEmail(tenant.id, email)
+      const contacts = contactsPayload !== undefined
+        ? contactsFromApi(tenant.id, updated.contacts ?? contactsPayload, { trustEmpty: true })
+        : contactsFromApi(tenant.id, updated.contacts)
+      rememberTenantContacts(tenant.id, contacts)
       for (const item of tenants.value) {
         if (item.id !== tenant.id) continue
         item.company = data.company.trim()
         item.inn = data.inn.trim()
         item.email = email
+        item.contacts = contacts.map((row) => ({ ...row }))
+        if (item.leaseId === tenant.leaseId) {
+          item.autoRenewal = autoRenewal
+          item.rent = data.rent
+          item.contract = data.contract
+          item.status = getTenantStatus(data.contract, autoRenewal)
+        }
       }
-    tenant.rent = data.rent
-    tenant.contract = data.contract
-    tenant.status = getTenantStatus(data.contract)
     syncPropertyStats(tenant.propertyId)
     return true
     } catch (err) {
       lastError.value = formatApiError(err, 'Не удалось сохранить арендатора')
+      return false
+    }
+  }
+
+  async function setLeaseAutoRenewal(leaseId: number, autoRenewal: boolean) {
+    const tenant = getTenantByLeaseId(leaseId)
+    if (!tenant) return false
+    lastError.value = null
+    try {
+      await landlordApi.updateLease(leaseId, { auto_renewal: autoRenewal })
+      rememberLeaseAutoRenewal(leaseId, autoRenewal)
+      tenant.autoRenewal = autoRenewal
+      tenant.status = getTenantStatus(tenant.contract, autoRenewal)
+      syncPropertyStats(tenant.propertyId)
+      return true
+    } catch (err) {
+      // Старый API без поля — сохраняем локально, UI всё равно работает
+      if (err instanceof ApiError && (err.status === 422 || err.status === 400)) {
+        rememberLeaseAutoRenewal(leaseId, autoRenewal)
+        tenant.autoRenewal = autoRenewal
+        tenant.status = getTenantStatus(tenant.contract, autoRenewal)
+        syncPropertyStats(tenant.propertyId)
+        return true
+      }
+      lastError.value = formatApiError(err, 'Не удалось сохранить пролонгацию')
       return false
     }
   }
@@ -1700,6 +1893,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     removeDocument,
     formatMoney,
     formatDate,
+    formatContractEnd,
+    isContractIndefinite,
     formatArea,
     reset,
     addProperty,
@@ -1709,6 +1904,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     addTenant,
     updateSpace,
     updateTenant,
+    setLeaseAutoRenewal,
     terminateLease,
     addCadastralParcel,
     updateCadastralParcel,

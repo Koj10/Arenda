@@ -10,7 +10,7 @@ import ThemePicker from '@/components/ui/ThemePicker.vue'
 import BankRequisitesCard from '@/components/ui/BankRequisitesCard.vue'
 import { useBankRequisitesStore } from '@/stores/bankRequisitesStore'
 import { useTenantPanelStore } from '@/stores/tenantPanelStore'
-import { Mail, Bell, Shield, Sparkles, Landmark } from '@lucide/vue'
+import { Mail, Bell, Shield, Sparkles, Landmark, Percent } from '@lucide/vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -22,17 +22,21 @@ const Layout = computed(() => (auth.isTenant ? TenantLayout : AppLayout))
 
 const name = ref(auth.user?.name ?? '')
 const inn = ref(auth.user?.inn ?? '')
+const taxRate = ref<number | null>(auth.user?.taxRate ?? null)
 const profileError = ref('')
 const emailNotify = ref(true)
 const pushNotify = ref(true)
 const saved = ref(false)
 const requisitesSaved = ref(false)
 
+const TAX_PRESETS = [0, 6, 15, 20, 22] as const
+
 watch(
-  () => [auth.user?.name, auth.user?.inn] as const,
-  ([nextName, nextInn]) => {
+  () => [auth.user?.name, auth.user?.inn, auth.user?.taxRate] as const,
+  ([nextName, nextInn, nextTax]) => {
     if (nextName) name.value = nextName
     if (nextInn) inn.value = nextInn
+    if (nextTax != null) taxRate.value = nextTax
   },
 )
 
@@ -41,6 +45,9 @@ async function saveProfile() {
   const result = await auth.saveProfile({
     name: name.value.trim() || auth.user?.name,
     inn: inn.value.trim(),
+    ...(auth.isLandlord
+      ? { taxRate: taxRate.value == null ? undefined : Number(taxRate.value) }
+      : {}),
   })
   if (!result.ok) {
     profileError.value = result.error
@@ -111,6 +118,43 @@ onMounted(() => {
               Сохраняется в профиле аккаунта и подтягивается после входа.
             </span>
           </label>
+          <div v-if="!auth.isTenant" class="block">
+            <span class="text-xs text-slate-500 mb-1.5 flex items-center gap-1.5">
+              <Percent class="w-3.5 h-3.5" />
+              Налоговая ставка
+            </span>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <button
+                v-for="preset in TAX_PRESETS"
+                :key="preset"
+                type="button"
+                class="px-2.5 py-1 rounded-lg text-xs border transition-colors"
+                :class="
+                  taxRate === preset
+                    ? 'border-emerald-brand bg-emerald-brand/15 text-emerald-brand'
+                    : 'border-border text-slate-400 hover:border-emerald-brand/40'
+                "
+                @click="taxRate = preset"
+              >
+                {{ preset }}%
+              </button>
+            </div>
+            <div class="relative max-w-[12rem]">
+              <input
+                :value="taxRate ?? ''"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                class="panel-input font-mono pr-10"
+                @input="taxRate = ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value)"
+              />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">%</span>
+            </div>
+            <span class="text-[11px] text-slate-600 mt-1.5 block">
+              Из оплаченной аренды: налог = сумма × ставка. Например 90&nbsp;000 ₽ при 22% → 19&nbsp;800 ₽.
+            </span>
+          </div>
           <p v-if="profileError" class="text-xs text-red-400">{{ profileError }}</p>
           <div class="flex items-center gap-3">
             <button type="button" class="panel-btn-primary" @click="saveProfile">Сохранить</button>

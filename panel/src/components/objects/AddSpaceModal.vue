@@ -4,11 +4,13 @@ import { usePortfolioStore } from '@/stores/portfolioStore'
 import { createEmptySpaceFormData } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
 import { usePlan } from '@/composables/usePlan'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 
 const store = usePortfolioStore()
 const { requireCanAddSpace } = usePlan()
 
 const form = ref(createEmptySpaceFormData())
+const { snapshot, requestClose } = useUnsavedClose(() => form.value)
 const errors = ref<Record<string, string>>({})
 const inputClass = 'panel-input'
 
@@ -27,6 +29,7 @@ const allocatedArea = computed(() =>
 function resetForm() {
   form.value = createEmptySpaceFormData()
   errors.value = {}
+  snapshot()
 }
 
 function validate() {
@@ -58,8 +61,10 @@ async function submit() {
 }
 
 function onClose() {
-  store.closeSpaceModal()
-  resetForm()
+  requestClose(() => {
+    store.closeSpaceModal()
+    resetForm()
+  })
 }
 </script>
 

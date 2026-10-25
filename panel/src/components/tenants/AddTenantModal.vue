@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import { Plus, Trash2 } from '@lucide/vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import type { TenantFormData } from '@/types/portfolio'
 import { TENANT_DOCUMENT_LABEL } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 import { suggestTenants } from '@/api/landlord'
 import type { TenantSuggestItem } from '@/api/types'
 
@@ -14,13 +16,16 @@ const form = ref<TenantFormData>({
   company: '',
   inn: '',
   email: '',
+  contacts: [],
   propertyId: null,
   space: '',
   rent: 0,
   contract: '',
+  autoRenewal: false,
   documents: [],
 })
 
+const { snapshot, requestClose } = useUnsavedClose(() => form.value)
 const errors = ref<Partial<Record<string, string>>>({})
 const suggestions = ref<TenantSuggestItem[]>([])
 let suggestTimer: ReturnType<typeof setTimeout> | null = null
@@ -35,7 +40,18 @@ const spaceOptions = computed(() => {
 })
 
 function resetForm() {
-  form.value = { company: '', inn: '', email: '', propertyId: null, space: '', rent: 0, contract: '', documents: [] }
+  form.value = {
+    company: '',
+    inn: '',
+    email: '',
+    contacts: [],
+    propertyId: null,
+    space: '',
+    rent: 0,
+    contract: '',
+    autoRenewal: false,
+    documents: [],
+  }
   errors.value = {}
 }
 
@@ -83,10 +99,11 @@ watch(
 watch(
   () => store.tenantModalOpen,
   (open) => {
-    if (open) {
-      resetForm()
-      applyPrefill()
-    }
+    if (!open) return
+    resetForm()
+    applyPrefill()
+    // После автовыбора помещения/аренды из watchers
+    void nextTick(() => snapshot())
   },
 )
 
@@ -132,9 +149,19 @@ function applySuggestion(item: TenantSuggestItem) {
   suggestions.value = []
 }
 
+function addContact() {
+  form.value.contacts.push({ name: '', phone: '' })
+}
+
+function removeContact(index: number) {
+  form.value.contacts.splice(index, 1)
+}
+
 function onClose() {
-  store.closeTenantModal()
-  resetForm()
+  requestClose(() => {
+    store.closeTenantModal()
+    resetForm()
+  })
 }
 </script>
 
@@ -179,6 +206,44 @@ function onClose() {
         <p v-else class="text-xs text-slate-500 mt-1">
           Если арендатор не зарегистрирован в приложении, счета на аренду и коммуналку будут уходить на этот адрес.
         </p>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide">Контактные номера</label>
+          <button type="button" class="text-xs text-emerald-brand hover:text-emerald-brand/80" @click="addContact">
+            <span class="inline-flex items-center gap-1"><Plus class="w-3.5 h-3.5" /> Добавить</span>
+          </button>
+        </div>
+        <div v-if="form.contacts.length" class="space-y-2">
+          <div
+            v-for="(contact, index) in form.contacts"
+            :key="index"
+            class="grid grid-cols-[1fr_1fr_auto] gap-2"
+          >
+            <input
+              v-model="contact.name"
+              type="text"
+              placeholder="Должность / имя"
+              class="panel-input"
+            />
+            <input
+              v-model="contact.phone"
+              type="tel"
+              placeholder="+7 900 123-45-67"
+              class="panel-input font-mono"
+            />
+            <button
+              type="button"
+              class="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-card-hover"
+              aria-label="Удалить контакт"
+              @click="removeContact(index)"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <p v-else class="text-xs text-slate-500">Можно указать несколько номеров с наименованием контакта.</p>
       </div>
 
       <div>
@@ -237,6 +302,20 @@ function onClose() {
         <input v-model="form.contract" type="date" class="panel-input" :class="{ 'border-red-500': errors.contract }" />
         <p v-if="errors.contract" class="text-xs text-red-400 mt-1">{{ errors.contract }}</p>
       </div>
+
+      <label class="flex items-start gap-3 rounded-xl border border-border bg-panel/30 px-3 py-3 cursor-pointer">
+        <input
+          v-model="form.autoRenewal"
+          type="checkbox"
+          class="mt-0.5 rounded border-border bg-panel text-emerald-brand focus:ring-emerald-brand/40"
+        />
+        <span class="min-w-0">
+          <span class="block text-sm text-slate-200">Автоматическая пролонгация</span>
+          <span class="block text-xs text-slate-500 mt-0.5">
+            После истечения срока договор станет бессрочным, статус останется «Активен».
+          </span>
+        </span>
+      </label>
 
       <FileAttachments v-model="form.documents" entity-type="tenant" category="lease" :label="TENANT_DOCUMENT_LABEL" compact />
     </div>

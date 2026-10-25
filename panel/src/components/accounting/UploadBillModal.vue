@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { FileUp, Loader2, Sparkles, User, Building2 } from '@lucide/vue'
 import Modal from '@/components/ui/Modal.vue'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 import { useBillingStore } from '@/stores/billingStore'
 import { useAccountingStore } from '@/stores/accountingStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
@@ -52,6 +53,18 @@ watch(tenantsByInn, (list) => {
   else if (!list.some((t) => t.id === tenantId.value)) tenantId.value = list.length > 0 ? list[0]!.id : null
 })
 
+const { snapshot, requestClose } = useUnsavedClose(() => ({
+  recipientType: recipientType.value,
+  tenantInn: tenantInn.value,
+  tenantId: tenantId.value,
+  title: title.value,
+  amount: amount.value,
+  dueDate: dueDate.value,
+  category: category.value,
+  propertyId: propertyId.value,
+  document: document.value,
+}))
+
 function resetForm() {
   recipientType.value = 'landlord'
   tenantInn.value = ''
@@ -64,11 +77,14 @@ function resetForm() {
   document.value = null
   parseResult.value = null
   errors.value = {}
+  snapshot()
 }
 
 function onClose() {
-  billing.closeUploadBillModal()
-  resetForm()
+  requestClose(() => {
+    billing.closeUploadBillModal()
+    resetForm()
+  })
 }
 
 async function onFileSelected(event: Event) {

@@ -5,10 +5,12 @@ import type { PropertyFormData, PropertyType } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS, PROPERTY_DOCUMENT_LABELS, createEmptyPropertyFormData } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 
 const store = usePortfolioStore()
 
 const form = ref<PropertyFormData>(createEmptyPropertyFormData())
+const { snapshot, requestClose } = useUnsavedClose(() => form.value)
 const errors = ref<Record<string, string>>({})
 
 const types = Object.entries(PROPERTY_TYPE_LABELS) as [PropertyType, string][]
@@ -18,6 +20,7 @@ const inputClass = 'panel-input'
 function resetForm() {
   form.value = createEmptyPropertyFormData()
   errors.value = {}
+  snapshot()
 }
 
 function validate() {
@@ -44,8 +47,10 @@ async function submit() {
 }
 
 function onClose() {
-  store.closePropertyModal()
-  resetForm()
+  requestClose(() => {
+    store.closePropertyModal()
+    resetForm()
+  })
 }
 </script>
 

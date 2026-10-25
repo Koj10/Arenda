@@ -199,7 +199,9 @@ function getSpaceLabel(tenant: (typeof store.tenants)[0]) {
                     {{ payStatusLabel(rentPayStatus(t)) }}
                   </span>
                 </td>
-                <td class="px-5 py-3.5 text-slate-500 hidden lg:table-cell">{{ store.formatDate(t.contract) }}</td>
+                <td class="px-5 py-3.5 text-slate-500 hidden lg:table-cell">
+                  {{ store.formatContractEnd(t.contract, t.autoRenewal) }}
+                </td>
                 <td class="px-5 py-3.5">
                   <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(t.status)">
                     {{ statusLabel(t.status) }}

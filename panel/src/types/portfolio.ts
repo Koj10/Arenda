@@ -57,15 +57,24 @@ export interface Space {
   floor?: string
 }
 
+/** Контактный номер арендатора: наименование + телефон */
+export interface TenantContact {
+  name: string
+  phone: string
+}
+
 export interface Tenant {
   id: number
   company: string
   inn: string
   email: string
+  contacts: TenantContact[]
   propertyId: number
   space: string
   rent: number
   contract: string
+  /** Автопролонгация: после истечения срока договор бессрочный, статус «Активен» */
+  autoRenewal: boolean
   status: TenantStatus
   leaseId?: number
   isRegistered?: boolean
@@ -239,10 +248,12 @@ export interface TenantFormData {
   company: string
   inn: string
   email: string
+  contacts: TenantContact[]
   propertyId: number | null
   space: string
   rent: number
   contract: string
+  autoRenewal: boolean
   documents: PendingDocument[]
 }
 
@@ -262,8 +273,10 @@ export interface TenantUpdateData {
   company: string
   inn: string
   email: string
+  contacts?: TenantContact[]
   rent: number
   contract: string
+  autoRenewal?: boolean
 }
 
 export interface SpaceFormData {

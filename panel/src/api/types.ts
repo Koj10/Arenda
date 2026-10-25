@@ -7,6 +7,8 @@ export interface UserPublic {
   provider?: string | null
   created_at: string
   inn?: string | null
+  /** Налоговая ставка арендодателя, % (0–100) */
+  tax_rate?: number | null
 }
 
 export interface TenantProfileOut {
@@ -119,11 +121,19 @@ export interface ObjectDetailOut {
   documents?: FileOut[]
 }
 
+/** Контакт арендатора: наименование + телефон (хранится на Tenant) */
+export interface TenantContactOut {
+  name: string
+  phone: string
+}
+
 export interface TenantOut {
   id: number
   name: string
   inn: string
   email?: string | null
+  /** Список контактов; после деплоя API всегда приходит (может быть []) */
+  contacts?: TenantContactOut[] | null
   created_at: string
   active_leases_count?: number
   is_registered?: boolean
@@ -138,6 +148,8 @@ export interface LeaseInTenantDetail {
   rent_monthly: string
   start_date?: string | null
   end_date: string
+  /** Автопролонгация: после end_date договор бессрочный */
+  auto_renewal?: boolean | null
   status: string
   terminated_at?: string | null
   documents?: FileOut[]
@@ -155,6 +167,7 @@ export interface LeaseDetailOut {
   rent_monthly: string
   start_date?: string | null
   end_date: string
+  auto_renewal?: boolean | null
   status?: string
   files?: FileOut[]
   documents?: FileOut[]

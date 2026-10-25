@@ -12,6 +12,7 @@ import Modal from '@/components/ui/Modal.vue'
 import { RouterLink } from 'vue-router'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { useAccountingStore } from '@/stores/accountingStore'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 import {
   PROPERTY_TYPE_LABELS,
   SPACE_STATUS_LABELS,
@@ -58,6 +59,9 @@ const dealForm = ref<TenantUpdateData>({
   rent: 0,
   contract: '',
 })
+
+const infoUnsaved = useUnsavedClose(() => infoForm.value)
+const dealUnsaved = useUnsavedClose(() => dealForm.value)
 
 const MAIN_TABS: { id: MainTab; label: string }[] = [
   { id: 'info', label: 'Информация' },
@@ -141,6 +145,12 @@ const areaShareLabel = computed(() =>
 )
 
 function onClose() {
+  const dirtyWhileEditing =
+    (editingInfo.value && infoUnsaved.isDirty.value) ||
+    (editingDeal.value && dealUnsaved.isDirty.value)
+  if (dirtyWhileEditing && !window.confirm('Закрыть без сохранения? Введённые данные будут потеряны.')) {
+    return
+  }
   store.closeSpaceDetail()
 }
 
@@ -227,6 +237,7 @@ function fillDealForm() {
 
 function startEditInfo() {
   fillInfoForm()
+  infoUnsaved.snapshot()
   editingInfo.value = true
   editingDeal.value = false
 }
@@ -266,6 +277,7 @@ function startEditDeal() {
     return
   }
   fillDealForm()
+  dealUnsaved.snapshot()
   dealTab.value = 'rent'
   editingDeal.value = true
   editingInfo.value = false
@@ -546,8 +558,12 @@ watch(
                     <p class="text-sm font-mono text-emerald-brand">{{ store.formatMoney(tenant.rent) }}</p>
                   </div>
                   <div>
-                    <p class="text-xs text-slate-500 mb-1">Договор до</p>
-                    <p class="text-sm font-mono text-slate-200">{{ store.formatDate(tenant.contract) }}</p>
+                    <p class="text-xs text-slate-500 mb-1">
+                      {{ store.isContractIndefinite(tenant.contract, tenant.autoRenewal) ? 'Срок договора' : 'Договор до' }}
+                    </p>
+                    <p class="text-sm font-mono text-slate-200">
+                      {{ store.formatContractEnd(tenant.contract, tenant.autoRenewal) }}
+                    </p>
                   </div>
                   <div>
                     <p class="text-xs text-slate-500 mb-1">Статус</p>
@@ -718,7 +734,9 @@ watch(
                   </button>
                 </td>
                 <td class="px-3 py-2.5 font-mono text-slate-400">{{ store.formatMoney(tenant.rent) }}</td>
-                <td class="px-3 py-2.5 font-mono text-xs text-slate-400">{{ store.formatDate(tenant.contract) }}</td>
+                <td class="px-3 py-2.5 font-mono text-xs text-slate-400">
+                  {{ store.formatContractEnd(tenant.contract, tenant.autoRenewal) }}
+                </td>
                 <td class="px-3 py-2.5">
                   <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(tenant.status)">
                     {{ statusLabel(tenant.status) }}

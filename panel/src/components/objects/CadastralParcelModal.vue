@@ -3,10 +3,12 @@ import { ref, computed, watch } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { createEmptyCadastralParcelFormData } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 
 const store = usePortfolioStore()
 
 const form = ref(createEmptyCadastralParcelFormData())
+const { snapshot, requestClose } = useUnsavedClose(() => form.value)
 const errors = ref<Record<string, string>>({})
 const deleting = ref(false)
 
@@ -45,6 +47,7 @@ watch(
     }
     errors.value = {}
     deleting.value = false
+    snapshot()
   },
 )
 
@@ -89,7 +92,9 @@ async function onDelete() {
 }
 
 function onClose() {
-  store.closeCadastralModal()
+  requestClose(() => {
+    store.closeCadastralModal()
+  })
 }
 </script>
 

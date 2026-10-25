@@ -104,8 +104,22 @@ export async function acceptTenantInvitationApi(data: {
   return session
 }
 
-export async function updateMeApi(params: { name?: string; inn?: string }) {
-  return apiRequest<UserPublic>(`/me${queryString(params)}`, { method: 'PATCH' })
+export async function updateMeApi(params: {
+  name?: string
+  inn?: string
+  /** Налоговая ставка, % (0–100) */
+  tax_rate?: number
+}) {
+  try {
+    return await apiRequest<UserPublic>(`/me${queryString(params)}`, { method: 'PATCH' })
+  } catch (err) {
+    // Старый API без tax_rate — сохраняем остальное без поля
+    if (params.tax_rate == null) throw err
+    const { tax_rate: _ignored, ...rest } = params
+    if (!Object.keys(rest).length) throw err
+    if (!(err instanceof ApiError) || (err.status !== 422 && err.status !== 400)) throw err
+    return apiRequest<UserPublic>(`/me${queryString(rest)}`, { method: 'PATCH' })
+  }
 }
 
 export function pickProfileInn(

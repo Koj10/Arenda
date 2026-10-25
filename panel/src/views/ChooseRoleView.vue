@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Building2, UserRound, ArrowLeft, Check } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
-import { defaultHomeForRole, isValidInn } from '@/types/auth'
+import { defaultHomeForRole, isValidInn, isValidTaxRate } from '@/types/auth'
 import type { UserRole } from '@/types/auth'
 import { fetchTenantProfileApi } from '@/api/auth'
 import PropCountLogo from '@/components/ui/PropCountLogo.vue'
@@ -14,8 +14,11 @@ const auth = useAuthStore()
 
 const selected = ref<UserRole | null>(null)
 const tenantInn = ref('')
+const taxRate = ref<number | null>(22)
 const error = ref('')
 const loading = ref(false)
+
+const TAX_PRESETS = [0, 6, 15, 20, 22] as const
 
 const pending = computed(() => auth.pendingRoleChoice)
 const isLogin = computed(() => pending.value?.mode === 'login')
@@ -27,8 +30,8 @@ const title = computed(() =>
 
 const subtitle = computed(() =>
   isLogin.value
-    ? 'Выберите, кем вы входите. Арендатору нужен ИНН — по нему откроется кабинет арендатора.'
-    : 'Аккаунт создан. Выберите роль: арендатору обязательно указать ИНН.',
+    ? 'Выберите, кем вы входите. Арендатору нужен ИНН, арендодателю — налоговая ставка.'
+    : 'Аккаунт создан. Арендатору укажите ИНН, арендодателю — налоговую ставку.',
 )
 
 const roles: {
@@ -73,11 +76,22 @@ async function confirm() {
     }
   }
 
+  if (selected.value === 'landlord') {
+    if (taxRate.value == null || !Number.isFinite(taxRate.value)) {
+      error.value = 'Укажите налоговую ставку'
+      return
+    }
+    if (!isValidTaxRate(taxRate.value)) {
+      error.value = 'Ставка: число от 0 до 100'
+      return
+    }
+  }
+
   loading.value = true
-  const result = await auth.completeRoleChoice(
-    selected.value,
-    selected.value === 'tenant' ? tenantInn.value.trim() : undefined,
-  )
+  const result = await auth.completeRoleChoice(selected.value, {
+    inn: selected.value === 'tenant' ? tenantInn.value.trim() : undefined,
+    taxRate: selected.value === 'landlord' ? taxRate.value! : undefined,
+  })
   loading.value = false
 
   if (!result.ok) {
@@ -174,6 +188,47 @@ onMounted(async () => {
         />
         <p class="text-xs text-slate-500 mt-2">
           Обязательно для арендатора. По ИНН откроется кабинет и связь с договорами.
+        </p>
+      </div>
+
+      <div
+        v-if="selected === 'landlord'"
+        class="mb-6 rounded-2xl border border-border bg-card p-5"
+      >
+        <label class="panel-label">Налоговая ставка <span class="text-red-400">*</span></label>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button
+            v-for="preset in TAX_PRESETS"
+            :key="preset"
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-sm border transition-colors"
+            :class="
+              taxRate === preset
+                ? 'border-emerald-brand bg-emerald-brand/15 text-emerald-brand'
+                : 'border-border text-slate-400 hover:border-emerald-brand/40'
+            "
+            @click="taxRate = preset"
+          >
+            {{ preset }}%
+          </button>
+        </div>
+        <div class="relative">
+          <input
+            :value="taxRate ?? ''"
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            placeholder="22"
+            class="panel-input font-mono pr-10"
+            :class="{ 'border-red-500': error.includes('ставк') }"
+            @input="taxRate = ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value)"
+          />
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">%</span>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">
+          Из оплаченной аренды считается налог: при 90&nbsp;000 ₽ и ставке 22% налог — 19&nbsp;800 ₽.
+          Позже можно изменить в настройках.
         </p>
       </div>
 

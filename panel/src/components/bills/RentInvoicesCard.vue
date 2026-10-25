@@ -8,12 +8,24 @@ import { INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types/billing'
 import type { InvoiceStatus, PaymentMethod } from '@/types/billing'
 import { currentPeriod } from '@/utils/dates'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useAuthStore } from '@/stores/authStore'
+import { taxAmountFromGross } from '@/types/auth'
 
 type StatusFilter = InvoiceStatus | 'all'
 
+const auth = useAuthStore()
 const invoices = ref<LandlordInvoiceOut[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+const taxRate = computed(() => auth.user?.taxRate)
+
+function rentTaxOf(row: LandlordInvoiceOut) {
+  if (taxRate.value == null) return null
+  if ((row.kind || 'rent').toLowerCase() !== 'rent') return null
+  if (statusOf(row) !== 'paid') return null
+  return taxAmountFromGross(num(row.amount), taxRate.value)
+}
 const confirmingId = ref<number | null>(null)
 const sendingId = ref<number | null>(null)
 const generating = ref(false)
@@ -278,7 +290,13 @@ onMounted(() => {
                 </td>
                 <td class="px-5 py-3.5 text-slate-400 font-mono text-xs">{{ row.period }}</td>
                 <td class="px-5 py-3.5 font-mono text-slate-200">
-                  {{ new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num(row.amount)) }}
+                  <p>
+                    {{ new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num(row.amount)) }}
+                  </p>
+                  <p v-if="rentTaxOf(row) != null" class="text-[11px] text-violet-300/90 mt-1 font-sans">
+                    в т.ч. налог {{ taxRate }}%:
+                    {{ new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(rentTaxOf(row)!) }}
+                  </p>
                 </td>
                 <td class="px-5 py-3.5">
                   <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium" :class="statusClass(statusOf(row))">

@@ -142,7 +142,12 @@ export async function getTenant(tenantId: number) {
   return apiRequest<TenantDetailOut>(`/landlord/tenants/${tenantId}`)
 }
 
-export async function createTenant(body: { name: string; inn: string; email?: string | null }) {
+export async function createTenant(body: {
+  name: string
+  inn: string
+  email?: string | null
+  contacts?: { name: string; phone: string }[] | null
+}) {
   return apiRequest<TenantOut>('/landlord/tenants', { method: 'POST', body })
 }
 
@@ -152,6 +157,7 @@ export async function createLease(body: {
   rent_monthly: number
   start_date?: string
   end_date: string
+  auto_renewal?: boolean
   file_ids?: number[]
 }) {
   return apiRequest<LeaseDetailOut>('/landlord/leases', { method: 'POST', body })
@@ -163,6 +169,7 @@ export async function updateLease(
     rent_monthly?: number
     start_date?: string | null
     end_date?: string
+    auto_renewal?: boolean
     file_ids?: number[]
   },
 ) {
@@ -177,7 +184,16 @@ export async function deleteLease(leaseId: number) {
   return apiRequest<void>(`/landlord/leases/${leaseId}`, { method: 'DELETE' })
 }
 
-export async function updateTenant(tenantId: number, body: { name?: string; inn?: string; email?: string | null }) {
+export async function updateTenant(
+  tenantId: number,
+  body: {
+    name?: string
+    inn?: string
+    email?: string | null
+    /** Полная замена списка контактов; `[]` очищает */
+    contacts?: { name: string; phone: string }[] | null
+  },
+) {
   return apiRequest<TenantOut>(`/landlord/tenants/${tenantId}`, { method: 'PATCH', body })
 }
 

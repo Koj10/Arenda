@@ -4,6 +4,7 @@ import Modal from '@/components/ui/Modal.vue'
 import ExpenseDocuments from '@/components/accounting/ExpenseDocuments.vue'
 import { useAccountingStore } from '@/stores/accountingStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 import type { ExpenseCategory } from '@/types/accounting'
 import { EXPENSE_CATEGORY_LABELS, createEmptyExpenseForm } from '@/types/accounting'
 import type { PendingDocument } from '@/types/portfolio'
@@ -12,6 +13,7 @@ const accounting = useAccountingStore()
 const portfolio = usePortfolioStore()
 
 const form = ref(createEmptyExpenseForm())
+const { snapshot, requestClose } = useUnsavedClose(() => form.value)
 const errors = ref<Record<string, string>>({})
 
 const categories = Object.entries(EXPENSE_CATEGORY_LABELS) as [ExpenseCategory, string][]
@@ -22,6 +24,7 @@ const inputClass =
 function resetForm() {
   form.value = createEmptyExpenseForm()
   errors.value = {}
+  snapshot()
 }
 
 function validate() {
@@ -43,8 +46,10 @@ async function submit() {
 }
 
 function onClose() {
-  accounting.closeExpenseModal()
-  resetForm()
+  requestClose(() => {
+    accounting.closeExpenseModal()
+    resetForm()
+  })
 }
 
 function onDocUpload(doc: PendingDocument) {

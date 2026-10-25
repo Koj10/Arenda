@@ -1,3 +1,5 @@
+import { beginRequestBusy, endRequestBusy } from '@/composables/requestBusy'
+
 /**
  * Префикс /__api на этом же сайте. Vite и nginx проксируют его на
  * https://api.propcount.ru.
@@ -111,6 +113,15 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   token?: string | null
   skipAuth?: boolean
   skipRefresh?: boolean
+  /** Не показывать глобальный индикатор «Сохранение…» */
+  skipBusy?: boolean
+}
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+function shouldTrackBusy(method: string | undefined, options: ApiRequestOptions) {
+  if (options.skipBusy) return false
+  return MUTATING_METHODS.has((method || 'GET').toUpperCase())
 }
 
 async function parseBody(res: Response): Promise<unknown> {
@@ -151,45 +162,52 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const base = getApiBaseUrl()
-  const headers = new Headers(options.headers)
-  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData
+  const trackBusy = shouldTrackBusy(options.method, options)
+  if (trackBusy) beginRequestBusy()
 
-  if (!isForm && !headers.has('Content-Type') && options.body !== undefined) {
-    headers.set('Content-Type', 'application/json')
-  }
+  try {
+    const base = getApiBaseUrl()
+    const headers = new Headers(options.headers)
+    const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData
 
-  const token = options.skipAuth ? null : (options.token ?? getAccessToken())
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`)
-  }
-
-  const res = await fetch(`${base}${path.startsWith('/') ? path : `/${path}`}`, {
-    ...options,
-    headers,
-    body: isForm
-      ? (options.body as FormData)
-      : options.body !== undefined
-        ? JSON.stringify(options.body)
-        : undefined,
-  })
-
-  if (res.status === 401 && !options.skipAuth && !options.skipRefresh) {
-    const ok = await tryRefresh()
-    if (ok) {
-      return apiRequest<T>(path, { ...options, skipRefresh: true })
+    if (!isForm && !headers.has('Content-Type') && options.body !== undefined) {
+      headers.set('Content-Type', 'application/json')
     }
-    clearTokens()
-  }
 
-  if (!res.ok) {
-    const body = await parseBody(res)
-    throw new ApiError(formatApiError(new ApiError(`API ${res.status}`, res.status, body), `API ${res.status}`), res.status, body)
-  }
+    const token = options.skipAuth ? null : (options.token ?? getAccessToken())
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
 
-  if (res.status === 204) return undefined as T
-  const data = await parseBody(res)
-  return data as T
+    const res = await fetch(`${base}${path.startsWith('/') ? path : `/${path}`}`, {
+      ...options,
+      headers,
+      body: isForm
+        ? (options.body as FormData)
+        : options.body !== undefined
+          ? JSON.stringify(options.body)
+          : undefined,
+    })
+
+    if (res.status === 401 && !options.skipAuth && !options.skipRefresh) {
+      const ok = await tryRefresh()
+      if (ok) {
+        return apiRequest<T>(path, { ...options, skipRefresh: true, skipBusy: true })
+      }
+      clearTokens()
+    }
+
+    if (!res.ok) {
+      const body = await parseBody(res)
+      throw new ApiError(formatApiError(new ApiError(`API ${res.status}`, res.status, body), `API ${res.status}`), res.status, body)
+    }
+
+    if (res.status === 204) return undefined as T
+    const data = await parseBody(res)
+    return data as T
+  } finally {
+    if (trackBusy) endRequestBusy()
+  }
 }
 
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
@@ -215,17 +233,22 @@ function filenameFromDisposition(header: string | null): string | null {
 }
 
 export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string | null }> {
-  const token = getAccessToken()
-  const res = await fetch(`${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  })
-  if (!res.ok) {
-    const body = await parseBody(res)
-    throw new ApiError(formatApiError(new ApiError(`API ${res.status}`, res.status, body), `API ${res.status}`), res.status, body)
-  }
-  return {
-    blob: await res.blob(),
-    filename: filenameFromDisposition(res.headers.get('content-disposition')),
+  beginRequestBusy()
+  try {
+    const token = getAccessToken()
+    const res = await fetch(`${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    if (!res.ok) {
+      const body = await parseBody(res)
+      throw new ApiError(formatApiError(new ApiError(`API ${res.status}`, res.status, body), `API ${res.status}`), res.status, body)
+    }
+    return {
+      blob: await res.blob(),
+      filename: filenameFromDisposition(res.headers.get('content-disposition')),
+    }
+  } finally {
+    endRequestBusy()
   }
 }
 

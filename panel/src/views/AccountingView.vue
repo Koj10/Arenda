@@ -6,14 +6,17 @@ import ExpenseDetailModal from '@/components/accounting/ExpenseDetailModal.vue'
 import CashFlowChart from '@/components/charts/CashFlowChart.vue'
 import ExpenseDonutChart from '@/components/charts/ExpenseDonutChart.vue'
 import RevenueBarChart from '@/components/charts/RevenueBarChart.vue'
-import { Plus, Search, Receipt, Paperclip, Wallet, Clock, ArrowUpRight, ArrowDownRight } from '@lucide/vue'
+import { Plus, Search, Receipt, Paperclip, Wallet, Clock, ArrowUpRight, ArrowDownRight, Percent } from '@lucide/vue'
 import { useAccountingStore } from '@/stores/accountingStore'
 import { usePortfolioStore } from '@/stores/portfolioStore'
+import { useAuthStore } from '@/stores/authStore'
+import { taxAmountFromGross } from '@/types/auth'
 import { EXPENSE_CATEGORY_LABELS } from '@/types/accounting'
 import type { ExpenseCategory } from '@/types/accounting'
 
 const accounting = useAccountingStore()
 const portfolio = usePortfolioStore()
+const auth = useAuthStore()
 
 const activeTab = ref<'overview' | 'transactions'>('overview')
 const search = ref('')
@@ -26,6 +29,11 @@ const totalIncome = computed(() => cards.value?.income ?? 0)
 const totalExpenses = computed(() => cards.value?.expenses ?? 0)
 const netProfit = computed(() => cards.value?.profit ?? 0)
 const pendingPayments = computed(() => cards.value?.invoicesPending ?? 0)
+const rentPaid = computed(() => cards.value?.rentAccrued ?? 0)
+const taxRate = computed(() => auth.user?.taxRate)
+const rentTax = computed(() =>
+  taxRate.value != null ? taxAmountFromGross(rentPaid.value, taxRate.value) : null,
+)
 
 const filtered = computed(() => {
   let list = accounting.expenses
@@ -108,7 +116,7 @@ onMounted(() => {
       <p v-else-if="accounting.loading" class="mb-4 text-sm text-slate-500">Загрузка аналитики...</p>
 
       <template v-if="activeTab === 'overview'">
-        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <div class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">
               <span class="text-xs text-slate-500 uppercase tracking-wide">Доход</span>
@@ -116,6 +124,23 @@ onMounted(() => {
             </div>
             <p class="text-2xl font-bold font-mono text-white">{{ formatShort(totalIncome) }}</p>
             <p class="text-xs text-slate-500 mt-2">оплаченные счета арендаторов</p>
+          </div>
+          <div class="panel-stat-card">
+            <div class="flex items-start justify-between mb-3">
+              <span class="text-xs text-slate-500 uppercase tracking-wide">Налог</span>
+              <span class="p-2 rounded-xl bg-violet-500/10 text-violet-400"><Percent class="w-4 h-4" /></span>
+            </div>
+            <p class="text-2xl font-bold font-mono text-white">
+              {{ rentTax == null ? '—' : formatShort(rentTax) }}
+            </p>
+            <p class="text-xs text-slate-500 mt-2">
+              <template v-if="taxRate != null">
+                от оплаченной аренды · ставка {{ taxRate }}%
+              </template>
+              <template v-else>
+                укажите ставку в настройках
+              </template>
+            </p>
           </div>
           <div class="panel-stat-card">
             <div class="flex items-start justify-between mb-3">

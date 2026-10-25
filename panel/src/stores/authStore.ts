@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { AuthUser, UserRole } from '@/types/auth'
-import { isValidInn } from '@/types/auth'
+import {
+  isValidInn,
+  isValidTaxRate,
+  pickTaxRate,
+  rememberLandlordTaxRate,
+  storedLandlordTaxRate,
+} from '@/types/auth'
 import { usePlanStore } from '@/stores/planStore'
 import { formatApiError, getAccessToken, setTokens } from '@/api/http'
 import type { AuthResponse } from '@/api/types'
@@ -32,20 +38,30 @@ export type CompleteRoleResult =
   | { ok: true }
   | { ok: false; error: string }
 
+function userTaxKey(data: { id?: number; email?: string }) {
+  if (data.id != null) return String(data.id)
+  return (data.email ?? '').trim().toLowerCase()
+}
+
 function toUser(data: {
   name: string
   email: string
   role?: string | null
   inn?: string
+  taxRate?: number
   id?: number
 }): AuthUser {
   const role: UserRole = data.role === 'tenant' ? 'tenant' : 'landlord'
+  const taxRate = role === 'landlord'
+    ? pickTaxRate(data.taxRate, storedLandlordTaxRate(userTaxKey(data)))
+    : undefined
   return {
     id: data.id,
     name: data.name,
     email: data.email,
     role,
     inn: data.inn,
+    taxRate,
   }
 }
 
@@ -129,6 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
       email: session.user.email,
       role,
       inn: pickProfileInn(session.user, user.value),
+      taxRate: pickTaxRate(session.user, user.value),
     }))
   }
 
@@ -158,22 +175,44 @@ export const useAuthStore = defineStore('auth', () => {
     beginRoleChoice(email, name, 'register')
   }
 
-  async function completeRoleChoice(role: UserRole, inn?: string): Promise<CompleteRoleResult> {
+  async function completeRoleChoice(
+    role: UserRole,
+    options?: { inn?: string; taxRate?: number },
+  ): Promise<CompleteRoleResult> {
     const pending = pendingRoleChoice.value
     if (!pending) return { ok: false, error: 'Сессия выбора роли истекла' }
 
     if (role === 'tenant') {
-      const value = inn?.trim() ?? ''
+      const value = options?.inn?.trim() ?? ''
       if (!value) return { ok: false, error: 'Укажите ИНН компании' }
       if (!isValidInn(value)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
+    }
+
+    if (role === 'landlord') {
+      const rate = options?.taxRate
+      if (rate == null || !Number.isFinite(rate)) {
+        return { ok: false, error: 'Укажите налоговую ставку' }
+      }
+      if (!isValidTaxRate(rate)) {
+        return { ok: false, error: 'Ставка: число от 0 до 100' }
+      }
     }
 
     try {
       const session = await selectRoleApi(role)
       applyAuthResponse(session, role)
-      let tenantInnValue = inn?.trim()
-      if (tenantInnValue) {
-        await updateMeApi({ name: pending.name, inn: tenantInnValue })
+      let tenantInnValue = options?.inn?.trim()
+      const taxRate = role === 'landlord' ? options?.taxRate : undefined
+      if (tenantInnValue || taxRate != null) {
+        await updateMeApi({
+          name: pending.name,
+          inn: tenantInnValue || undefined,
+          tax_rate: taxRate,
+        })
+      }
+      if (role === 'landlord' && taxRate != null && user.value) {
+        rememberLandlordTaxRate(userTaxKey(user.value), taxRate)
+        updateProfile({ taxRate })
       }
       if (role === 'tenant' && tenantInnValue) {
         const profile = await updateTenantProfileApi({
@@ -190,8 +229,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function completeRegistration(role: UserRole, inn?: string) {
-    return completeRoleChoice(role, inn)
+  function completeRegistration(role: UserRole, options?: { inn?: string; taxRate?: number }) {
+    return completeRoleChoice(role, options)
   }
 
   function clearPendingRoleChoice() {
@@ -226,19 +265,37 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  function updateProfile(patch: Partial<Pick<AuthUser, 'name' | 'email' | 'inn'>>) {
+  function updateProfile(patch: Partial<Pick<AuthUser, 'name' | 'email' | 'inn' | 'taxRate'>>) {
     if (!user.value) return
     user.value = { ...user.value, ...patch }
+    if (user.value.role === 'landlord' && patch.taxRate != null) {
+      rememberLandlordTaxRate(userTaxKey(user.value), patch.taxRate)
+    }
     persistUser()
   }
 
-  async function saveProfile(patch: Partial<Pick<AuthUser, 'name' | 'inn'>>): Promise<CompleteRoleResult> {
+  async function saveProfile(
+    patch: Partial<Pick<AuthUser, 'name' | 'inn' | 'taxRate'>>,
+  ): Promise<CompleteRoleResult> {
     if (!user.value) return { ok: false, error: 'Нет сессии' }
     const name = (patch.name ?? user.value.name).trim() || user.value.name
     const inn = patch.inn?.trim()
     if (inn && !isValidInn(inn)) return { ok: false, error: 'ИНН: 10 или 12 цифр' }
+    const taxRate = patch.taxRate !== undefined ? patch.taxRate : user.value.taxRate
+    if (user.value.role === 'landlord') {
+      if (taxRate == null || !Number.isFinite(taxRate)) {
+        return { ok: false, error: 'Укажите налоговую ставку' }
+      }
+      if (!isValidTaxRate(taxRate)) {
+        return { ok: false, error: 'Ставка: число от 0 до 100' }
+      }
+    }
     try {
-      const updated = await updateMeApi({ name, inn: inn || undefined })
+      const updated = await updateMeApi({
+        name,
+        inn: inn || undefined,
+        tax_rate: user.value.role === 'landlord' ? taxRate : undefined,
+      })
       if (user.value.role === 'tenant' && inn) {
         await updateTenantProfileApi({
           company_name: name,
@@ -248,7 +305,14 @@ export const useAuthStore = defineStore('auth', () => {
       profileHydrated = false
       await hydrateFromApi()
       const savedInn = pickProfileInn(user.value, updated, { inn })
-      updateProfile({ name: updated.name || name, inn: savedInn })
+      const savedTax = user.value.role === 'landlord'
+        ? pickTaxRate(updated, taxRate, user.value.taxRate)
+        : undefined
+      updateProfile({
+        name: updated.name || name,
+        inn: savedInn,
+        ...(savedTax != null ? { taxRate: savedTax } : {}),
+      })
       return { ok: true }
     } catch (err) {
       return { ok: false, error: formatApiError(err, 'Не удалось сохранить профиль') }
@@ -271,6 +335,14 @@ export const useAuthStore = defineStore('auth', () => {
           /* профиль арендатора ещё не создан */
         }
       }
+      const taxRate = me.current_role === 'landlord'
+        ? pickTaxRate(
+          me.user,
+          storedLandlordTaxRate(String(me.user.id)),
+          storedLandlordTaxRate(me.user.email),
+          user.value,
+        )
+        : undefined
       profileHydrated = true
       applyUser(toUser({
         id: me.user.id,
@@ -278,6 +350,7 @@ export const useAuthStore = defineStore('auth', () => {
         email: me.user.email,
         role: me.current_role,
         inn,
+        taxRate,
       }))
     } catch {
       /* keep local snapshot */
@@ -326,6 +399,7 @@ export const useAuthStore = defineStore('auth', () => {
         email: parsed.email ?? '',
         role: parsed.role ?? 'landlord',
         inn: parsed.inn,
+        taxRate: parsed.taxRate,
       }
       kickRemoteLoads()
       void hydrateFromApi()

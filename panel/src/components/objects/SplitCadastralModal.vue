@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolioStore'
 import { createSplitCadastralFormData } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
+import { useUnsavedClose } from '@/composables/useUnsavedClose'
 
 const store = usePortfolioStore()
 
@@ -14,6 +15,7 @@ const form = ref(createSplitCadastralFormData({
   cadastralValue: 0,
 }))
 
+const { snapshot, requestClose } = useUnsavedClose(() => form.value)
 const errors = ref<Record<string, string>>({})
 const inputClass = 'panel-input'
 
@@ -55,6 +57,7 @@ watch(
     if (!open || !sourceParcel.value) return
     form.value = createSplitCadastralFormData(sourceParcel.value)
     errors.value = {}
+    snapshot()
   },
 )
 
@@ -125,7 +128,9 @@ async function submit() {
 }
 
 function onClose() {
-  store.closeSplitCadastralModal()
+  requestClose(() => {
+    store.closeSplitCadastralModal()
+  })
 }
 </script>
 

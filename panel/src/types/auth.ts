@@ -7,6 +7,8 @@ export interface AuthUser {
   role: UserRole
   /** ИНН арендатора — связь с записями в БД арендодателя */
   inn?: string
+  /** Налоговая ставка арендодателя, % (например 22). Налог = сумма × ставка / 100 */
+  taxRate?: number
 }
 
 export interface DemoAccount {
@@ -74,4 +76,60 @@ export function defaultHomeForRole(role: UserRole): string {
 
 export function isValidInn(inn: string): boolean {
   return /^\d{10}$|^\d{12}$/.test(inn)
+}
+
+/** Ставка 0–100 % */
+export function isValidTaxRate(rate: number): boolean {
+  return Number.isFinite(rate) && rate >= 0 && rate <= 100
+}
+
+/** Налог, входящий в сумму (gross): 90_000 при 22% → 19_800 */
+export function taxAmountFromGross(amount: number, taxRatePercent: number): number {
+  if (!Number.isFinite(amount) || !Number.isFinite(taxRatePercent) || taxRatePercent <= 0) return 0
+  return Math.round((amount * taxRatePercent) / 100)
+}
+
+const LANDLORD_TAX_RATES_KEY = 'propcount.landlordTaxRates'
+
+function readStoredTaxRates(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(LANDLORD_TAX_RATES_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, number>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+export function rememberLandlordTaxRate(userKey: string, rate: number) {
+  const key = userKey.trim().toLowerCase()
+  if (!key || !isValidTaxRate(rate)) return
+  const stored = readStoredTaxRates()
+  stored[key] = rate
+  try {
+    localStorage.setItem(LANDLORD_TAX_RATES_KEY, JSON.stringify(stored))
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+export function storedLandlordTaxRate(userKey: string): number | undefined {
+  const key = userKey.trim().toLowerCase()
+  if (!key) return undefined
+  const value = readStoredTaxRates()[key]
+  return typeof value === 'number' && isValidTaxRate(value) ? value : undefined
+}
+
+export function pickTaxRate(
+  ...sources: Array<{ tax_rate?: number | null; taxRate?: number | null } | number | null | undefined>
+): number | undefined {
+  for (const src of sources) {
+    if (typeof src === 'number' && isValidTaxRate(src)) return src
+    if (src && typeof src === 'object') {
+      const value = src.tax_rate ?? src.taxRate
+      if (typeof value === 'number' && isValidTaxRate(value)) return value
+    }
+  }
+  return undefined
 }

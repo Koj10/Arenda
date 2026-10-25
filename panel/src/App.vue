@@ -2,6 +2,7 @@
 import { RouterView } from 'vue-router'
 import { useThemeStore } from '@/stores/themeStore'
 import AppToast from '@/components/ui/AppToast.vue'
+import AppRequestBusy from '@/components/ui/AppRequestBusy.vue'
 
 useThemeStore()
 </script>
@@ -9,4 +10,5 @@ useThemeStore()
 <template>
   <RouterView />
   <AppToast />
+  <AppRequestBusy />
 </template>
