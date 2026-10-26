@@ -52,6 +52,7 @@ export interface CadastreOut {
   id: number
   object_id: number
   number: string
+  area?: string | number | null
   cadastral_value: string
   purchase_price?: string | null
 }
@@ -96,12 +97,37 @@ export interface UnitInObjectOut {
   area: string
   rent_rate?: string | null
   cadastre_id?: number | null
+  account_number?: string | null
+  ceiling_height?: string | number | null
+  renovation?: string | null
+  unit_type?: string | null
+  floor?: string | null
+  status?: string | null
   utility_payers: Record<string, 'landlord' | 'tenant'>
   created_at: string
   is_occupied?: boolean
   active_tenant_name?: string | null
   active_lease_end_date?: string | null
   active_rent_monthly?: string | null
+}
+
+/** Банковские реквизиты арендодателя */
+export interface LandlordProfileOut {
+  recipient?: string | null
+  inn?: string | null
+  kpp?: string | null
+  bank_name?: string | null
+  bik?: string | null
+  account?: string | null
+  corr_account?: string | null
+  notes?: string | null
+}
+
+export type LandlordProfileUpdate = LandlordProfileOut
+
+export interface NotificationPreferences {
+  email_notifications?: boolean
+  push_notifications?: boolean
 }
 
 export interface ObjectDetailOut {

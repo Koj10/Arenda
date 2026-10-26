@@ -1,5 +1,15 @@
 import { ApiError, apiRequest, apiUpload, clearTokens, getApiBaseUrl, queryString, setTokens } from '@/api/http'
-import { asList, type AuthResponse, type FileOut, type MeResponse, type TenantProfileOut, type UserPublic } from '@/api/types'
+import {
+  asList,
+  type AuthResponse,
+  type FileOut,
+  type LandlordProfileOut,
+  type LandlordProfileUpdate,
+  type MeResponse,
+  type NotificationPreferences,
+  type TenantProfileOut,
+  type UserPublic,
+} from '@/api/types'
 
 export function persistAuth(session: AuthResponse) {
   setTokens(session.access_token, session.refresh_token)
@@ -110,16 +120,23 @@ export async function updateMeApi(params: {
   /** Налоговая ставка, % (0–100) */
   tax_rate?: number
 }) {
-  try {
-    return await apiRequest<UserPublic>(`/me${queryString(params)}`, { method: 'PATCH' })
-  } catch (err) {
-    // Старый API без tax_rate — сохраняем остальное без поля
-    if (params.tax_rate == null) throw err
-    const { tax_rate: _ignored, ...rest } = params
-    if (!Object.keys(rest).length) throw err
-    if (!(err instanceof ApiError) || (err.status !== 422 && err.status !== 400)) throw err
-    return apiRequest<UserPublic>(`/me${queryString(rest)}`, { method: 'PATCH' })
-  }
+  return apiRequest<UserPublic>(`/me${queryString(params)}`, { method: 'PATCH' })
+}
+
+export async function fetchLandlordProfileApi() {
+  return apiRequest<LandlordProfileOut>('/me/landlord-profile')
+}
+
+export async function updateLandlordProfileApi(data: LandlordProfileUpdate) {
+  return apiRequest<LandlordProfileOut>('/me/landlord-profile', { method: 'PATCH', body: data })
+}
+
+export async function fetchPreferencesApi() {
+  return apiRequest<NotificationPreferences>('/me/preferences')
+}
+
+export async function updatePreferencesApi(data: NotificationPreferences) {
+  return apiRequest<NotificationPreferences>('/me/preferences', { method: 'PATCH', body: data })
 }
 
 export function pickProfileInn(

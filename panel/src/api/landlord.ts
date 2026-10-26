@@ -60,12 +60,20 @@ export async function deleteObject(objectId: number) {
   return apiRequest<void>(`/landlord/objects/${objectId}`, { method: 'DELETE' })
 }
 
-export async function createUnit(objectId: number, body: {
-  number: string
-  area: number
+export type UnitWriteBody = {
+  number?: string
+  area?: number
   rent_rate?: number
   cadastre_id?: number | null
-}) {
+  account_number?: string | null
+  ceiling_height?: number | null
+  renovation?: string | null
+  unit_type?: string | null
+  floor?: string | null
+  status?: string | null
+}
+
+export async function createUnit(objectId: number, body: UnitWriteBody & { number: string; area: number }) {
   return apiRequest<UnitInObjectOut>(`/landlord/objects/${objectId}/units`, { method: 'POST', body })
 }
 
@@ -73,12 +81,7 @@ export async function getUnit(unitId: number) {
   return apiRequest<UnitInObjectOut>(`/landlord/units/${unitId}`)
 }
 
-export async function updateUnit(unitId: number, body: {
-  number?: string
-  area?: number
-  rent_rate?: number
-  cadastre_id?: number | null
-}) {
+export async function updateUnit(unitId: number, body: UnitWriteBody) {
   return apiRequest<UnitInObjectOut>(`/landlord/units/${unitId}`, { method: 'PATCH', body })
 }
 
@@ -97,6 +100,7 @@ export async function createCadastre(objectId: number, body: {
   number: string
   cadastral_value: number
   purchase_price?: number
+  area?: number
 }) {
   return apiRequest<CadastreOut>(`/landlord/objects/${objectId}/cadastre`, { method: 'POST', body })
 }
@@ -105,6 +109,7 @@ export async function updateCadastre(cadastreId: number, body: {
   number?: string
   cadastral_value?: number
   purchase_price?: number
+  area?: number
 }) {
   return apiRequest<CadastreOut>(`/landlord/cadastre/${cadastreId}`, { method: 'PATCH', body })
 }

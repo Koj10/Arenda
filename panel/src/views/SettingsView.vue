@@ -10,6 +10,8 @@ import ThemePicker from '@/components/ui/ThemePicker.vue'
 import BankRequisitesCard from '@/components/ui/BankRequisitesCard.vue'
 import { useBankRequisitesStore } from '@/stores/bankRequisitesStore'
 import { useTenantPanelStore } from '@/stores/tenantPanelStore'
+import { fetchPreferencesApi, updatePreferencesApi } from '@/api/auth'
+import { formatApiError } from '@/api/http'
 import { Mail, Bell, Shield, Sparkles, Landmark, Percent } from '@lucide/vue'
 
 const auth = useAuthStore()
@@ -26,8 +28,12 @@ const taxRate = ref<number | null>(auth.user?.taxRate ?? null)
 const profileError = ref('')
 const emailNotify = ref(true)
 const pushNotify = ref(true)
+const prefsError = ref('')
+const prefsSaved = ref(false)
+const prefsSaving = ref(false)
 const saved = ref(false)
 const requisitesSaved = ref(false)
+const requisitesError = ref('')
 
 const TAX_PRESETS = [0, 6, 15, 20, 22] as const
 
@@ -39,6 +45,38 @@ watch(
     if (nextTax != null) taxRate.value = nextTax
   },
 )
+
+async function loadPreferences() {
+  prefsError.value = ''
+  try {
+    const prefs = await fetchPreferencesApi()
+    emailNotify.value = prefs.email_notifications !== false
+    pushNotify.value = prefs.push_notifications !== false
+  } catch {
+    /* оставляем значения по умолчанию */
+  }
+}
+
+async function savePreferences() {
+  prefsError.value = ''
+  prefsSaving.value = true
+  try {
+    const prefs = await updatePreferencesApi({
+      email_notifications: emailNotify.value,
+      push_notifications: pushNotify.value,
+    })
+    emailNotify.value = prefs.email_notifications !== false
+    pushNotify.value = prefs.push_notifications !== false
+    prefsSaved.value = true
+    setTimeout(() => {
+      prefsSaved.value = false
+    }, 2000)
+  } catch (err) {
+    prefsError.value = formatApiError(err, 'Не удалось сохранить уведомления')
+  } finally {
+    prefsSaving.value = false
+  }
+}
 
 async function saveProfile() {
   profileError.value = ''
@@ -59,8 +97,13 @@ async function saveProfile() {
   }, 2000)
 }
 
-function saveRequisites() {
-  requisites.saveLandlord()
+async function saveRequisites() {
+  requisitesError.value = ''
+  const ok = await requisites.saveLandlord()
+  if (!ok) {
+    requisitesError.value = requisites.lastError || 'Не удалось сохранить реквизиты'
+    return
+  }
   requisitesSaved.value = true
   setTimeout(() => {
     requisitesSaved.value = false
@@ -84,7 +127,9 @@ const tenantObjects = computed(() => {
 })
 
 onMounted(() => {
+  void loadPreferences()
   if (auth.isTenant) void tenantPanel.loadFromApi()
+  else void requisites.loadFromApi()
 })
 </script>
 
@@ -195,7 +240,7 @@ onMounted(() => {
         </div>
         <p class="text-sm text-slate-400 mb-4 leading-relaxed">
           Арендатор увидит эти данные по кнопке «Показать реквизиты» при оплате счёта.
-          Пока отдельного хранилища реквизитов нет — они сохраняются в этом браузере.
+          Реквизиты сохраняются в профиле аккаунта.
         </p>
         <div class="space-y-3">
           <label class="block">
@@ -234,8 +279,16 @@ onMounted(() => {
             <span class="text-xs text-slate-500 mb-1.5 block">Комментарий к платежу</span>
             <textarea v-model="requisites.draft.notes" rows="2" class="panel-input resize-none" placeholder="Назначение платежа, доп. сведения" />
           </label>
+          <p v-if="requisitesError" class="text-xs text-red-400">{{ requisitesError }}</p>
           <div class="flex items-center gap-3">
-            <button type="button" class="panel-btn-primary" @click="saveRequisites">Сохранить реквизиты</button>
+            <button
+              type="button"
+              class="panel-btn-primary"
+              :disabled="requisites.saving"
+              @click="saveRequisites"
+            >
+              {{ requisites.saving ? 'Сохранение…' : 'Сохранить реквизиты' }}
+            </button>
             <span v-if="requisitesSaved" class="text-xs text-emerald-brand">Сохранено</span>
           </div>
         </div>
@@ -288,9 +341,18 @@ onMounted(() => {
             <span class="text-sm text-slate-300">Уведомления в панели</span>
             <input v-model="pushNotify" type="checkbox" class="accent-emerald-brand w-4 h-4" />
           </label>
-          <p class="text-[11px] text-slate-600">
-            Сами уведомления приходят из API. Эти переключатели пока только локальные и не влияют на рассылку.
-          </p>
+          <p v-if="prefsError" class="text-xs text-red-400">{{ prefsError }}</p>
+          <div class="flex items-center gap-3 pt-1">
+            <button
+              type="button"
+              class="panel-btn-primary text-xs"
+              :disabled="prefsSaving"
+              @click="savePreferences"
+            >
+              {{ prefsSaving ? 'Сохранение…' : 'Сохранить уведомления' }}
+            </button>
+            <span v-if="prefsSaved" class="text-xs text-emerald-brand">Сохранено</span>
+          </div>
         </div>
       </section>
 

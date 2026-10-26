@@ -335,14 +335,20 @@ export const useAuthStore = defineStore('auth', () => {
           /* профиль арендатора ещё не создан */
         }
       }
-      const taxRate = me.current_role === 'landlord'
-        ? pickTaxRate(
-          me.user,
+      let taxRate: number | undefined
+      if (me.current_role === 'landlord') {
+        const fromApi = pickTaxRate(me.user)
+        const fromLocal = pickTaxRate(
           storedLandlordTaxRate(String(me.user.id)),
           storedLandlordTaxRate(me.user.email),
           user.value,
         )
-        : undefined
+        taxRate = fromApi ?? fromLocal
+        // Одноразовая миграция локальной ставки в API
+        if (fromApi == null && fromLocal != null) {
+          void updateMeApi({ tax_rate: fromLocal }).catch(() => { /* ignore */ })
+        }
+      }
       profileHydrated = true
       applyUser(toUser({
         id: me.user.id,

@@ -136,16 +136,12 @@ function storedTenantContacts(tenantId: number): TenantContact[] {
 }
 
 /**
- * Contacts из ответа API.
- * Если поля нет (старый бэкенд) или API вернул [] при загрузке — берём локальный кэш
- * (одноразовая миграция до первого сохранения в БД).
- * После явного сохранения передавайте `trustEmpty: true`, чтобы пустой список не
- * откатывался к кэшу.
+ * Contacts из API. Пустой ответ + локальный кэш → одноразовая миграция на сервер.
  */
 function contactsFromApi(
   tenantId: number,
   apiContacts?: TenantContact[] | null,
-  opts?: { trustEmpty?: boolean },
+  opts?: { trustEmpty?: boolean; migrate?: boolean },
 ): TenantContact[] {
   if (Array.isArray(apiContacts)) {
     const fromApi = normalizeTenantContacts(apiContacts)
@@ -154,7 +150,11 @@ function contactsFromApi(
       return fromApi
     }
     const local = storedTenantContacts(tenantId)
-    return local.length ? local : fromApi
+    if (local.length && opts?.migrate !== false) {
+      void landlordApi.updateTenant(tenantId, { contacts: local }).catch(() => { /* ignore */ })
+      return local
+    }
+    return fromApi
   }
   return storedTenantContacts(tenantId)
 }
@@ -182,13 +182,17 @@ function rememberLeaseAutoRenewal(leaseId: number, value: boolean) {
   }
 }
 
-/** API → флаг; если поля ещё нет — локальный кэш. */
+/** API → флаг; локальный кэш только если поля нет в ответе (миграция). */
 function autoRenewalFromApi(leaseId: number, apiValue?: boolean | null): boolean {
   if (typeof apiValue === 'boolean') {
     rememberLeaseAutoRenewal(leaseId, apiValue)
     return apiValue
   }
-  return Boolean(readLeaseAutoRenewal()[String(leaseId)])
+  const local = Boolean(readLeaseAutoRenewal()[String(leaseId)])
+  if (local) {
+    void landlordApi.updateLease(leaseId, { auto_renewal: true }).catch(() => { /* ignore */ })
+  }
+  return local
 }
 
 function readStoredCadastreAreas(): Record<string, number> {
@@ -741,11 +745,20 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     for (const entry of cadastreEntries) {
       const prev = prevParcels.find((p) => p.id === entry.id)
         ?? prevParcels.find((p) => p.cadastralNumber.trim() === entry.number.trim())
+      const apiArea = entry.area != null ? num(entry.area) : 0
       cadastralParcels.value.push({
         id: entry.id,
         propertyId: entry.object_id,
         cadastralNumber: entry.number,
-        area: resolveCadastreArea(detail.id, entry.number, cadastreEntries.length, totalArea, prev?.area),
+        area: resolveCadastreArea(
+          detail.id,
+          entry.number,
+          cadastreEntries.length,
+          totalArea,
+          prev?.area,
+          undefined,
+          apiArea,
+        ),
         cadastralValue: num(entry.cadastral_value),
         purchasePrice: entry.purchase_price ? num(entry.purchase_price) : undefined,
       })
@@ -755,6 +768,8 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     spaces.value = spaces.value.filter((s) => s.propertyId !== detail.id)
     for (const unit of units) {
       const cadastreId = unit.cadastre_id ?? undefined
+      const renovation = unit.renovation
+      const status = unit.status
       spaces.value.push({
         id: unit.id,
         propertyId: unit.object_id,
@@ -762,6 +777,18 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         name: unit.number,
         area: num(unit.area),
         monthlyRate: num(unit.rent_rate),
+        accountNumber: unit.account_number?.trim() || undefined,
+        ceilingHeight: unit.ceiling_height != null && unit.ceiling_height !== ''
+          ? num(unit.ceiling_height)
+          : undefined,
+        renovation: renovation === 'cosmetic' || renovation === 'design' || renovation === 'none'
+          ? renovation
+          : undefined,
+        spaceType: unit.unit_type?.trim() || undefined,
+        floor: unit.floor?.trim() || undefined,
+        status: status === 'active' || status === 'inactive' || status === 'vacant'
+          ? status
+          : undefined,
       })
     }
     replaceEntityDocuments('property', detail.id, detail.documents ?? [], 'title')
@@ -779,7 +806,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     objectArea: number,
     fallback?: number,
     splitArea?: number,
+    apiArea?: number,
   ) {
+    if (apiArea && apiArea > 0) {
+      rememberCadastreArea(propertyId, number, apiArea)
+      return apiArea
+    }
     if (parcelsOnObject <= 1) return objectArea
     if (splitArea && splitArea > 0) return splitArea
     const remembered = recalledCadastreArea(propertyId, number)
@@ -1191,6 +1223,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         number: name,
         area: data.area,
         rent_rate: data.monthlyRate,
+        account_number: data.accountNumber.trim() || null,
+        ceiling_height: data.ceilingHeight,
+        renovation: data.renovation || null,
+        unit_type: data.spaceType.trim() || null,
+        floor: data.floor.trim() || null,
+        status: data.status || null,
       })
       const detail = await landlordApi.getObject(propertyId)
       applyObjectDetail(detail)
@@ -1265,7 +1303,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         return false
       }
 
-      const leaseBody = {
+      const lease = await landlordApi.createLease({
         tenant_id: tenant.id,
         unit_id: space.id,
         rent_monthly: rent,
@@ -1273,16 +1311,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         end_date: endDate,
         auto_renewal: Boolean(data.autoRenewal),
         file_ids: uploadedFiles.length ? uploadedFiles.map((file) => file.id) : undefined,
-      }
-      let lease
-      try {
-        lease = await landlordApi.createLease(leaseBody)
-      } catch (err) {
-        // Старый API без auto_renewal — создаём без поля
-        if (!(err instanceof ApiError) || (err.status !== 422 && err.status !== 400)) throw err
-        const { auto_renewal: _ignored, ...legacyBody } = leaseBody
-        lease = await landlordApi.createLease(legacyBody)
-      }
+      })
       if (lease?.id) {
         rememberLeaseAutoRenewal(
           lease.id,
@@ -1311,14 +1340,26 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         area: data.area,
         rent_rate: data.monthlyRate,
         cadastre_id: space.cadastralParcelId ?? null,
+        account_number: data.accountNumber.trim() || null,
+        ceiling_height: data.ceilingHeight,
+        renovation: data.renovation || null,
+        unit_type: data.spaceType.trim() || null,
+        floor: data.floor.trim() || null,
+        status: data.status || null,
       })
-    const oldName = space.name
-    space.name = data.name.trim()
-    space.area = data.area
-    space.monthlyRate = data.monthlyRate
-    if (space.name !== oldName) {
-      const tenant = getTenantForSpace(space.propertyId, oldName)
-      if (tenant) tenant.space = space.name
+      const oldName = space.name
+      space.name = data.name.trim()
+      space.area = data.area
+      space.monthlyRate = data.monthlyRate
+      space.accountNumber = data.accountNumber.trim() || undefined
+      space.ceilingHeight = data.ceilingHeight
+      space.renovation = data.renovation === '' ? undefined : data.renovation
+      space.spaceType = data.spaceType.trim() || undefined
+      space.floor = data.floor.trim() || undefined
+      space.status = data.status
+      if (space.name !== oldName) {
+        const tenant = getTenantForSpace(space.propertyId, oldName)
+        if (tenant) tenant.space = space.name
       }
       if (space.cadastralParcelId) syncParcelAreaFromSpaces(space.cadastralParcelId)
       return true
@@ -1378,16 +1419,22 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     if (!data.cadastralNumber.trim() || data.cadastralValue <= 0) return false
     lastError.value = null
     try {
+      const area = getAvailableCadastralAreaForProperty(propertyId)
+        || getPropertyById(propertyId)?.totalArea
+        || 0
       const created = await landlordApi.createCadastre(propertyId, {
         number: data.cadastralNumber.trim(),
         cadastral_value: data.cadastralValue,
         purchase_price: data.purchasePrice,
+        ...(area > 0 ? { area } : {}),
       })
+      const createdArea = created.area != null ? num(created.area) : area
+      if (createdArea > 0) rememberCadastreArea(created.object_id, created.number, createdArea)
       cadastralParcels.value.push({
         id: created.id,
         propertyId: created.object_id,
         cadastralNumber: created.number,
-        area: getPropertyById(propertyId)?.totalArea ?? 0,
+        area: createdArea,
         cadastralValue: num(created.cadastral_value),
         purchasePrice: created.purchase_price ? num(created.purchase_price) : undefined,
       })
@@ -1411,10 +1458,12 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         number: data.cadastralNumber.trim(),
         cadastral_value: data.cadastralValue,
         purchase_price: data.purchasePrice,
+        ...(parcel.area > 0 ? { area: parcel.area } : {}),
       })
       parcel.cadastralNumber = data.cadastralNumber.trim()
       parcel.cadastralValue = data.cadastralValue
       parcel.purchasePrice = data.purchasePrice && data.purchasePrice > 0 ? data.purchasePrice : undefined
+      if (parcel.area > 0) rememberCadastreArea(parcel.propertyId, parcel.cadastralNumber, parcel.area)
       cadastralModalOpen.value = false
       cadastralEditId.value = null
       return true
@@ -1560,6 +1609,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         await landlordApi.updateCadastre(firstAfter.id, {
           cadastral_value: data.firstCadastralValue,
           purchase_price: data.firstPurchasePrice,
+          area: firstArea,
         })
         firstAfter.area = firstArea
         firstAfter.cadastralValue = data.firstCadastralValue
@@ -1571,6 +1621,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         await landlordApi.updateCadastre(secondAfter.id, {
           cadastral_value: data.secondCadastralValue,
           purchase_price: data.secondPurchasePrice,
+          area: secondArea,
         })
         secondAfter.area = secondArea
         secondAfter.cadastralValue = data.secondCadastralValue
@@ -1625,6 +1676,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         number: firstNumber,
         cadastral_value: data.firstCadastralValue,
         purchase_price: data.firstPurchasePrice,
+        area: firstArea,
       })
       rememberCadastreArea(original.propertyId, firstNumber, firstArea)
     }
@@ -1637,6 +1689,7 @@ export const usePortfolioStore = defineStore('portfolio', () => {
         number: secondNumber,
         cadastral_value: data.secondCadastralValue,
         purchase_price: data.secondPurchasePrice,
+        area: secondArea,
       })
       rememberCadastreArea(original.propertyId, secondNumber, secondArea)
     }
@@ -1658,18 +1711,11 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       })
       const autoRenewal = data.autoRenewal !== undefined ? Boolean(data.autoRenewal) : tenant.autoRenewal
       if (tenant.leaseId) {
-        const leasePatch = {
+        await landlordApi.updateLease(tenant.leaseId, {
           rent_monthly: data.rent,
           end_date: data.contract,
           auto_renewal: autoRenewal,
-        }
-        try {
-          await landlordApi.updateLease(tenant.leaseId, leasePatch)
-        } catch (err) {
-          if (!(err instanceof ApiError) || (err.status !== 422 && err.status !== 400)) throw err
-          const { auto_renewal: _ignored, ...legacyPatch } = leasePatch
-          await landlordApi.updateLease(tenant.leaseId, legacyPatch)
-        }
+        })
         rememberLeaseAutoRenewal(tenant.leaseId, autoRenewal)
       }
       const email = (data.email ?? updated.email ?? '').trim()
@@ -1711,14 +1757,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
       syncPropertyStats(tenant.propertyId)
       return true
     } catch (err) {
-      // Старый API без поля — сохраняем локально, UI всё равно работает
-      if (err instanceof ApiError && (err.status === 422 || err.status === 400)) {
-        rememberLeaseAutoRenewal(leaseId, autoRenewal)
-        tenant.autoRenewal = autoRenewal
-        tenant.status = getTenantStatus(tenant.contract, autoRenewal)
-        syncPropertyStats(tenant.propertyId)
-        return true
-      }
       lastError.value = formatApiError(err, 'Не удалось сохранить пролонгацию')
       return false
     }
