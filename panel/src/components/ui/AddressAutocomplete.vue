@@ -59,7 +59,7 @@ async function loadSuggestions(search: string) {
   const requestController = new AbortController()
   controller = requestController
   try {
-    const params = new URLSearchParams({ q: search, lang: 'ru', limit: '6', countrycode: 'RU' })
+    const params = new URLSearchParams({ q: search, limit: '20' })
     const response = await fetch(`https://photon.komoot.io/api/?${params}`, {
       signal: requestController.signal,
       headers: { Accept: 'application/json' },
@@ -68,6 +68,8 @@ async function loadSuggestions(search: string) {
     const data = await response.json() as { features?: { properties?: Record<string, unknown> }[] }
     if (requestController.signal.aborted) return
     suggestions.value = (data.features ?? [])
+      .filter((feature) => feature.properties?.countrycode === 'RU')
+      .slice(0, 6)
       .map((feature, index) => {
         const label = formatAddress(feature.properties ?? {})
         return { id: `${label}-${index}`, label }
