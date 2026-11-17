@@ -133,24 +133,48 @@ onBeforeUnmount(() => {
       @blur="closeSuggestions"
       @keydown="onKeydown"
     />
-    <ul
+
+    <div
       v-if="isOpen && (suggestions.length || isLoading)"
-      id="address-suggestions"
-      role="listbox"
-      class="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-border bg-slate-900 py-1 shadow-xl"
+      class="panel-popover absolute z-50 mt-2 w-full overflow-hidden"
     >
-      <li v-if="isLoading && !suggestions.length" class="px-3 py-2 text-sm text-slate-400">Ищем адреса…</li>
-      <li v-for="(suggestion, index) in suggestions" :key="suggestion.id" role="presentation">
-        <button
-          :id="`address-option-${index}`"
-          type="button"
-          role="option"
-          :aria-selected="activeIndex === index"
-          class="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
-          :class="{ 'bg-slate-800': activeIndex === index }"
-          @mousedown.prevent="selectSuggestion(suggestion)"
-        >{{ suggestion.label }}</button>
-      </li>
-    </ul>
+      <div class="flex items-center gap-2 border-b border-border-subtle px-3.5 py-2.5">
+        <span class="flex size-7 items-center justify-center rounded-lg bg-emerald-brand/10 text-emerald-brand">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="size-4" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+            <circle cx="12" cy="10" r="2.5" />
+          </svg>
+        </span>
+        <span class="text-xs font-medium text-slate-400">Адреса</span>
+        <span v-if="isLoading" class="ml-auto size-3.5 animate-spin rounded-full border-2 border-emerald-brand/25 border-t-emerald-brand" aria-label="Загрузка" />
+      </div>
+
+      <ul id="address-suggestions" role="listbox" class="max-h-64 overflow-auto p-1.5">
+        <li v-if="isLoading && !suggestions.length" class="px-3 py-3 text-sm text-slate-400">
+          Ищем подходящие адреса…
+        </li>
+        <li v-for="(suggestion, index) in suggestions" :key="suggestion.id" role="presentation">
+          <button
+            :id="`address-option-${index}`"
+            type="button"
+            role="option"
+            :aria-selected="activeIndex === index"
+            class="group flex w-full items-start gap-3 rounded-lg px-2.5 py-2.5 text-left text-sm text-slate-300 transition-colors hover:bg-card-hover hover:text-white"
+            :class="{ 'bg-emerald-brand/10 text-emerald-brand': activeIndex === index }"
+            @mousedown.prevent="selectSuggestion(suggestion)"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="mt-0.5 size-4 shrink-0 text-slate-500 transition-colors group-hover:text-emerald-brand" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+            <span class="min-w-0 leading-5">{{ suggestion.label }}</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="border-t border-border-subtle px-3.5 py-2 text-[10px] text-slate-500">
+        Подсказки адресов · © OpenStreetMap
+      </div>
+    </div>
   </div>
 </template>
