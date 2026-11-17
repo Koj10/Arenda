@@ -5,6 +5,7 @@ import type { PropertyFormData, PropertyType } from '@/types/portfolio'
 import { PROPERTY_TYPE_LABELS, PROPERTY_DOCUMENT_LABELS, createEmptyPropertyFormData } from '@/types/portfolio'
 import Modal from '@/components/ui/Modal.vue'
 import FileAttachments from '@/components/ui/FileAttachments.vue'
+import AddressAutocomplete from '@/components/ui/AddressAutocomplete.vue'
 import { useUnsavedClose } from '@/composables/useUnsavedClose'
 
 const store = usePortfolioStore()
@@ -63,11 +64,10 @@ function onClose() {
 
       <div>
         <label class="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">Адрес</label>
-        <input
+        <AddressAutocomplete
           v-model="form.address"
-          type="text"
-          placeholder="г. Москва, ул. Примерная, д. 1"
-          :class="[inputClass, { 'border-red-500': errors.address }]"
+          placeholder="г. Магнитогорск, ул. Примерная, д. 1"
+          :error="Boolean(errors.address)"
         />
         <p v-if="errors.address" class="text-xs text-red-400 mt-1">{{ errors.address }}</p>
       </div>
